@@ -1,0 +1,336 @@
+# FalconOne Intelligence Platform
+# Kubernetes Deployment Manifest
+# Version 1.8.0 - RANSacked Integration Complete
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falconone
+  labels:
+    app: falconone
+    version: v1.8.0
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falconone-config
+  namespace: falconone
+data:
+  config.yaml: |
+    # FalconOne Configuration
+    sdr:
+      device_priority: ["USRP", "LimeSDR", "BladeRF", "RTL-SDR"]
+      sample_rate: 2e6
+      
+    ai_ml:
+      signal_classification:
+        accuracy_threshold: 0.90
+        anomaly_threshold: 0.98
+        adaptive_mode: true
+      
+    exploitation:
+      scapy_integration: true
+      evasion_mode: true
+      
+    monitoring:
+      enable_dashboard: true
+      port: 8080
+    
+    ransacked:
+      cache_size: 128
+      rate_limits:
+        scan: 10
+        packet: 20
+        stats: 60
+
+---
+# PersistentVolumeClaim for data storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: falconone-data-pvc
+  namespace: falconone
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+
+---
+# Deployment for FalconOne agents
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falconone-agent
+  namespace: falconone
+  labels:
+    app: falconone
+    component: agent
+spec:
+  replicas: 3  # Distributed SIGINT agents
+  selector:
+    matchLabels:
+      app: falconone
+      component: agent
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: agent
+    spec:
+      containers:
+      - name: falconone
+        image: falconone:1.8.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          name: api
+        - containerPort: 8080
+          name: dashboard
+        env:
+        - name: FALCONONE_MODE
+          value: "agent"
+        - name: FEDERATED_LEARNING
+          value: "enabled"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+        - name: data-volume
+          mountPath: /app/data
+        - name: captures-volume
+          mountPath: /app/captures
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /api/audit/ransacked/stats
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/audit/ransacked/stats
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - NET_RAW  # Required for packet capture
+              - NET_ADMIN  # Required for SDR operations
+      volumes:
+      - name: config-volume
+        configMap:
+          name: falconone-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: falconone-data-pvc
+      - name: captures-volume
+        emptyDir: {}
+      nodeSelector:
+        workload-type: sigint  # Deploy on SDR-equipped nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: component
+                  operator: In
+                  values:
+                  - agent
+              topologyKey: kubernetes.io/hostname
+
+---
+# Service for agent communication
+apiVersion: v1
+kind: Service
+metadata:
+  name: falconone-agent-service
+  namespace: falconone
+spec:
+  selector:
+    app: falconone
+    component: agent
+  ports:
+  - name: api
+    protocol: TCP
+    port: 5000
+    targetPort: 5000
+  - name: dashboard
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+
+---
+# Deployment for Federated Learning Coordinator
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falconone-coordinator
+  namespace: falconone
+  labels:
+    app: falconone
+    component: coordinator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falconone
+      component: coordinator
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: coordinator
+    spec:
+      containers:
+      - name: coordinator
+        image: falconone:1.8.0
+        imagePullPolicy: Always
+        command: ["python3", "-m", "falconone.ai.federated_coordinator"]
+        ports:
+        - containerPort: 6000
+          name: federated
+        env:
+        - name: FALCONONE_MODE
+          value: "coordinator"
+        - name: NUM_CLIENTS
+          value: "3"
+        volumeMounts:
+        - name: models-volume
+          mountPath: /app/models
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+      volumes:
+      - name: models-volume
+        persistentVolumeClaim:
+          claimName: falconone-data-pvc
+
+---
+# Service for Federated Learning
+apiVersion: v1
+kind: Service
+metadata:
+  name: falconone-coordinator-service
+  namespace: falconone
+spec:
+  selector:
+    app: falconone
+    component: coordinator
+  ports:
+  - name: federated
+    protocol: TCP
+    port: 6000
+    targetPort: 6000
+  type: ClusterIP
+
+---
+# HorizontalPodAutoscaler for dynamic scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: falconone-agent-hpa
+  namespace: falconone
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: falconone-agent
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+
+---
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: falconone-network-policy
+  namespace: falconone
+spec:
+  podSelector:
+    matchLabels:
+      app: falconone
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: falconone
+    ports:
+    - protocol: TCP
+      port: 5000
+    - protocol: TCP
+      port: 6000
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: falconone
+  - to:  # Allow external SDR communication
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53  # DNS
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS for model downloads

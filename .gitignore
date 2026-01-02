@@ -1,0 +1,98 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+env/
+ENV/
+falconone_env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+/var/log/falconone/
+logs/
+
+# Data
+/var/lib/falconone/
+data/
+captures/
+*.pcap
+*.pcapng
+
+# Configuration (don't commit local configs)
+config/config.local.yaml
+config/*.local.yaml
+.env
+
+# AI/ML Models
+*.h5
+*.pb
+*.onnx
+*.pth
+*.pt
+models/
+
+# Test outputs
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# System files
+Thumbs.db
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Sensitive data
+*.key
+*.pem
+*.cert
+*.crt
+secrets/
+keys/
+
+# SDR captures and recordings
+*.wav
+*.raw
+*.iq
+*.cf32
+*.cs16

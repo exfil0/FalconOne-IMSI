@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FalconOne Documentation</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/documentation.css') }}">
+    
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="doc-container">
+        <!-- Sidebar -->
+        <aside class="doc-sidebar" id="docSidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-book"></i> FalconOne Docs</h2>
+                <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+            
+            <!-- Search -->
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search documentation..." class="search-input">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+            
+            <!-- Table of Contents -->
+            <nav class="toc" id="tableOfContents">
+                <div class="loading">Loading table of contents...</div>
+            </nav>
+            
+            <!-- Back to Dashboard -->
+            <div class="sidebar-footer">
+                <a href="/" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="doc-content" id="docContent">
+            <div class="content-header">
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb" id="breadcrumb"></div>
+            </div>
+            
+            <article class="documentation-article" id="documentationArticle">
+                <div class="loading-spinner">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <p>Loading documentation...</p>
+                </div>
+            </article>
+            
+            <!-- Scroll to top button -->
+            <button class="scroll-to-top" id="scrollToTop" title="Scroll to top">
+                <i class="fas fa-arrow-up"></i>
+            </button>
+        </main>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/documentation.js') }}"></script>
+</body>
+</html>

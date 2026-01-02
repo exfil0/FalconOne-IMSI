@@ -1,0 +1,1645 @@
+﻿
+
++===========================================================================================================================================================================================+
+
+
+DEPRECATED: this command (`check`) has been DEPRECATED, and will be unsupported beyond 01 June 2024.
+
+
+We highly encourage switching to the new `scan` command which is easier to use, more powerful, and can be set up to mimic the deprecated command if required.
+
+
++===========================================================================================================================================================================================+
+
+
+{
+    "report_meta": {
+        "scan_target": "environment",
+        "scanned": [
+            "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages"
+        ],
+        "scanned_full_path": [
+            "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages"
+        ],
+        "target_languages": [
+            "python"
+        ],
+        "policy_file": null,
+        "policy_file_source": "local",
+        "audit_and_monitor": false,
+        "api_key": false,
+        "account": "",
+        "local_database_path": null,
+        "safety_version": "3.7.0",
+        "timestamp": "2025-12-31 14:22:19",
+        "packages_found": 86,
+        "vulnerabilities_found": 2,
+        "vulnerabilities_ignored": 0,
+        "remediations_recommended": 0,
+        "telemetry": {
+            "safety_options": {
+                "json": {
+                    "--json": 1
+                }
+            },
+            "safety_version": "3.7.0",
+            "safety_source": "cli",
+            "os_type": "Windows",
+            "os_release": "11",
+            "os_description": "Windows-11-10.0.26200-SP0",
+            "python_version": "3.13.0",
+            "safety_command": "check"
+        },
+        "git": {
+            "error": "not-git-repo"
+        },
+        "project": null,
+        "json_version": "1.1",
+        "remediations_attempted": 0,
+        "remediations_completed": 0,
+        "remediation_mode": "NON_INTERACTIVE"
+    },
+    "scanned_packages": {
+        "annotated-types": {
+            "name": "annotated-types",
+            "version": "0.7.0",
+            "requirements": [
+                {
+                    "raw": "annotated-types==0.7.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "annotated-types",
+                    "specifier": "==0.7.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\annotated_types-0.7.0.dist-info"
+                }
+            ]
+        },
+        "anyio": {
+            "name": "anyio",
+            "version": "4.12.0",
+            "requirements": [
+                {
+                    "raw": "anyio==4.12.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "anyio",
+                    "specifier": "==4.12.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\anyio-4.12.0.dist-info"
+                }
+            ]
+        },
+        "Authlib": {
+            "name": "Authlib",
+            "version": "1.6.6",
+            "requirements": [
+                {
+                    "raw": "Authlib==1.6.6",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Authlib",
+                    "specifier": "==1.6.6",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\authlib-1.6.6.dist-info"
+                }
+            ]
+        },
+        "bidict": {
+            "name": "bidict",
+            "version": "0.23.1",
+            "requirements": [
+                {
+                    "raw": "bidict==0.23.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "bidict",
+                    "specifier": "==0.23.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\bidict-0.23.1.dist-info"
+                }
+            ]
+        },
+        "blinker": {
+            "name": "blinker",
+            "version": "1.9.0",
+            "requirements": [
+                {
+                    "raw": "blinker==1.9.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "blinker",
+                    "specifier": "==1.9.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\blinker-1.9.0.dist-info"
+                }
+            ]
+        },
+        "boolean.py": {
+            "name": "boolean.py",
+            "version": "5.0",
+            "requirements": [
+                {
+                    "raw": "boolean.py==5.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "boolean.py",
+                    "specifier": "==5.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\boolean_py-5.0.dist-info"
+                }
+            ]
+        },
+        "CacheControl": {
+            "name": "CacheControl",
+            "version": "0.14.4",
+            "requirements": [
+                {
+                    "raw": "CacheControl==0.14.4",
+                    "extras": [],
+                    "marker": null,
+                    "name": "CacheControl",
+                    "specifier": "==0.14.4",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\cachecontrol-0.14.4.dist-info"
+                }
+            ]
+        },
+        "certifi": {
+            "name": "certifi",
+            "version": "2025.11.12",
+            "requirements": [
+                {
+                    "raw": "certifi==2025.11.12",
+                    "extras": [],
+                    "marker": null,
+                    "name": "certifi",
+                    "specifier": "==2025.11.12",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\certifi-2025.11.12.dist-info"
+                }
+            ]
+        },
+        "cffi": {
+            "name": "cffi",
+            "version": "2.0.0",
+            "requirements": [
+                {
+                    "raw": "cffi==2.0.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "cffi",
+                    "specifier": "==2.0.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\cffi-2.0.0.dist-info"
+                }
+            ]
+        },
+        "charset-normalizer": {
+            "name": "charset-normalizer",
+            "version": "3.4.4",
+            "requirements": [
+                {
+                    "raw": "charset-normalizer==3.4.4",
+                    "extras": [],
+                    "marker": null,
+                    "name": "charset-normalizer",
+                    "specifier": "==3.4.4",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\charset_normalizer-3.4.4.dist-info"
+                }
+            ]
+        },
+        "click": {
+            "name": "click",
+            "version": "8.3.1",
+            "requirements": [
+                {
+                    "raw": "click==8.3.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "click",
+                    "specifier": "==8.3.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\click-8.3.1.dist-info"
+                }
+            ]
+        },
+        "colorama": {
+            "name": "colorama",
+            "version": "0.4.6",
+            "requirements": [
+                {
+                    "raw": "colorama==0.4.6",
+                    "extras": [],
+                    "marker": null,
+                    "name": "colorama",
+                    "specifier": "==0.4.6",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\colorama-0.4.6.dist-info"
+                }
+            ]
+        },
+        "cryptography": {
+            "name": "cryptography",
+            "version": "46.0.3",
+            "requirements": [
+                {
+                    "raw": "cryptography==46.0.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "cryptography",
+                    "specifier": "==46.0.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\cryptography-46.0.3.dist-info"
+                }
+            ]
+        },
+        "cyclonedx-python-lib": {
+            "name": "cyclonedx-python-lib",
+            "version": "11.6.0",
+            "requirements": [
+                {
+                    "raw": "cyclonedx-python-lib==11.6.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "cyclonedx-python-lib",
+                    "specifier": "==11.6.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\cyclonedx_python_lib-11.6.0.dist-info"
+                }
+            ]
+        },
+        "defusedxml": {
+            "name": "defusedxml",
+            "version": "0.7.1",
+            "requirements": [
+                {
+                    "raw": "defusedxml==0.7.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "defusedxml",
+                    "specifier": "==0.7.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\defusedxml-0.7.1.dist-info"
+                }
+            ]
+        },
+        "Deprecated": {
+            "name": "Deprecated",
+            "version": "1.3.1",
+            "requirements": [
+                {
+                    "raw": "Deprecated==1.3.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Deprecated",
+                    "specifier": "==1.3.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\deprecated-1.3.1.dist-info"
+                }
+            ]
+        },
+        "dparse": {
+            "name": "dparse",
+            "version": "0.6.4",
+            "requirements": [
+                {
+                    "raw": "dparse==0.6.4",
+                    "extras": [],
+                    "marker": null,
+                    "name": "dparse",
+                    "specifier": "==0.6.4",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\dparse-0.6.4.dist-info"
+                }
+            ]
+        },
+        "filelock": {
+            "name": "filelock",
+            "version": "3.20.1",
+            "requirements": [
+                {
+                    "raw": "filelock==3.20.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "filelock",
+                    "specifier": "==3.20.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\filelock-3.20.1.dist-info"
+                }
+            ]
+        },
+        "Flask": {
+            "name": "Flask",
+            "version": "3.1.2",
+            "requirements": [
+                {
+                    "raw": "Flask==3.1.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Flask",
+                    "specifier": "==3.1.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\flask-3.1.2.dist-info"
+                }
+            ]
+        },
+        "Flask-Limiter": {
+            "name": "Flask-Limiter",
+            "version": "4.1.1",
+            "requirements": [
+                {
+                    "raw": "Flask-Limiter==4.1.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Flask-Limiter",
+                    "specifier": "==4.1.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\flask_limiter-4.1.1.dist-info"
+                }
+            ]
+        },
+        "Flask-SocketIO": {
+            "name": "Flask-SocketIO",
+            "version": "5.6.0",
+            "requirements": [
+                {
+                    "raw": "Flask-SocketIO==5.6.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Flask-SocketIO",
+                    "specifier": "==5.6.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\flask_socketio-5.6.0.dist-info"
+                }
+            ]
+        },
+        "Flask-WTF": {
+            "name": "Flask-WTF",
+            "version": "1.2.2",
+            "requirements": [
+                {
+                    "raw": "Flask-WTF==1.2.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Flask-WTF",
+                    "specifier": "==1.2.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\flask_wtf-1.2.2.dist-info"
+                }
+            ]
+        },
+        "h11": {
+            "name": "h11",
+            "version": "0.16.0",
+            "requirements": [
+                {
+                    "raw": "h11==0.16.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "h11",
+                    "specifier": "==0.16.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\h11-0.16.0.dist-info"
+                }
+            ]
+        },
+        "httpcore": {
+            "name": "httpcore",
+            "version": "1.0.9",
+            "requirements": [
+                {
+                    "raw": "httpcore==1.0.9",
+                    "extras": [],
+                    "marker": null,
+                    "name": "httpcore",
+                    "specifier": "==1.0.9",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\httpcore-1.0.9.dist-info"
+                }
+            ]
+        },
+        "httpx": {
+            "name": "httpx",
+            "version": "0.28.1",
+            "requirements": [
+                {
+                    "raw": "httpx==0.28.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "httpx",
+                    "specifier": "==0.28.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\httpx-0.28.1.dist-info"
+                }
+            ]
+        },
+        "idna": {
+            "name": "idna",
+            "version": "3.11",
+            "requirements": [
+                {
+                    "raw": "idna==3.11",
+                    "extras": [],
+                    "marker": null,
+                    "name": "idna",
+                    "specifier": "==3.11",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\idna-3.11.dist-info"
+                }
+            ]
+        },
+        "iniconfig": {
+            "name": "iniconfig",
+            "version": "2.3.0",
+            "requirements": [
+                {
+                    "raw": "iniconfig==2.3.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "iniconfig",
+                    "specifier": "==2.3.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\iniconfig-2.3.0.dist-info"
+                }
+            ]
+        },
+        "itsdangerous": {
+            "name": "itsdangerous",
+            "version": "2.2.0",
+            "requirements": [
+                {
+                    "raw": "itsdangerous==2.2.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "itsdangerous",
+                    "specifier": "==2.2.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\itsdangerous-2.2.0.dist-info"
+                }
+            ]
+        },
+        "Jinja2": {
+            "name": "Jinja2",
+            "version": "3.1.6",
+            "requirements": [
+                {
+                    "raw": "Jinja2==3.1.6",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Jinja2",
+                    "specifier": "==3.1.6",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\jinja2-3.1.6.dist-info"
+                }
+            ]
+        },
+        "joblib": {
+            "name": "joblib",
+            "version": "1.5.3",
+            "requirements": [
+                {
+                    "raw": "joblib==1.5.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "joblib",
+                    "specifier": "==1.5.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\joblib-1.5.3.dist-info"
+                }
+            ]
+        },
+        "license-expression": {
+            "name": "license-expression",
+            "version": "30.4.4",
+            "requirements": [
+                {
+                    "raw": "license-expression==30.4.4",
+                    "extras": [],
+                    "marker": null,
+                    "name": "license-expression",
+                    "specifier": "==30.4.4",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\license_expression-30.4.4.dist-info"
+                }
+            ]
+        },
+        "limits": {
+            "name": "limits",
+            "version": "5.6.0",
+            "requirements": [
+                {
+                    "raw": "limits==5.6.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "limits",
+                    "specifier": "==5.6.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\limits-5.6.0.dist-info"
+                }
+            ]
+        },
+        "markdown-it-py": {
+            "name": "markdown-it-py",
+            "version": "4.0.0",
+            "requirements": [
+                {
+                    "raw": "markdown-it-py==4.0.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "markdown-it-py",
+                    "specifier": "==4.0.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\markdown_it_py-4.0.0.dist-info"
+                }
+            ]
+        },
+        "MarkupSafe": {
+            "name": "MarkupSafe",
+            "version": "3.0.3",
+            "requirements": [
+                {
+                    "raw": "MarkupSafe==3.0.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "MarkupSafe",
+                    "specifier": "==3.0.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\markupsafe-3.0.3.dist-info"
+                }
+            ]
+        },
+        "marshmallow": {
+            "name": "marshmallow",
+            "version": "4.1.2",
+            "requirements": [
+                {
+                    "raw": "marshmallow==4.1.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "marshmallow",
+                    "specifier": "==4.1.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\marshmallow-4.1.2.dist-info"
+                }
+            ]
+        },
+        "mdurl": {
+            "name": "mdurl",
+            "version": "0.1.2",
+            "requirements": [
+                {
+                    "raw": "mdurl==0.1.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "mdurl",
+                    "specifier": "==0.1.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\mdurl-0.1.2.dist-info"
+                }
+            ]
+        },
+        "msgpack": {
+            "name": "msgpack",
+            "version": "1.1.2",
+            "requirements": [
+                {
+                    "raw": "msgpack==1.1.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "msgpack",
+                    "specifier": "==1.1.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\msgpack-1.1.2.dist-info"
+                }
+            ]
+        },
+        "nltk": {
+            "name": "nltk",
+            "version": "3.9.2",
+            "requirements": [
+                {
+                    "raw": "nltk==3.9.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "nltk",
+                    "specifier": "==3.9.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\nltk-3.9.2.dist-info"
+                }
+            ]
+        },
+        "numpy": {
+            "name": "numpy",
+            "version": "2.4.0",
+            "requirements": [
+                {
+                    "raw": "numpy==2.4.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "numpy",
+                    "specifier": "==2.4.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\numpy-2.4.0.dist-info"
+                }
+            ]
+        },
+        "ordered-set": {
+            "name": "ordered-set",
+            "version": "4.1.0",
+            "requirements": [
+                {
+                    "raw": "ordered-set==4.1.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "ordered-set",
+                    "specifier": "==4.1.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\ordered_set-4.1.0.dist-info"
+                }
+            ]
+        },
+        "packageurl-python": {
+            "name": "packageurl-python",
+            "version": "0.17.6",
+            "requirements": [
+                {
+                    "raw": "packageurl-python==0.17.6",
+                    "extras": [],
+                    "marker": null,
+                    "name": "packageurl-python",
+                    "specifier": "==0.17.6",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\packageurl_python-0.17.6.dist-info"
+                }
+            ]
+        },
+        "packaging": {
+            "name": "packaging",
+            "version": "25.0",
+            "requirements": [
+                {
+                    "raw": "packaging==25.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "packaging",
+                    "specifier": "==25.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\packaging-25.0.dist-info"
+                }
+            ]
+        },
+        "pip": {
+            "name": "pip",
+            "version": "24.2",
+            "requirements": [
+                {
+                    "raw": "pip==24.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pip",
+                    "specifier": "==24.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip-24.2.dist-info"
+                }
+            ]
+        },
+        "pip-api": {
+            "name": "pip-api",
+            "version": "0.0.34",
+            "requirements": [
+                {
+                    "raw": "pip-api==0.0.34",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pip-api",
+                    "specifier": "==0.0.34",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip_api-0.0.34.dist-info"
+                }
+            ]
+        },
+        "pip_audit": {
+            "name": "pip_audit",
+            "version": "2.10.0",
+            "requirements": [
+                {
+                    "raw": "pip_audit==2.10.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pip_audit",
+                    "specifier": "==2.10.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip_audit-2.10.0.dist-info"
+                }
+            ]
+        },
+        "pip-requirements-parser": {
+            "name": "pip-requirements-parser",
+            "version": "32.0.1",
+            "requirements": [
+                {
+                    "raw": "pip-requirements-parser==32.0.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pip-requirements-parser",
+                    "specifier": "==32.0.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip_requirements_parser-32.0.1.dist-info"
+                }
+            ]
+        },
+        "platformdirs": {
+            "name": "platformdirs",
+            "version": "4.5.1",
+            "requirements": [
+                {
+                    "raw": "platformdirs==4.5.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "platformdirs",
+                    "specifier": "==4.5.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\platformdirs-4.5.1.dist-info"
+                }
+            ]
+        },
+        "pluggy": {
+            "name": "pluggy",
+            "version": "1.6.0",
+            "requirements": [
+                {
+                    "raw": "pluggy==1.6.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pluggy",
+                    "specifier": "==1.6.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pluggy-1.6.0.dist-info"
+                }
+            ]
+        },
+        "pycparser": {
+            "name": "pycparser",
+            "version": "2.23",
+            "requirements": [
+                {
+                    "raw": "pycparser==2.23",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pycparser",
+                    "specifier": "==2.23",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pycparser-2.23.dist-info"
+                }
+            ]
+        },
+        "pydantic": {
+            "name": "pydantic",
+            "version": "2.12.5",
+            "requirements": [
+                {
+                    "raw": "pydantic==2.12.5",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pydantic",
+                    "specifier": "==2.12.5",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pydantic-2.12.5.dist-info"
+                }
+            ]
+        },
+        "pydantic_core": {
+            "name": "pydantic_core",
+            "version": "2.41.5",
+            "requirements": [
+                {
+                    "raw": "pydantic_core==2.41.5",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pydantic_core",
+                    "specifier": "==2.41.5",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pydantic_core-2.41.5.dist-info"
+                }
+            ]
+        },
+        "Pygments": {
+            "name": "Pygments",
+            "version": "2.19.2",
+            "requirements": [
+                {
+                    "raw": "Pygments==2.19.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Pygments",
+                    "specifier": "==2.19.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pygments-2.19.2.dist-info"
+                }
+            ]
+        },
+        "pyparsing": {
+            "name": "pyparsing",
+            "version": "3.3.1",
+            "requirements": [
+                {
+                    "raw": "pyparsing==3.3.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pyparsing",
+                    "specifier": "==3.3.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pyparsing-3.3.1.dist-info"
+                }
+            ]
+        },
+        "pytest": {
+            "name": "pytest",
+            "version": "9.0.2",
+            "requirements": [
+                {
+                    "raw": "pytest==9.0.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pytest",
+                    "specifier": "==9.0.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pytest-9.0.2.dist-info"
+                }
+            ]
+        },
+        "python-dotenv": {
+            "name": "python-dotenv",
+            "version": "1.2.1",
+            "requirements": [
+                {
+                    "raw": "python-dotenv==1.2.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "python-dotenv",
+                    "specifier": "==1.2.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\python_dotenv-1.2.1.dist-info"
+                }
+            ]
+        },
+        "python-engineio": {
+            "name": "python-engineio",
+            "version": "4.13.0",
+            "requirements": [
+                {
+                    "raw": "python-engineio==4.13.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "python-engineio",
+                    "specifier": "==4.13.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\python_engineio-4.13.0.dist-info"
+                }
+            ]
+        },
+        "python-socketio": {
+            "name": "python-socketio",
+            "version": "5.16.0",
+            "requirements": [
+                {
+                    "raw": "python-socketio==5.16.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "python-socketio",
+                    "specifier": "==5.16.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\python_socketio-5.16.0.dist-info"
+                }
+            ]
+        },
+        "PyYAML": {
+            "name": "PyYAML",
+            "version": "6.0.3",
+            "requirements": [
+                {
+                    "raw": "PyYAML==6.0.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "PyYAML",
+                    "specifier": "==6.0.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pyyaml-6.0.3.dist-info"
+                }
+            ]
+        },
+        "py-serializable": {
+            "name": "py-serializable",
+            "version": "2.1.0",
+            "requirements": [
+                {
+                    "raw": "py-serializable==2.1.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "py-serializable",
+                    "specifier": "==2.1.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\py_serializable-2.1.0.dist-info"
+                }
+            ]
+        },
+        "regex": {
+            "name": "regex",
+            "version": "2025.11.3",
+            "requirements": [
+                {
+                    "raw": "regex==2025.11.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "regex",
+                    "specifier": "==2025.11.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\regex-2025.11.3.dist-info"
+                }
+            ]
+        },
+        "requests": {
+            "name": "requests",
+            "version": "2.32.5",
+            "requirements": [
+                {
+                    "raw": "requests==2.32.5",
+                    "extras": [],
+                    "marker": null,
+                    "name": "requests",
+                    "specifier": "==2.32.5",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\requests-2.32.5.dist-info"
+                }
+            ]
+        },
+        "rich": {
+            "name": "rich",
+            "version": "14.2.0",
+            "requirements": [
+                {
+                    "raw": "rich==14.2.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "rich",
+                    "specifier": "==14.2.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\rich-14.2.0.dist-info"
+                }
+            ]
+        },
+        "ruamel.yaml": {
+            "name": "ruamel.yaml",
+            "version": "0.18.17",
+            "requirements": [
+                {
+                    "raw": "ruamel.yaml==0.18.17",
+                    "extras": [],
+                    "marker": null,
+                    "name": "ruamel.yaml",
+                    "specifier": "==0.18.17",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\ruamel_yaml-0.18.17.dist-info"
+                }
+            ]
+        },
+        "ruamel.yaml.clib": {
+            "name": "ruamel.yaml.clib",
+            "version": "0.2.15",
+            "requirements": [
+                {
+                    "raw": "ruamel.yaml.clib==0.2.15",
+                    "extras": [],
+                    "marker": null,
+                    "name": "ruamel.yaml.clib",
+                    "specifier": "==0.2.15",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\ruamel_yaml_clib-0.2.15.dist-info"
+                }
+            ]
+        },
+        "safety": {
+            "name": "safety",
+            "version": "3.7.0",
+            "requirements": [
+                {
+                    "raw": "safety==3.7.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "safety",
+                    "specifier": "==3.7.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\safety-3.7.0.dist-info"
+                }
+            ]
+        },
+        "safety-schemas": {
+            "name": "safety-schemas",
+            "version": "0.0.16",
+            "requirements": [
+                {
+                    "raw": "safety-schemas==0.0.16",
+                    "extras": [],
+                    "marker": null,
+                    "name": "safety-schemas",
+                    "specifier": "==0.0.16",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\safety_schemas-0.0.16.dist-info"
+                }
+            ]
+        },
+        "scapy": {
+            "name": "scapy",
+            "version": "2.7.0",
+            "requirements": [
+                {
+                    "raw": "scapy==2.7.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "scapy",
+                    "specifier": "==2.7.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\scapy-2.7.0.dist-info"
+                }
+            ]
+        },
+        "scikit-learn": {
+            "name": "scikit-learn",
+            "version": "1.8.0",
+            "requirements": [
+                {
+                    "raw": "scikit-learn==1.8.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "scikit-learn",
+                    "specifier": "==1.8.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\scikit_learn-1.8.0.dist-info"
+                }
+            ]
+        },
+        "scipy": {
+            "name": "scipy",
+            "version": "1.16.3",
+            "requirements": [
+                {
+                    "raw": "scipy==1.16.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "scipy",
+                    "specifier": "==1.16.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\scipy-1.16.3.dist-info"
+                }
+            ]
+        },
+        "shellingham": {
+            "name": "shellingham",
+            "version": "1.5.4",
+            "requirements": [
+                {
+                    "raw": "shellingham==1.5.4",
+                    "extras": [],
+                    "marker": null,
+                    "name": "shellingham",
+                    "specifier": "==1.5.4",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\shellingham-1.5.4.dist-info"
+                }
+            ]
+        },
+        "simple-websocket": {
+            "name": "simple-websocket",
+            "version": "1.1.0",
+            "requirements": [
+                {
+                    "raw": "simple-websocket==1.1.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "simple-websocket",
+                    "specifier": "==1.1.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\simple_websocket-1.1.0.dist-info"
+                }
+            ]
+        },
+        "sortedcontainers": {
+            "name": "sortedcontainers",
+            "version": "2.4.0",
+            "requirements": [
+                {
+                    "raw": "sortedcontainers==2.4.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "sortedcontainers",
+                    "specifier": "==2.4.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\sortedcontainers-2.4.0.dist-info"
+                }
+            ]
+        },
+        "tenacity": {
+            "name": "tenacity",
+            "version": "9.1.2",
+            "requirements": [
+                {
+                    "raw": "tenacity==9.1.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "tenacity",
+                    "specifier": "==9.1.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\tenacity-9.1.2.dist-info"
+                }
+            ]
+        },
+        "threadpoolctl": {
+            "name": "threadpoolctl",
+            "version": "3.6.0",
+            "requirements": [
+                {
+                    "raw": "threadpoolctl==3.6.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "threadpoolctl",
+                    "specifier": "==3.6.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\threadpoolctl-3.6.0.dist-info"
+                }
+            ]
+        },
+        "tomli": {
+            "name": "tomli",
+            "version": "2.3.0",
+            "requirements": [
+                {
+                    "raw": "tomli==2.3.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "tomli",
+                    "specifier": "==2.3.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\tomli-2.3.0.dist-info"
+                }
+            ]
+        },
+        "tomli_w": {
+            "name": "tomli_w",
+            "version": "1.2.0",
+            "requirements": [
+                {
+                    "raw": "tomli_w==1.2.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "tomli_w",
+                    "specifier": "==1.2.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\tomli_w-1.2.0.dist-info"
+                }
+            ]
+        },
+        "tomlkit": {
+            "name": "tomlkit",
+            "version": "0.13.3",
+            "requirements": [
+                {
+                    "raw": "tomlkit==0.13.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "tomlkit",
+                    "specifier": "==0.13.3",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\tomlkit-0.13.3.dist-info"
+                }
+            ]
+        },
+        "tqdm": {
+            "name": "tqdm",
+            "version": "4.67.1",
+            "requirements": [
+                {
+                    "raw": "tqdm==4.67.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "tqdm",
+                    "specifier": "==4.67.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\tqdm-4.67.1.dist-info"
+                }
+            ]
+        },
+        "typer": {
+            "name": "typer",
+            "version": "0.21.0",
+            "requirements": [
+                {
+                    "raw": "typer==0.21.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "typer",
+                    "specifier": "==0.21.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\typer-0.21.0.dist-info"
+                }
+            ]
+        },
+        "typing_extensions": {
+            "name": "typing_extensions",
+            "version": "4.15.0",
+            "requirements": [
+                {
+                    "raw": "typing_extensions==4.15.0",
+                    "extras": [],
+                    "marker": null,
+                    "name": "typing_extensions",
+                    "specifier": "==4.15.0",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\typing_extensions-4.15.0.dist-info"
+                }
+            ]
+        },
+        "typing-inspection": {
+            "name": "typing-inspection",
+            "version": "0.4.2",
+            "requirements": [
+                {
+                    "raw": "typing-inspection==0.4.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "typing-inspection",
+                    "specifier": "==0.4.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\typing_inspection-0.4.2.dist-info"
+                }
+            ]
+        },
+        "urllib3": {
+            "name": "urllib3",
+            "version": "2.6.2",
+            "requirements": [
+                {
+                    "raw": "urllib3==2.6.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "urllib3",
+                    "specifier": "==2.6.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\urllib3-2.6.2.dist-info"
+                }
+            ]
+        },
+        "Werkzeug": {
+            "name": "Werkzeug",
+            "version": "3.1.4",
+            "requirements": [
+                {
+                    "raw": "Werkzeug==3.1.4",
+                    "extras": [],
+                    "marker": null,
+                    "name": "Werkzeug",
+                    "specifier": "==3.1.4",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\werkzeug-3.1.4.dist-info"
+                }
+            ]
+        },
+        "wrapt": {
+            "name": "wrapt",
+            "version": "2.0.1",
+            "requirements": [
+                {
+                    "raw": "wrapt==2.0.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "wrapt",
+                    "specifier": "==2.0.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\wrapt-2.0.1.dist-info"
+                }
+            ]
+        },
+        "wsproto": {
+            "name": "wsproto",
+            "version": "1.3.2",
+            "requirements": [
+                {
+                    "raw": "wsproto==1.3.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "wsproto",
+                    "specifier": "==1.3.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\wsproto-1.3.2.dist-info"
+                }
+            ]
+        },
+        "WTForms": {
+            "name": "WTForms",
+            "version": "3.2.1",
+            "requirements": [
+                {
+                    "raw": "WTForms==3.2.1",
+                    "extras": [],
+                    "marker": null,
+                    "name": "WTForms",
+                    "specifier": "==3.2.1",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\wtforms-3.2.1.dist-info"
+                }
+            ]
+        }
+    },
+    "affected_packages": {
+        "pip": {
+            "name": "pip",
+            "version": "24.2",
+            "requirements": [
+                {
+                    "raw": "pip==24.2",
+                    "extras": [],
+                    "marker": null,
+                    "name": "pip",
+                    "specifier": "==24.2",
+                    "url": null,
+                    "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip-24.2.dist-info"
+                }
+            ],
+            "found": null,
+            "insecure_versions": [
+                "0.2",
+                "0.2.1",
+                "0.3",
+                "0.3.1",
+                "0.4",
+                "0.5",
+                "0.5.1",
+                "0.6",
+                "0.6.1",
+                "0.6.2",
+                "0.6.3",
+                "0.7",
+                "0.7.1",
+                "0.7.2",
+                "0.8",
+                "0.8.1",
+                "0.8.2",
+                "0.8.3",
+                "1.0",
+                "10.0.0",
+                "10.0.0b1",
+                "10.0.0b2",
+                "10.0.1",
+                "1.0.1",
+                "1.0.2",
+                "1.1",
+                "1.2",
+                "1.2.1",
+                "1.3",
+                "1.3.1",
+                "1.4",
+                "1.4.1",
+                "1.5",
+                "1.5.1",
+                "1.5.2",
+                "1.5.3",
+                "1.5.4",
+                "1.5.5",
+                "1.5.6",
+                "18.0",
+                "18.1",
+                "19.0",
+                "19.0.1",
+                "19.0.2",
+                "19.0.3",
+                "19.1",
+                "19.1.1",
+                "19.2",
+                "19.2.1",
+                "19.2.2",
+                "19.2.3",
+                "19.3",
+                "19.3.1",
+                "20.0",
+                "20.0.1",
+                "20.0.2",
+                "20.1",
+                "20.1.1",
+                "20.1b1",
+                "20.2",
+                "20.2.1",
+                "20.2.2",
+                "20.2.3",
+                "20.2.4",
+                "20.2b1",
+                "20.3",
+                "20.3.1",
+                "20.3.2",
+                "20.3.3",
+                "20.3.4",
+                "20.3b1",
+                "21.0",
+                "21.0.1",
+                "21.1",
+                "21.1.1",
+                "21.1.2",
+                "21.1.3",
+                "21.2",
+                "21.2.1",
+                "21.2.2",
+                "21.2.3",
+                "21.2.4",
+                "21.3",
+                "21.3.1",
+                "22.0",
+                "22.0.1",
+                "22.0.2",
+                "22.0.3",
+                "22.0.4",
+                "22.1",
+                "22.1.1",
+                "22.1.2",
+                "22.1b1",
+                "22.2",
+                "22.2.1",
+                "22.2.2",
+                "22.3",
+                "22.3.1",
+                "23.0",
+                "23.0.1",
+                "23.1",
+                "23.1.1",
+                "23.1.2",
+                "23.2",
+                "23.2.1",
+                "23.3",
+                "23.3.1",
+                "23.3.2",
+                "24.0",
+                "24.1",
+                "24.1.1",
+                "24.1.2",
+                "24.1b1",
+                "24.1b2",
+                "24.2",
+                "24.3",
+                "24.3.1",
+                "25.0",
+                "25.0.1",
+                "25.1",
+                "25.1.1",
+                "6.0",
+                "6.0.1",
+                "6.0.2",
+                "6.0.3",
+                "6.0.4",
+                "6.0.5",
+                "6.0.6",
+                "6.0.7",
+                "6.0.8",
+                "6.1.0",
+                "6.1.1",
+                "7.0.0",
+                "7.0.1",
+                "7.0.2",
+                "7.0.3",
+                "7.1.0",
+                "7.1.1",
+                "7.1.2",
+                "8.0.0",
+                "8.0.1",
+                "8.0.2",
+                "8.0.3",
+                "8.1.0",
+                "8.1.1",
+                "8.1.2",
+                "9.0.0",
+                "9.0.1",
+                "9.0.2",
+                "9.0.3"
+            ],
+            "secure_versions": [
+                "25.3",
+                "25.2"
+            ],
+            "latest_version_without_known_vulnerabilities": "25.3",
+            "latest_version": "25.3",
+            "more_info_url": "https://data.safetycli.com/p/pypi/pip/97c/"
+        }
+    },
+    "announcements": [],
+    "vulnerabilities": [
+        {
+            "vulnerability_id": "79883",
+            "package_name": "pip",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": [
+                "<25.2"
+            ],
+            "all_vulnerable_specs": [
+                "<25.2"
+            ],
+            "analyzed_version": "24.2",
+            "analyzed_requirement": {
+                "raw": "pip==24.2",
+                "extras": [],
+                "marker": null,
+                "name": "pip",
+                "specifier": "==24.2",
+                "url": null,
+                "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip-24.2.dist-info"
+            },
+            "advisory": "Affected versions of the pip package are vulnerable to Arbitrary File Overwrite due to improper validation of symbolic link targets in the fallback tar extraction code. In src/pip/_internal/utils/unpacking.py, the _untar_without_filter routine used when the Python tarfile module lacks PEP 706 (no tarfile.data_filter) extracted symlink members with tar._extract_member without verifying that link destinations resolve under the extraction root, a check later added via the is_symlink_target_in_tar helper.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2025-8869",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/79883/97c"
+        },
+        {
+            "vulnerability_id": "75180",
+            "package_name": "pip",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": [
+                "<25.0"
+            ],
+            "all_vulnerable_specs": [
+                "<25.0"
+            ],
+            "analyzed_version": "24.2",
+            "analyzed_requirement": {
+                "raw": "pip==24.2",
+                "extras": [],
+                "marker": null,
+                "name": "pip",
+                "specifier": "==24.2",
+                "url": null,
+                "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip-24.2.dist-info"
+            },
+            "advisory": "Pip solves a security vulnerability that previously allowed maliciously crafted wheel files to execute unauthorized code during installation.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/75180/97c"
+        }
+    ],
+    "ignored_vulnerabilities": [],
+    "remediations": {
+        "pip": {
+            "requirements": {
+                "==24.2": {
+                    "vulnerabilities_found": 2,
+                    "version": "24.2",
+                    "requirement": {
+                        "raw": "pip==24.2",
+                        "extras": [],
+                        "marker": null,
+                        "name": "pip",
+                        "specifier": "==24.2",
+                        "url": null,
+                        "found": "C:\\Users\\KarimJaber\\Downloads\\FalconOne App\\.venv\\Lib\\site-packages\\pip-24.2.dist-info"
+                    },
+                    "more_info_url": "https://data.safetycli.com/p/pypi/pip/97c/"
+                }
+            },
+            "current_version": null,
+            "vulnerabilities_found": null,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": null
+        }
+    },
+    "remediations_results": {
+        "vulnerabilities_fixed": [],
+        "remediations_applied": {},
+        "remediations_skipped": {}
+    }
+}
+
+
++===========================================================================================================================================================================================+
+
+
+DEPRECATED: this command (`check`) has been DEPRECATED, and will be unsupported beyond 01 June 2024.
+
+
+We highly encourage switching to the new `scan` command which is easier to use, more powerful, and can be set up to mimic the deprecated command if required.
+
+
++===========================================================================================================================================================================================+
+
+

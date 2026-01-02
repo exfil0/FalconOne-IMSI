@@ -1,0 +1,27 @@
+# Bandit configuration for FalconOne security scanning
+# https://bandit.readthedocs.io/en/latest/config.html
+
+[bandit]
+exclude_dirs = [
+    '/tests',
+    '/__pycache__',
+    '/.git',
+    '/venv',
+    '/env',
+    '/.venv'
+]
+
+# Test IDs to skip
+# B101: assert_used (common in tests)
+# B601: paramiko_calls (we need SSH for some operations)
+skips = ['B101']
+
+# Severity level: low, medium, high
+# Confidence level: low, medium, high
+# Only report issues with at least medium severity and medium confidence
+severity = medium
+confidence = medium
+
+[bandit.formatters]
+txt = {show_lineno: True, show_code_snippet: True}
+json = {indent: 2}

@@ -1,0 +1,233 @@
+# FalconOne System Configuration
+# Version 1.8.0 - Multi-Generation Cellular Monitoring Platform
+# New in v1.8.0: Dynamic scaling, encryption, hot-reload, ISAC support
+
+system:
+  name: FalconOne
+  version: 1.8.0
+  environment: research
+  log_level: INFO
+  log_dir: /var/log/falconone
+  data_dir: /var/lib/falconone
+
+# Orchestrator Configuration (v1.8.0: Dynamic Scaling)
+orchestrator:
+  dynamic_scaling: true
+  scaling_thresholds:
+    cpu_high: 0.85       # 85% CPU triggers scale-up
+    memory_high: 0.80    # 80% memory triggers optimization
+    anomaly_rate_high: 0.20  # 20% anomaly rate triggers ML scaling
+
+# Signal Bus Configuration (v1.8.0: Encryption)
+signal_bus:
+  buffer_size: 10000
+  enable_encryption: false  # Set true for production with SIGNAL_BUS_KEY env var
+  encrypted_channels:
+    - crypto
+    - exploit
+    - federated
+
+# Configuration Management (v1.8.0: Hot-Reload)
+config:
+  enable_hot_reload: true
+  validation_strict: true
+
+# SDR Hardware Configuration
+sdr:
+  devices:
+    - USRP
+    - BladeRF
+    - RTL-SDR
+    - HackRF
+  priority: USRP
+  sample_rate: 23040000  # 23.04 MHz
+  center_freq: 2140000000  # 2.14 GHz
+  gain: 40
+  bandwidth: 20000000  # 20 MHz
+
+# Generation-Specific Monitoring
+monitoring:
+  profiling_enabled: true  # v1.7.0: Enable Prometheus/Grafana profiling
+  gsm:
+    enabled: true
+    bands:
+      - GSM900
+      - GSM1800
+    arfcn_scan: true
+    tools:
+      - gr-gsm
+      - kalibrate-rtl
+      - OsmocomBB
+  
+  umts:
+    enabled: true
+    bands:
+      - UMTS2100
+      - UMTS1900
+    tools:
+      - gr-umts
+  
+  cdma2000:
+    enabled: true
+    bands:
+      - CDMA800
+      - CDMA1900
+    tools:
+      - gr-cdma
+  
+  lte:
+    enabled: true
+    bands: [1, 3, 7, 20, 28]
+    tools:
+      - LTESniffer
+      - srsRAN
+  
+  5g:
+    enabled: true
+    mode: SA  # SA or NSA
+    bands:
+      - n1
+      - n78
+      - n79
+    tools:
+      - srsRAN Project
+      - Sni5Gect
+  
+  6g:
+    enabled: false
+    prototype: true
+    tools:
+      - OAI
+
+# Core Network Configuration
+core_network:
+  open5gs:
+    enabled: true
+    mcc: "001"
+    mnc: "01"
+    amf_addr: 127.0.0.5
+    upf_addr: 127.0.0.7
+
+# AI/ML Configuration
+ai_ml:
+  model_zoo_enabled: true  # v1.7.0: Enable centralized model registry
+  model_cache_dir: /var/cache/falconone/models  # v1.7.0: Model storage location
+  
+  signal_classification:
+    enabled: true
+    model: CNN
+    accuracy_threshold: 0.90
+    use_transformer: true  # v1.5.0: Use transformer architecture
+    # v1.8.0: ISAC (Joint Communication and Sensing) Support
+    isac_enabled: true
+    isac_sensing_modes:
+      - monostatic
+      - bistatic
+    isac_bandwidth_mhz: 100
+    isac_carrier_freq_ghz: 30
+  
+  suci_deconcealment:
+    enabled: true
+    model: RoBERTa
+    quantization: true
+  
+  kpi_monitoring:
+    enabled: true
+    model: LSTM
+  
+  payload_generation:
+    enabled: false
+    model: GAN
+  
+  # v1.8.0: Federated Learning with Enhanced Privacy
+  federated:
+    enabled: true
+    num_clients: 3
+    aggregation_method: fedavg
+    # Differential Privacy (v1.8.0)
+    differential_privacy: true
+    dp_epsilon: 1.0        # Privacy budget per round
+    dp_delta: 1.0e-5       # Privacy parameter
+    dp_clip_norm: 1.0      # Gradient clipping norm
+    # Secure Aggregation
+    secure_aggregation: true
+    # Byzantine Robustness
+    byzantine_robust: true
+    byzantine_threshold: 0.25  # Tolerate 25% malicious clients
+    krum_n_closest: 2
+
+# Cryptanalysis Configuration
+cryptanalysis:
+  enabled: false
+  sca:
+    tool: Riscure Inspector
+    traces_required: 10000
+  dfa:
+    tool: Riscure Huracan
+    fault_count: 100
+
+# Geolocation Configuration
+geolocation:
+  enabled: true
+  methods:
+    - TDOA
+    - AoA
+    - DF
+  min_devices: 3
+  gpsdo_sync: true
+  accuracy_target: 50  # meters
+  environmental_adaptation: true  # v1.7.0: Enable multipath compensation and Kalman filtering
+
+# Voice Interception Configuration
+voice_interception:
+  enabled: true
+  protocols:
+    - VoLTE
+    - VoNR
+  codecs:
+    - AMR
+    - EVS
+
+# Exploitation Configuration
+exploitation:
+  enabled: false
+  scapy_integration: true
+  dos_testing: false
+  downgrade_attacks: false
+
+# Legal & Compliance
+compliance:
+  # Faraday cage disabled for development/testing - ENABLE IN PRODUCTION
+  faraday_cage: false
+  cvd_enabled: true
+  rica_compliance: true
+  icasa_license: false
+  popia_compliance: true
+
+# Safety Configuration  
+safety:
+  # CRITICAL: Set require_faraday_cage to true for real RF operations
+  # Currently disabled for development/testing - ENABLE IN PRODUCTION
+  require_faraday_cage: false
+  audit_logging: true
+  max_power_dbm: 20
+  ethical_mode: true
+
+# Testing Configuration (v1.7.0)
+testing:
+  e2e_validation: false  # v1.7.0: Enable end-to-end validation framework
+  validation_chains:
+    - pdcch
+    - aiot
+    - ntn
+    - crypto
+
+# Performance Configuration
+performance:
+  cpu_cores: 8
+  gpu_enabled: true
+  memory_limit_gb: 32
+  thermal_monitoring: true
+  caching_enabled: true  # v1.7.0: Enable signal processing cache
+  thread_pool_workers: 4  # v1.7.0: Thread pool size for I/O tasks
+  process_pool_workers: 2  # v1.7.0: Process pool size for CPU tasks

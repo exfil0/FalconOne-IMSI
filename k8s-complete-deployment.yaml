@@ -1,0 +1,665 @@
+# FalconOne - Complete Kubernetes Deployment
+# Task 2.7.1: Enhanced Kubernetes Deployment with all Phase 2 services
+# Version 2.0 - Multi-container orchestration with Redis, PostgreSQL, Celery
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falconone
+  labels:
+    app: falconone
+    version: v2.0
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falconone-config
+  namespace: falconone
+data:
+  config.yaml: |
+    # FalconOne Configuration
+    sdr:
+      device_priority: ["USRP", "LimeSDR", "BladeRF", "RTL-SDR"]
+      sample_rate: 2e6
+    
+    database:
+      host: postgres-service
+      port: 5432
+      name: falconone
+      
+    redis:
+      host: redis-service
+      port: 6379
+      
+    celery:
+      broker_url: redis://redis-service:6379/0
+      result_backend: redis://redis-service:6379/0
+    
+    ai_ml:
+      signal_classification:
+        accuracy_threshold: 0.90
+      
+    monitoring:
+      enable_dashboard: true
+      port: 8080
+
+---
+# Secret for sensitive data
+apiVersion: v1
+kind: Secret
+metadata:
+  name: falconone-secrets
+  namespace: falconone
+type: Opaque
+stringData:
+  postgres-password: "changeme_secure_password"
+  postgres-user: "falconone"
+  redis-password: ""
+  smtp-password: "changeme_smtp_password"
+  jwt-secret: "changeme_jwt_secret_key"
+
+---
+# PersistentVolumeClaim for PostgreSQL data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: falconone
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+
+---
+# PersistentVolumeClaim for Redis data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: falconone
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
+
+---
+# PersistentVolumeClaim for FalconOne data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: falconone-data-pvc
+  namespace: falconone
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+
+---
+# PersistentVolumeClaim for logs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: falconone-logs-pvc
+  namespace: falconone
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: falconone
+  labels:
+    app: falconone
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falconone
+      component: database
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "falconone"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: postgres-password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - falconone
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - falconone
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: falconone
+spec:
+  selector:
+    app: falconone
+    component: database
+  ports:
+  - name: postgres
+    protocol: TCP
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: falconone
+  labels:
+    app: falconone
+    component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falconone
+      component: cache
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: cache
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command: ["redis-server", "--appendonly", "yes"]
+        ports:
+        - containerPort: 6379
+          name: redis
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: falconone
+spec:
+  selector:
+    app: falconone
+    component: cache
+  ports:
+  - name: redis
+    protocol: TCP
+    port: 6379
+    targetPort: 6379
+  type: ClusterIP
+
+---
+# FalconOne Main Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falconone-app
+  namespace: falconone
+  labels:
+    app: falconone
+    component: app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: falconone
+      component: app
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: app
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-service 5432; do echo waiting for postgres; sleep 2; done;']
+      - name: wait-for-redis
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z redis-service 6379; do echo waiting for redis; sleep 2; done;']
+      containers:
+      - name: falconone
+        image: falconone:2.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          name: api
+        - containerPort: 8080
+          name: dashboard
+        env:
+        - name: FALCONONE_MODE
+          value: "app"
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-service:5432/falconone"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: postgres-password
+        - name: CELERY_BROKER_URL
+          value: "redis://redis-service:6379/0"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://redis-service:6379/0"
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: smtp-password
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: jwt-secret
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+        - name: data-volume
+          mountPath: /app/data
+        - name: logs-volume
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+      volumes:
+      - name: config-volume
+        configMap:
+          name: falconone-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: falconone-data-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: falconone-logs-pvc
+
+---
+# FalconOne Application Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: falconone-app-service
+  namespace: falconone
+spec:
+  selector:
+    app: falconone
+    component: app
+  ports:
+  - name: api
+    protocol: TCP
+    port: 5000
+    targetPort: 5000
+  - name: dashboard
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+
+---
+# Celery Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: falconone
+  labels:
+    app: falconone
+    component: celery-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: falconone
+      component: celery-worker
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: celery-worker
+    spec:
+      initContainers:
+      - name: wait-for-redis
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z redis-service 6379; do echo waiting for redis; sleep 2; done;']
+      containers:
+      - name: celery-worker
+        image: falconone:2.0
+        imagePullPolicy: Always
+        command: ["celery", "-A", "falconone.tasks.celery_app", "worker", "--loglevel=info", "--queues=scans,exploits,monitoring,default"]
+        env:
+        - name: CELERY_BROKER_URL
+          value: "redis://redis-service:6379/0"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://redis-service:6379/0"
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-service:5432/falconone"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: falconone-secrets
+              key: postgres-password
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: logs-volume
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: falconone-data-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: falconone-logs-pvc
+
+---
+# Celery Beat Scheduler Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat
+  namespace: falconone
+  labels:
+    app: falconone
+    component: celery-beat
+spec:
+  replicas: 1  # Only one beat scheduler
+  selector:
+    matchLabels:
+      app: falconone
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: falconone
+        component: celery-beat
+    spec:
+      initContainers:
+      - name: wait-for-redis
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z redis-service 6379; do echo waiting for redis; sleep 2; done;']
+      containers:
+      - name: celery-beat
+        image: falconone:2.0
+        imagePullPolicy: Always
+        command: ["celery", "-A", "falconone.tasks.celery_app", "beat", "--loglevel=info"]
+        env:
+        - name: CELERY_BROKER_URL
+          value: "redis://redis-service:6379/0"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://redis-service:6379/0"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: logs-volume
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: falconone-data-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: falconone-logs-pvc
+
+---
+# HorizontalPodAutoscaler for application
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: falconone-app-hpa
+  namespace: falconone
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: falconone-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# HorizontalPodAutoscaler for Celery workers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: celery-worker-hpa
+  namespace: falconone
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: celery-worker
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+
+---
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: falconone-network-policy
+  namespace: falconone
+spec:
+  podSelector:
+    matchLabels:
+      app: falconone
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: falconone
+    ports:
+    - protocol: TCP
+      port: 5000
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: falconone
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53  # DNS
+    - protocol: TCP
+      port: 443  # HTTPS
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: falconone-ingress
+  namespace: falconone
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: falconone.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: falconone-app-service
+            port:
+              number: 8080
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: falconone-app-service
+            port:
+              number: 5000

@@ -1,0 +1,132 @@
+ai_ml:
+  kpi_monitoring:
+    enabled: true
+    model: LSTM
+  payload_generation:
+    enabled: false
+    model: GAN
+  signal_classification:
+    accuracy_threshold: 0.9
+    enabled: true
+    model: CNN
+  suci_deconcealment:
+    enabled: true
+    model: RoBERTa
+    quantization: true
+compliance:
+  cvd_enabled: true
+  faraday_cage: true
+  icasa_license: false
+  popia_compliance: true
+  rica_compliance: true
+core_network:
+  open5gs:
+    amf_addr: 127.0.0.5
+    enabled: true
+    mcc: '001'
+    mnc: '01'
+    upf_addr: 127.0.0.7
+cryptanalysis:
+  dfa:
+    fault_count: 100
+    tool: Riscure Huracan
+  enabled: false
+  sca:
+    tool: Riscure Inspector
+    traces_required: 10000
+exploitation:
+  dos_testing: false
+  downgrade_attacks: false
+  enabled: false
+  scapy_integration: true
+geolocation:
+  accuracy_target: 50
+  enabled: true
+  gpsdo_sync: true
+  methods:
+  - TDOA
+  - AoA
+  - DF
+  min_devices: 3
+monitoring:
+  5g:
+    bands:
+    - n1
+    - n78
+    - n79
+    enabled: true
+    mode: SA
+    tools:
+    - srsRAN Project
+    - Sni5Gect
+  6g:
+    enabled: false
+    prototype: true
+    tools:
+    - OAI
+  cdma2000:
+    bands:
+    - CDMA800
+    - CDMA1900
+    enabled: true
+    tools:
+    - gr-cdma
+  gsm:
+    arfcn_scan: true
+    bands:
+    - GSM900
+    - GSM1800
+    enabled: true
+    tools:
+    - gr-gsm
+    - kalibrate-rtl
+    - OsmocomBB
+  lte:
+    bands:
+    - 1
+    - 3
+    - 7
+    - 20
+    - 28
+    enabled: true
+    tools:
+    - LTESniffer
+    - srsRAN
+  umts:
+    bands:
+    - UMTS2100
+    - UMTS1900
+    enabled: true
+    tools:
+    - gr-umts
+performance:
+  cpu_cores: 8
+  gpu_enabled: true
+  memory_limit_gb: 32
+  thermal_monitoring: true
+sdr:
+  bandwidth: 20000000.0
+  center_freq: 2140000000.0
+  devices:
+  - USRP
+  - BladeRF
+  - RTL-SDR
+  - HackRF
+  gain: 40
+  priority: USRP
+  sample_rate: 23040000.0
+system:
+  data_dir: /var/lib/falconone
+  environment: research
+  log_dir: /var/log/falconone
+  log_level: INFO
+  name: FalconOne
+  version: 1.1.0
+voice_interception:
+  codecs:
+  - AMR
+  - EVS
+  enabled: true
+  protocols:
+  - VoLTE
+  - VoNR

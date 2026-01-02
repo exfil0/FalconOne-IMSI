@@ -1,0 +1,275 @@
+# FalconOne Intelligence Platform
+# Docker Compose Configuration
+# Task 4.3.2: Production-ready multi-container setup
+# Version: 3.0.0
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: falconone-postgres
+    environment:
+      POSTGRES_DB: falconone
+      POSTGRES_USER: falconone
+      POSTGRES_PASSWORD: changeme_secure_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - falconone-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U falconone"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache and Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: falconone-redis
+    command: redis-server --appendonly yes --requirepass ""
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - falconone-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # FalconOne Main Application
+  falconone-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: falconone:1.8.0
+    container_name: falconone-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://falconone:changeme_secure_password@postgres:5432/falconone
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: falconone
+      POSTGRES_USER: falconone
+      POSTGRES_PASSWORD: changeme_secure_password
+      
+      # Redis/Celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Application
+      FLASK_APP: falconone.ui.dashboard
+      FLASK_ENV: production
+      SECRET_KEY: changeme_secret_key_here
+      JWT_SECRET_KEY: changeme_jwt_secret_key
+      
+      # RANSacked Configuration (Phase 5-7)
+      RANSACKED_CACHE_SIZE: 128
+      RANSACKED_RATE_LIMIT_SCAN: 10
+      RANSACKED_RATE_LIMIT_PACKET: 20
+      RANSACKED_RATE_LIMIT_STATS: 60
+      
+      # Email/Alerts
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: your-email@gmail.com
+      SMTP_PASSWORD: changeme_smtp_password
+      SMTP_USE_TLS: "true"
+      FROM_EMAIL: falconone@example.com
+      
+      # SDR
+      SDR_DEVICE: USRP
+      SDR_SAMPLE_RATE: 2000000
+      
+      # Features
+      ENABLE_DASHBOARD: "true"
+      ENABLE_API: "true"
+      ENABLE_MONITORING: "true"
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./logs/audit:/app/logs/audit
+      - ./captures:/app/captures
+    ports:
+      - "8080:8080"  # Dashboard
+      - "5000:5000"  # API
+    networks:
+      - falconone-network
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/audit/ransacked/stats', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    # Privileged mode for SDR access (optional)
+    # privileged: true
+    # devices:
+    #   - /dev/bus/usb:/dev/bus/usb
+
+  # Celery Worker (Scanning Queue)
+  celery-worker-scans:
+    image: falconone:1.8.0
+    container_name: falconone-celery-scans
+    command: celery -A falconone.tasks.celery_app worker --loglevel=info --queues=scans --concurrency=2 --hostname=worker-scans@%h
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      falconone-app:
+        condition: service_started
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DATABASE_URL: postgresql://falconone:changeme_secure_password@postgres:5432/falconone
+      SDR_DEVICE: USRP
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./captures:/app/captures
+    networks:
+      - falconone-network
+    restart: unless-stopped
+
+  # Celery Worker (Exploitation Queue)
+  celery-worker-exploits:
+    image: falconone:1.8.0
+    container_name: falconone-celery-exploits
+    command: celery -A falconone.tasks.celery_app worker --loglevel=info --queues=exploits --concurrency=2 --hostname=worker-exploits@%h
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      falconone-app:
+        condition: service_started
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DATABASE_URL: postgresql://falconone:changeme_secure_password@postgres:5432/falconone
+      SDR_DEVICE: USRP
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - falconone-network
+    restart: unless-stopped
+
+  # Celery Worker (Monitoring Queue)
+  celery-worker-monitoring:
+    image: falconone:1.8.0
+    container_name: falconone-celery-monitoring
+    command: celery -A falconone.tasks.celery_app worker --loglevel=info --queues=monitoring --concurrency=4 --hostname=worker-monitoring@%h
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      falconone-app:
+        condition: service_started
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DATABASE_URL: postgresql://falconone:changeme_secure_password@postgres:5432/falconone
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - falconone-network
+    restart: unless-stopped
+
+  # Celery Beat Scheduler
+  celery-beat:
+    image: falconone:1.8.0
+    container_name: falconone-celery-beat
+    command: celery -A falconone.tasks.celery_app beat --loglevel=info --pidfile=/tmp/celerybeat.pid
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      falconone-app:
+        condition: service_started
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - falconone-network
+    restart: unless-stopped
+
+  # Flower (Celery Monitoring Dashboard)
+  flower:
+    image: mher/flower:latest
+    container_name: falconone-flower
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      FLOWER_BASIC_AUTH: admin:changeme_flower_password
+    ports:
+      - "5555:5555"
+    networks:
+      - falconone-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: falconone-nginx
+    depends_on:
+      - falconone-app
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - falconone-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  falconone-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

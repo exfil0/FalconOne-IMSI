@@ -1,0 +1,107 @@
+# FalconOne Configuration File
+# Version 1.4 Complete
+# Edit this file to customize your deployment
+
+system:
+  name: FalconOne
+  version: "1.4"
+  mode: research  # research, production, testing
+
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: logs/falconone.log
+  audit_dir: logs/audit
+
+exploitation:
+  scapy_integration: true
+  evasion_mode: true
+  ml_evasion: true
+  gan_enabled: true
+
+monitoring:
+  gsm:
+    enabled: true
+    tools: [gr-gsm, OsmocomBB]
+  umts:
+    enabled: true
+  lte:
+    enabled: true
+    tools: [LTESniffer, srsRAN]
+  5g:
+    enabled: true
+    tools: [srsRAN, Open5GS]
+    ntn_enabled: true
+  6g:
+    enabled: false  # Set true for 6G prototyping
+    prototype: true
+    isac_enabled: false
+
+sdr:
+  devices: [USRP, BladeRF, LimeSDR, USRP_N310, ADRV9009]
+  priority: USRP
+  sample_rate: 10000000  # 10 MHz
+  center_freq: 2140000000  # 2140 MHz (LTE Band 1)
+  gain: 40
+  bandwidth: 20000000  # 20 MHz
+  failover_enabled: true
+  failover_threshold_ms: 10000
+  health_check_interval_s: 5
+
+ai:
+  enable_marl: true
+  enable_gan: true
+  enable_federated: true
+  model_cache_dir: cache/models
+
+safety:
+  # CRITICAL: Set require_faraday_cage to true for real RF operations
+  # Currently disabled for development/testing - ENABLE IN PRODUCTION
+  require_faraday_cage: false
+  audit_logging: true
+  max_power_dbm: 20
+  ethical_mode: true
+
+dashboard:
+  enabled: true
+  host: 0.0.0.0
+  port: 5000
+  refresh_rate_ms: 100
+  auth_enabled: true
+  users:
+    admin: falconone2026
+    operator: sigint2026
+
+geolocation:
+  method: tdoa  # tdoa, aoa, hybrid
+  min_stations: 3
+  algorithm: chan_ho
+
+crypto:
+  quantum_enabled: true
+  target_algorithms: [Kyber, NTRU, SABER]
+
+sustainability:
+  enabled: true
+  emissions_tracking: true
+  power_optimization: true
+  target_reduction_percent: 20
+  carbon_aware_scheduling: true
+
+# Advanced Options (v1.4 specific)
+detector:
+  enabled: true
+  marlin_enabled: true
+  threshold: 0.8
+  window_s: 60
+
+ntn:
+  leo_enabled: true
+  haps_enabled: true
+  geo_enabled: false
+  handover_prediction: true
+
+# Compliance
+compliance:
+  cvd_enabled: true
+  gsma_reporting: false
+  ethical_review_required: true

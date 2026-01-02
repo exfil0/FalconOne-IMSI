@@ -1,0 +1,86 @@
+{
+  "app_name": "FalconOne",
+  "dashboard": "Tablero",
+  "targets": "Objetivos",
+  "scanning": "Escaneo",
+  "monitoring": "Monitoreo",
+  "exploits": "Exploits",
+  "ai_ml": "IA/ML",
+  "oran": "O-RAN",
+  "reports": "Informes",
+  "settings": "Configuración",
+  "logout": "Cerrar sesión",
+  
+  "welcome": "Bienvenido a FalconOne",
+  "active_targets": "Objetivos Activos",
+  "running_scans": "Escaneos en Ejecución",
+  "recent_alerts": "Alertas Recientes",
+  "system_status": "Estado del Sistema",
+  
+  "create_target": "Crear Objetivo",
+  "edit_target": "Editar Objetivo",
+  "delete_target": "Eliminar Objetivo",
+  "target_details": "Detalles del Objetivo",
+  
+  "start_scan": "Iniciar Escaneo",
+  "stop_scan": "Detener Escaneo",
+  "scan_results": "Resultados del Escaneo",
+  "scan_in_progress": "Escaneo en Progreso",
+  
+  "execute_exploit": "Ejecutar Exploit",
+  "exploit_results": "Resultados del Exploit",
+  
+  "username": "Nombre de usuario",
+  "password": "Contraseña",
+  "email": "Correo electrónico",
+  "login": "Iniciar sesión",
+  "register": "Registrarse",
+  
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "delete": "Eliminar",
+  "edit": "Editar",
+  "view": "Ver",
+  "export": "Exportar",
+  "import": "Importar",
+  
+  "success": "Éxito",
+  "error": "Error",
+  "warning": "Advertencia",
+  "info": "Información",
+  
+  "loading": "Cargando...",
+  "no_data": "No hay datos disponibles",
+  "search": "Buscar",
+  "filter": "Filtrar",
+  "sort": "Ordenar",
+  
+  "targets_count": "{count} objetivos",
+  "scans_count": "{count} escaneos",
+  "alerts_count": "{count} alertas",
+  
+  "target_created": "Objetivo creado exitosamente",
+  "target_updated": "Objetivo actualizado exitosamente",
+  "target_deleted": "Objetivo eliminado exitosamente",
+  
+  "scan_started": "Escaneo iniciado exitosamente",
+  "scan_completed": "Escaneo completado",
+  "scan_failed": "Escaneo fallido",
+  
+  "theme_light": "Modo Claro",
+  "theme_dark": "Modo Oscuro",
+  "theme_toggle": "Cambiar Tema",
+  
+  "language": "Idioma",
+  "select_language": "Seleccionar Idioma",
+  
+  "accessibility": "Accesibilidad",
+  "skip_to_main": "Saltar al contenido principal",
+  
+  "confirm_delete": "¿Estás seguro de que quieres eliminar este elemento?",
+  "confirm_logout": "¿Estás seguro de que quieres cerrar sesión?",
+  
+  "required_field": "Este campo es obligatorio",
+  "invalid_format": "Formato inválido",
+  "validation_error": "Error de validación"
+}

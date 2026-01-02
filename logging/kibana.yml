@@ -1,0 +1,41 @@
+# Kibana Configuration for FalconOne
+# Version: 3.0.0
+
+# Server settings
+server.port: 5601
+server.host: "0.0.0.0"
+server.name: "falconone-kibana"
+
+# Elasticsearch settings
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+elasticsearch.username: "elastic"
+elasticsearch.password: "changeme"
+
+# Monitoring settings
+monitoring.enabled: true
+monitoring.ui.enabled: true
+
+# Kibana settings
+kibana.index: ".kibana"
+kibana.defaultAppId: "discover"
+
+# Security settings
+xpack.security.enabled: true
+xpack.security.encryptionKey: "something_at_least_32_characters_long"
+xpack.security.session.idleTimeout: "1h"
+xpack.security.session.lifespan: "8h"
+
+# Reporting settings
+xpack.reporting.enabled: true
+xpack.reporting.encryptionKey: "something_at_least_32_characters_long"
+
+# Alerting settings
+xpack.alerting.enabled: true
+
+# Logging settings
+logging.dest: stdout
+logging.verbose: false
+logging.quiet: false
+
+# i18n settings
+i18n.locale: "en"

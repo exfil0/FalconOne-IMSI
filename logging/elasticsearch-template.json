@@ -1,0 +1,99 @@
+# Elasticsearch Index Template for FalconOne Logs
+# Version: 3.0.0
+
+{
+  "index_patterns": ["falconone-logs-*"],
+  "version": 1,
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1,
+    "index.refresh_interval": "10s",
+    "index.max_result_window": 10000,
+    "index.lifecycle.name": "falconone-logs-policy",
+    "index.lifecycle.rollover_alias": "falconone-logs"
+  },
+  "mappings": {
+    "properties": {
+      "@timestamp": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "level": {
+        "type": "keyword"
+      },
+      "logger": {
+        "type": "keyword"
+      },
+      "message": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "user_id": {
+        "type": "keyword"
+      },
+      "request_id": {
+        "type": "keyword"
+      },
+      "correlation_id": {
+        "type": "keyword"
+      },
+      "service": {
+        "type": "keyword"
+      },
+      "environment": {
+        "type": "keyword"
+      },
+      "application": {
+        "type": "keyword"
+      },
+      "exc_info": {
+        "type": "text"
+      },
+      "has_exception": {
+        "type": "boolean"
+      },
+      "client_ip": {
+        "type": "ip"
+      },
+      "geoip": {
+        "properties": {
+          "location": {
+            "type": "geo_point"
+          },
+          "country_name": {
+            "type": "keyword"
+          },
+          "city_name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "duration_ms": {
+        "type": "float"
+      },
+      "status_code": {
+        "type": "short"
+      },
+      "method": {
+        "type": "keyword"
+      },
+      "path": {
+        "type": "keyword"
+      },
+      "user_agent": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      }
+    }
+  }
+}

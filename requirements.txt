@@ -1,0 +1,306 @@
+# FalconOne System Requirements
+# Version 2.0.0 Phase 2 - Complete
+# Enhanced Features: Automation, Monitoring, Cloud Integration
+# 2024-2025
+
+# Core Python Requirements
+# python>=3.10 (specified in setup.py)
+
+# CLI Interface (v1.4 UX Enhancement)
+click>=8.1.0
+pyyaml>=6.0
+colorama>=0.4.6
+watchdog>=3.0.0  # v1.8.0: File system monitoring for config hot-reload
+
+# Networking & Packet Manipulation
+scapy>=2.5.0
+pyshark>=0.6.0
+requests>=2.31.0
+
+# SDR & Signal Processing
+numpy>=1.24.0
+scipy>=1.11.0  # v1.4 Phase 3: ISAC/JCAS signal processing
+
+# AI/ML Frameworks (v1.5: Transformer support)
+tensorflow>=2.14.0  # v1.5: Multi-head attention, transformer layers
+torch>=2.0.0
+transformers>=4.30.0
+scikit-learn>=1.3.0
+stable-baselines3>=2.0.0
+
+# Federated Learning (v1.3+v1.5: Secure aggregation, differential privacy)
+tensorflow-federated>=0.60.0
+flower>=1.5.0  # Federated learning framework
+
+# Agentic AI & Reinforcement Learning (v1.4 Phase 1A)
+ray[rllib]==2.9.0  # Multi-agent reinforcement learning
+gym==0.26.2  # RL environment interface
+
+# Quantum Cryptanalysis (v1.4 Phase 1B + v1.5 Post-Quantum)
+qiskit==0.45.0  # Quantum computing simulation
+qiskit-aer==0.13.0  # Aer quantum simulator
+
+# Optional: Production lattice reduction for PQC attacks (v1.5 Kyber/Dilithium)
+# fpylll==0.5.9  # Uncomment for real lattice-based cryptanalysis (LLL algorithm)
+# pycryptodome>=3.19.0  # Uncomment for production PQ crypto implementations
+
+# Web Dashboard & API (Phase 1.3 + Phase 2.4)
+Flask>=3.0.0
+Flask-SocketIO>=5.3.0
+Flask-Login>=0.6.3  # Phase 2.4: User authentication
+Flask-Limiter>=3.5.0  # Phase 2.4 + v1.8.0: Rate limiting (60/30/5/3 rpm for RANSacked GUI)
+python-socketio>=5.10.0
+flask-cors>=4.0.0
+marshmallow>=3.20.0  # Phase 2.4: Input validation
+
+# Task Queue & Automation (Phase 2.5)
+celery[redis]>=5.3.0  # Distributed task queue
+redis>=5.0.0  # Message broker and cache
+kombu>=5.3.0  # Messaging library
+
+# Email Notifications (Phase 2.5.3)
+# Built-in smtplib and email modules used
+
+# Cloud Storage (Phase 2.7.3)
+boto3>=1.34.0  # AWS S3
+google-cloud-storage>=2.14.0  # Google Cloud Storage
+azure-storage-blob>=12.19.0  # Azure Blob Storage
+
+# Container Orchestration (Phase 2.7)
+# kubernetes client not needed in production - managed via kubectl
+
+# Data Processing
+pandas>=2.0.0
+matplotlib>=3.7.0
+networkx>=3.1
+
+# Audio Processing (for VoLTE/VoNR)
+pydub>=0.25.0
+pesq>=0.0.4
+wave>=0.0.2
+
+# Optimization & Quantization
+onnxruntime>=1.15.0
+
+# Configuration & Logging
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Testing & Quality Assurance (v1.8.0: RANSacked Integration Tests)
+pytest>=7.4.0  # Unit and integration testing
+pytest-benchmark>=4.0.0  # Performance benchmarking
+pytest-cov>=4.1.0  # Test coverage reporting
+
+# Security & Compliance (v1.7.0 Phase 1)
+cryptography>=41.0.0  # For encryption and security auditing
+trivy>=0.48.0  # Container vulnerability scanning (install via system package manager)
+
+# Sustainability & Monitoring
+codecarbon>=2.2.0
+psutil>=5.9.0
+
+# Cloud & Container Support (v1.3 NEW)
+flask>=3.0.0  # For federated coordinator API
+kubernetes>=28.1.0  # Kubernetes Python client
+docker>=6.1.0  # Docker SDK
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0  # For async test support
+pytest-timeout>=2.2.0   # Test timeout enforcement
+pytest-xdist>=3.5.0     # Parallel test execution
+
+# Security Testing (Phase 1.5.3)
+bandit>=1.7.5           # Python security linter
+safety>=2.3.0           # Dependency vulnerability scanner
+
+# Documentation
+sphinx>=7.0.0
+sphinx-rtd-theme>=1.3.0
+
+# Development Tools
+black>=23.7.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# ==================== 2025-2026 SECURITY & ENHANCEMENTS ====================
+
+# Phase 1: Critical Security (January 2026)
+pysqlcipher3>=1.0.3      # Database encryption at rest
+Flask-Limiter>=3.5.0     # API rate limiting / DoS prevention
+marshmallow>=3.20.0      # Input validation schemas
+Flask-WTF>=1.2.0         # CSRF protection
+Flask-Login>=0.6.3       # User session management
+bcrypt>=4.1.0            # Password hashing (PBKDF2)
+python-dotenv>=1.0.0     # Environment variables / secrets
+
+# Phase 2: Enhanced Monitoring & Export (January 2026)
+pycryptodome>=3.19.0     # LTE key derivation (PBKDF2), AES, SNOW3G
+reportlab>=4.0.0         # PDF report generation
+pillow>=10.0.0           # Image processing for PDF reports
+
+# ==================== EXPLOIT STACK (v1.8.0 - RANSacked Integration) ====================
+
+# Core Exploit Framework Dependencies
+scapy>=2.5.0             # Packet crafting and protocol manipulation
+pyshark>=0.6.0           # Wireshark integration for packet analysis
+numpy>=1.24.0            # Numerical operations for signal processing
+scipy>=1.11.0            # Advanced signal processing and optimization
+
+# Advanced Crypto Attacks (Post-Quantum, Lattice-based)
+pycryptodome>=3.19.0     # AES, SNOW3G, ZUC encryption algorithms
+cryptography>=41.0.0     # Modern cryptographic primitives
+hashlib                  # Built-in Python (SHA256, MD5 for key derivation)
+secrets                  # Built-in Python (secure random generation)
+
+# Optional: Production Lattice Reduction for PQC Attacks (Kyber/Dilithium)
+# fpylll>=0.5.9          # LLL algorithm for lattice reduction (requires build tools)
+# sage>=10.0             # SageMath for advanced cryptanalysis (large installation)
+
+# AI/ML-Based Exploit Generation & Evasion
+tensorflow>=2.14.0       # GAN-based traffic mimicry, polymorphic evasion
+torch>=2.0.0             # Alternative deep learning framework
+scikit-learn>=1.3.0      # ML-based pattern recognition and classification
+
+# Message Injection & Protocol Manipulation
+struct                   # Built-in Python (binary protocol encoding)
+dataclasses              # Built-in Python (data structure definitions)
+
+# Semantic Communications Exploitation (6G)
+# transformers>=4.30.0   # Already included above for SUCI deconcealment
+# torch>=2.0.0           # Already included above
+
+# V2X/C-V2X Attacks
+# Uses existing scapy and numpy dependencies
+
+# NTN/Satellite Attacks
+math                     # Built-in Python (orbital calculations, Doppler shift)
+datetime                 # Built-in Python (timestamp generation)
+
+# RANSacked Unified Vulnerability Database (97 CVEs)
+# Uses dataclasses, typing, enum, json (all built-in)
+functools                # Built-in Python (LRU cache for performance)
+re                       # Built-in Python (regex pattern matching)
+json                     # Built-in Python (JSON payload generation)
+
+# Exploit Chain Orchestration
+typing                   # Built-in Python (type hints)
+logging                  # Built-in Python (audit logging)
+random                   # Built-in Python (randomization for evasion)
+time                     # Built-in Python (timing attacks, delays)
+
+# Integration Testing for Exploits (v1.8.0)
+pytest>=7.4.0            # Already included above
+pytest-benchmark>=4.0.0  # Already included above
+pytest-asyncio>=0.21.0   # Already included above
+
+# ==================== OPTIONAL EXPLOIT ENHANCEMENTS ====================
+
+# Advanced SDR Hardware Support (Optional - requires physical devices)
+# SoapySDR               # Multi-platform SDR abstraction layer
+#                        # Install: sudo apt install soapysdr-tools python3-soapysdr (Linux)
+#                        # Install: brew install soapysdr (macOS)
+#                        # Install: https://github.com/pothosware/SoapySDR/wiki (Windows)
+# 
+# pySoapySDR             # Python bindings for SoapySDR
+#                        # Install after SoapySDR: pip install pySoapySDR
+# 
+# uhd                    # USRP Hardware Driver (Ettus Research)
+#                        # Install: sudo apt install uhd-host python3-uhd (Linux)
+#                        # Required for: USRP B200/B210/N210/X310 series
+#
+# gnuradio>=3.10         # GNU Radio Companion for signal processing
+#                        # Install: sudo apt install gnuradio (Linux, 1GB+ download)
+#                        # Used for: Custom signal generation, protocol decoding
+
+# ==================== EXTERNAL CELLULAR TOOLS (System Package Manager) ====================
+
+# GSM/2G Analysis Tools:
+# gr-gsm                 # GNU Radio GSM decoder (Airprobe successor)
+#                        # Install: sudo apt install gr-gsm
+#                        # Features: IMSI catching, A5/1 cracking, SMS sniffing
+#                        # Hardware: HackRF, RTL-SDR, BladeRF, USRP
+#
+# kalibrate-rtl          # GSM base station scanner (frequency calibration)
+#                        # Install: sudo apt install kalibrate-rtl
+#                        # Usage: kal -s GSM900, kal -c 50 (calibrate RTL-SDR)
+#
+# OsmocomBB              # GSM firmware for research (Motorola C123 phone)
+#                        # Install: https://osmocom.org/projects/baseband/wiki
+#                        # Features: MS-side protocol testing, rogue BTS
+#                        # Hardware: Motorola C115/C117/C123/C155 phones
+
+# LTE/4G Analysis Tools:
+# LTESniffer             # LTE downlink sniffer (IMSI/TMSI tracking)
+#                        # Install: https://github.com/SysSec-KAIST/LTESniffer
+#                        # Features: Identity mapping, MIB/SIB decoding
+#                        # Hardware: USRP B210 (2 RX channels required)
+#
+# srsRAN / srsRAN Project  # Open-source 4G/5G RAN software stack
+#                        # Install: sudo apt install srsran (or build from source)
+#                        # GitHub: https://github.com/srsran/srsRAN_4G
+#                        #         https://github.com/srsran/srsRAN_Project (5G)
+#                        # Features: Full eNB/gNB, UE emulation, IMSI catcher mode
+#                        # Hardware: USRP, BladeRF, ZMQ (software-only testing)
+
+# 5G Core Network Stacks (For Rogue gNB Testing):
+# Open5GS                # 5G/LTE Core Network (4G EPC + 5G 5GC)
+#                        # Install: https://open5gs.org/open5gs/docs/guide/01-quickstart/
+#                        # Features: Full 5GC (AMF, SMF, UPF, etc.)
+#                        # Use case: Test RANSacked exploits against live core
+#
+# OpenAirInterface (OAI) # 5G gNB and Core Network
+#                        # Install: https://gitlab.eurecom.fr/oai/openairinterface5g
+#                        # Features: Full 5G NR gNB, nrUE, 5GC
+#                        # Hardware: USRP B210/N310, AW2S, Ettus X310
+#                        # Use case: RANSacked OAI-specific exploits (CVE-2024-XXX)
+
+# ==================== SDR HARDWARE DRIVERS (Vendor-Specific) ====================
+
+# HackRF One:
+# hackrf-tools           # Command-line tools for HackRF One (1MHz-6GHz)
+#                        # Install: sudo apt install hackrf
+#                        # Tools: hackrf_transfer, hackrf_info, hackrf_sweep
+#
+# BladeRF:
+# bladerf-tools          # Nuand bladeRF SDR (300MHz-3.8GHz)
+#                        # Install: sudo apt install bladerf libbladerf-dev
+#                        # Tools: bladeRF-cli, bladeRF-flash
+#
+# RTL-SDR:
+# rtl-sdr                # Realtek RTL2832U DVB-T dongles (receive-only, 24-1766MHz)
+#                        # Install: sudo apt install rtl-sdr
+#                        # Tools: rtl_test, rtl_fm, rtl_power
+#                        # Note: Receive-only, cannot transmit
+
+# ==================== PROTOCOL ANALYSIS & REVERSE ENGINEERING ====================
+
+# Wireshark             # Network protocol analyzer with LTE/5G dissectors
+#                       # Install: sudo apt install wireshark
+#                       # Plugins: MAC-NR, RLC-NR, PDCP-NR dissectors
+#
+# IDA Pro / Ghidra      # Binary analysis for firmware reverse engineering
+#                       # Ghidra: https://ghidra-sre.org/ (free)
+#                       # Use case: Analyze baseband firmware, find vulnerabilities
+#
+# Scapy (already included)  # Packet crafting and protocol implementation
+#                           # FalconOne uses scapy for all protocol-level exploits
+
+# ==================== INSTALLATION VERIFICATION ====================
+
+# To verify SDR installation:
+#   HackRF:   hackrf_info (should show device serial number)
+#   BladeRF:  bladeRF-cli -p (should enter interactive mode)
+#   RTL-SDR:  rtl_test (should show device info, Ctrl+C to exit)
+#   USRP:     uhd_find_devices (should list connected USRPs)
+#
+# To verify tool installation:
+#   gr-gsm:       grgsm_livemon (should launch GUI)
+#   kalibrate:    kal -s GSM900 (scans for GSM towers)
+#   LTESniffer:   ./LTESniffer -h (shows help)
+#   srsRAN:       srsepc --version, srsenb --version
+#   Open5GS:      open5gs-amfd --version
+#
+# For FalconOne exploit testing (without hardware):
+#   python -c "from falconone.exploit.ransacked_payloads import RANSackedPayloadGenerator; print('OK')"

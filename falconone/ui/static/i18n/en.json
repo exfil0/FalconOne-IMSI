@@ -1,0 +1,86 @@
+{
+  "app_name": "FalconOne",
+  "dashboard": "Dashboard",
+  "targets": "Targets",
+  "scanning": "Scanning",
+  "monitoring": "Monitoring",
+  "exploits": "Exploits",
+  "ai_ml": "AI/ML",
+  "oran": "O-RAN",
+  "reports": "Reports",
+  "settings": "Settings",
+  "logout": "Logout",
+  
+  "welcome": "Welcome to FalconOne",
+  "active_targets": "Active Targets",
+  "running_scans": "Running Scans",
+  "recent_alerts": "Recent Alerts",
+  "system_status": "System Status",
+  
+  "create_target": "Create Target",
+  "edit_target": "Edit Target",
+  "delete_target": "Delete Target",
+  "target_details": "Target Details",
+  
+  "start_scan": "Start Scan",
+  "stop_scan": "Stop Scan",
+  "scan_results": "Scan Results",
+  "scan_in_progress": "Scan in Progress",
+  
+  "execute_exploit": "Execute Exploit",
+  "exploit_results": "Exploit Results",
+  
+  "username": "Username",
+  "password": "Password",
+  "email": "Email",
+  "login": "Login",
+  "register": "Register",
+  
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "view": "View",
+  "export": "Export",
+  "import": "Import",
+  
+  "success": "Success",
+  "error": "Error",
+  "warning": "Warning",
+  "info": "Information",
+  
+  "loading": "Loading...",
+  "no_data": "No data available",
+  "search": "Search",
+  "filter": "Filter",
+  "sort": "Sort",
+  
+  "targets_count": "{count} targets",
+  "scans_count": "{count} scans",
+  "alerts_count": "{count} alerts",
+  
+  "target_created": "Target created successfully",
+  "target_updated": "Target updated successfully",
+  "target_deleted": "Target deleted successfully",
+  
+  "scan_started": "Scan started successfully",
+  "scan_completed": "Scan completed",
+  "scan_failed": "Scan failed",
+  
+  "theme_light": "Light Mode",
+  "theme_dark": "Dark Mode",
+  "theme_toggle": "Toggle Theme",
+  
+  "language": "Language",
+  "select_language": "Select Language",
+  
+  "accessibility": "Accessibility",
+  "skip_to_main": "Skip to main content",
+  
+  "confirm_delete": "Are you sure you want to delete this item?",
+  "confirm_logout": "Are you sure you want to logout?",
+  
+  "required_field": "This field is required",
+  "invalid_format": "Invalid format",
+  "validation_error": "Validation error"
+}
