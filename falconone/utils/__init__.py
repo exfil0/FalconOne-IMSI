@@ -16,6 +16,7 @@ from .error_recoverer import ErrorRecoverer, ErrorType, RecoveryAttempt, Campaig
 from .data_validator import DataValidator, ValidationLevel, ValidationResult
 from .regulatory_scanner import RegulatoryScanner
 from .sustainability import SustainabilityMonitor
+from .evidence_chain import EvidenceChain, EvidenceBlock, InterceptType
 
 __all__ = [
     'Config',
@@ -36,4 +37,7 @@ __all__ = [
     'ValidationResult',
     'RegulatoryScanner',
     'SustainabilityMonitor',
+    'EvidenceChain',
+    'EvidenceBlock',
+    'InterceptType',
 ]

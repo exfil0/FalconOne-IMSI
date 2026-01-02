@@ -848,6 +848,1200 @@ class DashboardServer:
         # RANSacked vulnerabilities are now integrated into the unified exploit engine
         # Use /api/exploits/* endpoints to access all 97+ exploits
         
+        # ==================== v1.8.1 LAW ENFORCEMENT MODE API ====================
+        
+        @app.route('/api/le/warrant/validate', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("10 per minute")
+        def validate_warrant():
+            """
+            Validate and activate LE Mode with warrant.
+            
+            POST Request body:
+            {
+                "warrant_id": "WRT-2026-00123",
+                "warrant_image": "base64_encoded_image_or_path",
+                "metadata": {
+                    "jurisdiction": "Southern District NY",
+                    "case_number": "2026-CR-00123",
+                    "authorized_by": "Judge Smith",
+                    "valid_until": "2026-06-30T23:59:59Z",
+                    "target_identifiers": ["001010123456789"],
+                    "operator": "officer_jones"
+                }
+            }
+            
+            Response:
+            {
+                "success": true,
+                "warrant_id": "WRT-2026-00123",
+                "status": "validated",
+                "valid_until": "2026-06-30T23:59:59Z",
+                "message": "LE Mode activated with warrant WRT-2026-00123"
+            }
+            """
+            if self.auth_enabled and 'username' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'Missing request body'}), 400
+                
+                warrant_id = data.get('warrant_id')
+                warrant_metadata = data.get('metadata', {})
+                
+                if not warrant_id:
+                    return jsonify({'error': 'Missing warrant_id'}), 400
+                
+                # Get intercept enhancer from orchestrator
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                if not hasattr(self.orchestrator, 'intercept_enhancer') or not self.orchestrator.intercept_enhancer:
+                    return jsonify({'error': 'LE Mode not available (not enabled in config)'}), 400
+                
+                # Enable LE mode with warrant
+                success = self.orchestrator.intercept_enhancer.enable_le_mode(
+                    warrant_id=warrant_id,
+                    warrant_metadata=warrant_metadata
+                )
+                
+                if success:
+                    self.logger.info(f"LE Mode activated with warrant {warrant_id}")
+                    return jsonify({
+                        'success': True,
+                        'warrant_id': warrant_id,
+                        'status': 'validated',
+                        'valid_until': warrant_metadata.get('valid_until'),
+                        'message': f'LE Mode activated with warrant {warrant_id}'
+                    })
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Warrant validation failed'
+                    }), 400
+                    
+            except Exception as e:
+                self.logger.error(f"LE warrant validation error: {e}")
+                return jsonify({'error': f'Validation failed: {str(e)}'}), 500
+        
+        @app.route('/api/le/enhance_exploit', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("5 per minute")
+        def enhance_exploit():
+            """
+            Execute exploit-enhanced interception chain.
+            
+            POST Request body:
+            {
+                "chain_type": "dos_imsi" | "downgrade_volte" | "auth_bypass_sms" | "uplink_location" | "battery_profiling",
+                "parameters": {
+                    // Chain-specific parameters
+                    "target_ip": "192.168.1.100",  // For dos_imsi
+                    "target_imsi": "001010123456789",  // For downgrade_volte
+                    "dos_duration": 30,
+                    "listen_duration": 300,
+                    "downgrade_to": "4G",
+                    "intercept_duration": 600
+                }
+            }
+            
+            Response:
+            {
+                "success": true,
+                "chain_type": "dos_imsi",
+                "warrant_id": "WRT-2026-00123",
+                "evidence_ids": ["a7f3c8e2...", "b2d4f1a9..."],
+                "captured_imsis": ["001010123456789", "001010123456790"],
+                "steps": [...]
+            }
+            """
+            if self.auth_enabled and 'username' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'Missing request body'}), 400
+                
+                chain_type = data.get('chain_type')
+                parameters = data.get('parameters', {})
+                
+                if not chain_type:
+                    return jsonify({'error': 'Missing chain_type'}), 400
+                
+                # Get intercept enhancer
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                enhancer = self.orchestrator.intercept_enhancer
+                if not enhancer:
+                    return jsonify({'error': 'LE Mode not available'}), 400
+                
+                # Execute appropriate chain
+                if chain_type == 'dos_imsi':
+                    result = enhancer.chain_dos_with_imsi_catch(
+                        target_ip=parameters.get('target_ip'),
+                        dos_duration=parameters.get('dos_duration', 30),
+                        listen_duration=parameters.get('listen_duration', 300),
+                        target_imsi=parameters.get('target_imsi')
+                    )
+                elif chain_type == 'downgrade_volte':
+                    result = enhancer.enhanced_volte_intercept(
+                        target_imsi=parameters.get('target_imsi'),
+                        downgrade_to=parameters.get('downgrade_to', '4G'),
+                        intercept_duration=parameters.get('intercept_duration', 600)
+                    )
+                else:
+                    return jsonify({'error': f'Chain type "{chain_type}" not implemented yet'}), 501
+                
+                self.logger.info(f"LE chain executed: {chain_type}")
+                return jsonify(result)
+                
+            except Exception as e:
+                self.logger.error(f"LE enhance_exploit error: {e}")
+                return jsonify({'error': f'Execution failed: {str(e)}'}), 500
+        
+        @app.route('/api/le/evidence/<evidence_id>', methods=['GET'])
+        @limiter.limit("20 per minute")
+        def get_evidence(evidence_id):
+            """
+            Retrieve specific evidence block by ID.
+            
+            Response:
+            {
+                "block_id": "a7f3c8e2...",
+                "timestamp": 1735840800.123,
+                "intercept_type": "volte_voice",
+                "target_identifier": "3f2e1d0c9b8a7f6e",  // Hashed IMSI
+                "warrant_id": "WRT-2026-00123",
+                "operator": "officer_jones",
+                "data_hash": "sha256:9f8e7d6c...",
+                "previous_hash": "sha256:...",
+                "chain_position": 15,
+                "verified": true
+            }
+            """
+            if self.auth_enabled and 'username' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            try:
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                evidence_chain = self.orchestrator.evidence_chain
+                if not evidence_chain:
+                    return jsonify({'error': 'Evidence chain not available'}), 400
+                
+                # Find block by ID
+                block = None
+                for i, b in enumerate(evidence_chain.chain):
+                    if b.block_id.startswith(evidence_id):
+                        block = b
+                        break
+                
+                if not block:
+                    return jsonify({'error': 'Evidence block not found'}), 404
+                
+                # Return block details
+                return jsonify({
+                    'block_id': block.block_id,
+                    'timestamp': block.timestamp,
+                    'intercept_type': block.intercept_type,
+                    'target_identifier': block.target_identifier,
+                    'warrant_id': block.warrant_id,
+                    'operator': block.operator,
+                    'data_hash': block.data_hash,
+                    'previous_hash': block.previous_hash,
+                    'chain_position': evidence_chain.chain.index(block),
+                    'verified': evidence_chain.verify_chain()
+                })
+                
+            except Exception as e:
+                self.logger.error(f"LE get_evidence error: {e}")
+                return jsonify({'error': f'Retrieval failed: {str(e)}'}), 500
+        
+        @app.route('/api/le/chain/verify', methods=['GET'])
+        @limiter.limit("10 per minute")
+        def verify_evidence_chain():
+            """
+            Verify cryptographic integrity of evidence chain.
+            
+            Response:
+            {
+                "valid": true,
+                "total_blocks": 47,
+                "total_evidence": 46,  // Excluding genesis
+                "warrants": ["WRT-2026-00123", "WRT-2026-00124"],
+                "types": ["imsi_catch", "volte_voice", "sms", "location"],
+                "genesis_hash": "sha256:...",
+                "latest_hash": "sha256:...",
+                "verified_at": "2026-01-02T14:30:00Z"
+            }
+            """
+            if self.auth_enabled and 'username' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            try:
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                evidence_chain = self.orchestrator.evidence_chain
+                if not evidence_chain:
+                    return jsonify({'error': 'Evidence chain not available'}), 400
+                
+                # Verify chain
+                is_valid = evidence_chain.verify_chain()
+                summary = evidence_chain.get_chain_summary()
+                
+                return jsonify({
+                    'valid': is_valid,
+                    'total_blocks': summary['total_blocks'],
+                    'total_evidence': summary['total_evidence'],
+                    'warrants': summary['warrants'],
+                    'types': summary['types'],
+                    'chain_valid': summary['chain_valid'],
+                    'genesis_hash': evidence_chain.chain[0].current_hash,
+                    'latest_hash': evidence_chain.chain[-1].current_hash if len(evidence_chain.chain) > 0 else None,
+                    'verified_at': datetime.utcnow().isoformat() + 'Z'
+                })
+                
+            except Exception as e:
+                self.logger.error(f"LE verify_chain error: {e}")
+                return jsonify({'error': f'Verification failed: {str(e)}'}), 500
+        
+        @app.route('/api/le/statistics', methods=['GET'])
+        @limiter.limit("20 per minute")
+        def get_le_statistics():
+            """
+            Get LE Mode statistics.
+            
+            Response:
+            {
+                "le_mode_enabled": true,
+                "active_warrant": "WRT-2026-00123",
+                "warrant_valid_until": "2026-06-30T23:59:59Z",
+                "chains_executed": 15,
+                "success_rate": 86.7,
+                "evidence_blocks": 47,
+                "chain_integrity": "verified"
+            }
+            """
+            if self.auth_enabled and 'username' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            try:
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                enhancer = self.orchestrator.intercept_enhancer
+                evidence_chain = self.orchestrator.evidence_chain
+                
+                if not enhancer or not evidence_chain:
+                    return jsonify({'error': 'LE Mode not available'}), 400
+                
+                # Get statistics
+                stats = enhancer.get_statistics()
+                chain_summary = evidence_chain.get_chain_summary()
+                
+                return jsonify({
+                    'le_mode_enabled': stats['le_mode_enabled'],
+                    'active_warrant': stats['active_warrant'],
+                    'warrant_valid_until': enhancer.warrant_metadata.get('valid_until') if enhancer.warrant_metadata else None,
+                    'chains_executed': stats['chains_executed'],
+                    'success_rate': stats['success_rate'],
+                    'evidence_blocks': chain_summary['total_evidence'],
+                    'chain_integrity': 'verified' if chain_summary['chain_valid'] else 'tampered'
+                })
+                
+            except Exception as e:
+                self.logger.error(f"LE statistics error: {e}")
+                return jsonify({'error': f'Statistics retrieval failed: {str(e)}'}), 500
+        
+        @app.route('/api/le/evidence/export', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("5 per minute")
+        def export_evidence():
+            """
+            Export forensic evidence package for court.
+            
+            POST Request body:
+            {
+                "evidence_id": "a7f3c8e2...",
+                "output_path": "evidence_export/case_2026_00123",
+                "include_chain": true  // Include full chain verification
+            }
+            
+            Response:
+            {
+                "success": true,
+                "export_path": "evidence_export/case_2026_00123/a7f3c8e2",
+                "chain_of_custody": "evidence_export/case_2026_00123/a7f3c8e2/chain_of_custody.json",
+                "integrity_verified": true,
+                "warrant_id": "WRT-2026-00123",
+                "exported_at": "2026-01-02T14:30:00Z"
+            }
+            """
+            if self.auth_enabled and 'username' not in session:
+                return jsonify({'error': 'Unauthorized'}), 401
+            
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'Missing request body'}), 400
+                
+                evidence_id = data.get('evidence_id')
+                output_path = data.get('output_path', 'evidence_export')
+                
+                if not evidence_id:
+                    return jsonify({'error': 'Missing evidence_id'}), 400
+                
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                evidence_chain = self.orchestrator.evidence_chain
+                if not evidence_chain:
+                    return jsonify({'error': 'Evidence chain not available'}), 400
+                
+                # Export forensic package
+                manifest = evidence_chain.export_forensic(
+                    block_id=evidence_id,
+                    output_path=output_path
+                )
+                
+                manifest['exported_at'] = datetime.utcnow().isoformat() + 'Z'
+                
+                self.logger.info(f"Evidence exported: {evidence_id}")
+                return jsonify(manifest)
+                
+            except Exception as e:
+                self.logger.error(f"LE export_evidence error: {e}")
+                return jsonify({'error': f'Export failed: {str(e)}'}), 500
+        
+        # ==================== v1.9.0 6G NTN API ====================
+        # 6G Non-Terrestrial Networks monitoring and exploitation endpoints
+        
+        @app.route('/api/ntn_6g/monitor', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("10 per minute")
+        def ntn_6g_monitor():
+            """
+            Start 6G NTN monitoring session
+            
+            POST Request body:
+            {
+                "sat_type": "LEO",  // LEO, MEO, GEO, HAPS, UAV
+                "duration_sec": 60,
+                "use_isac": true,
+                "frequency_ghz": 150,
+                "le_mode": false,
+                "warrant_id": "optional-warrant-id"
+            }
+            
+            Response:
+            {
+                "success": true,
+                "timestamp": "2026-01-02T10:00:00Z",
+                "satellite_type": "LEO",
+                "technology": "6G_NTN",
+                "signal_detected": true,
+                "signal_strength_dbm": -95.5,
+                "doppler_shift_hz": 15234.5,
+                "isac_data": {
+                    "range_m": 550000,
+                    "velocity_mps": 7500,
+                    "angle_deg": 45.0,
+                    "snr_db": 18.5
+                },
+                "evidence_hash": "abc123..." // if LE mode
+            }
+            """
+            try:
+                data = request.get_json() or {}
+                
+                # Validate inputs
+                sat_type = data.get('sat_type', 'LEO')
+                valid_types = ['LEO', 'MEO', 'GEO', 'HAPS', 'UAV']
+                if sat_type not in valid_types:
+                    return jsonify({'error': f'Invalid sat_type. Must be one of: {valid_types}'}), 400
+                
+                duration_sec = int(data.get('duration_sec', 60))
+                if duration_sec < 1 or duration_sec > 300:
+                    return jsonify({'error': 'duration_sec must be between 1 and 300'}), 400
+                
+                use_isac = data.get('use_isac', True)
+                le_mode = data.get('le_mode', False)
+                warrant_id = data.get('warrant_id')
+                
+                # LE Mode validation
+                if le_mode:
+                    if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                        return jsonify({'error': 'Orchestrator not initialized'}), 500
+                    
+                    # Check warrant validation
+                    if not warrant_id:
+                        return jsonify({'error': 'LE mode requires warrant_id'}), 403
+                    
+                    # Validate warrant (simplified - would check database)
+                    # In production, verify warrant is valid and covers NTN intercepts
+                    if not self._validate_warrant_for_ntn(warrant_id):
+                        return jsonify({'error': 'Invalid or expired warrant for NTN operations'}), 403
+                
+                # Import NTN monitor
+                try:
+                    from falconone.monitoring.ntn_6g_monitor import NTN6GMonitor
+                except ImportError:
+                    return jsonify({'error': '6G NTN module not available. Install astropy: pip install astropy'}), 501
+                
+                # Get config
+                ntn_config = {
+                    'sub_thz_freq': data.get('frequency_ghz', 150) * 1e9,
+                    'isac_enabled': use_isac,
+                    'le_mode_enabled': le_mode,
+                    'warrant_validated': le_mode,
+                    'use_ephemeris': True,
+                }
+                
+                # Create monitor instance
+                sdr_manager = getattr(self.orchestrator, 'sdr_manager', None) if hasattr(self, 'orchestrator') else None
+                ai_classifier = getattr(self.orchestrator, 'ai_classifier', None) if hasattr(self, 'orchestrator') else None
+                
+                monitor = NTN6GMonitor(sdr_manager, ai_classifier, ntn_config)
+                
+                # Start monitoring
+                results = monitor.start_monitoring(
+                    sat_type=sat_type,
+                    duration_sec=duration_sec,
+                    use_isac=use_isac
+                )
+                
+                results['success'] = results.get('signal_detected', False)
+                
+                self.logger.info(f"NTN monitoring completed: {sat_type}, detected={results['success']}")
+                return jsonify(results)
+                
+            except ValueError as e:
+                self.logger.error(f"NTN monitor validation error: {e}")
+                return jsonify({'error': f'Validation error: {str(e)}'}), 400
+            except Exception as e:
+                self.logger.error(f"NTN monitor error: {e}", exc_info=True)
+                return jsonify({'error': f'Monitoring failed: {str(e)}'}), 500
+        
+        @app.route('/api/ntn_6g/exploit', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("5 per minute")  # Lower rate limit for exploits
+        def ntn_6g_exploit():
+            """
+            Execute 6G NTN exploit (requires warrant in LE mode)
+            
+            POST Request body:
+            {
+                "exploit_type": "beam_hijack",  // beam_hijack, handover_poison, ris_manipulate, dos_intercept_chain
+                "target_sat_id": "LEO-1234",
+                "parameters": {
+                    "use_quantum": false,
+                    "redirect_to": "ground_station_coords",
+                    "chain_type": "dos_intercept"  // for chain exploits
+                },
+                "warrant_id": "required-in-le-mode"
+            }
+            
+            Response:
+            {
+                "success": true,
+                "exploit_type": "beam_hijack",
+                "target_satellite": "LEO-1234",
+                "timestamp": "2026-01-02T10:00:00Z",
+                "beam_redirected": true,
+                "listening_active": true,
+                "evidence_hash": "def456..."
+            }
+            """
+            try:
+                data = request.get_json() or {}
+                
+                # Validate inputs
+                exploit_type = data.get('exploit_type')
+                valid_exploits = ['beam_hijack', 'handover_poison', 'ris_manipulate', 'dos_intercept_chain', 'cve_payload']
+                if exploit_type not in valid_exploits:
+                    return jsonify({'error': f'Invalid exploit_type. Must be one of: {valid_exploits}'}), 400
+                
+                target_sat_id = data.get('target_sat_id')
+                if not target_sat_id:
+                    return jsonify({'error': 'target_sat_id is required'}), 400
+                
+                parameters = data.get('parameters', {})
+                warrant_id = data.get('warrant_id')
+                
+                # Check if orchestrator is available
+                if not hasattr(self, 'orchestrator') or not self.orchestrator:
+                    return jsonify({'error': 'Orchestrator not initialized'}), 500
+                
+                # LE Mode enforcement (all NTN exploits require warrant)
+                le_mode_enabled = getattr(self.orchestrator.config, 'le_mode_enabled', False)
+                if le_mode_enabled or data.get('le_mode', False):
+                    if not warrant_id:
+                        return jsonify({'error': 'NTN exploits require warrant_id in LE mode'}), 403
+                    
+                    if not self._validate_warrant_for_ntn(warrant_id):
+                        return jsonify({'error': 'Invalid or expired warrant for NTN operations'}), 403
+                
+                # Import NTN exploiter
+                try:
+                    from falconone.exploit.ntn_6g_exploiter import NTN6GExploiter
+                except ImportError:
+                    return jsonify({'error': '6G NTN exploit module not available'}), 501
+                
+                # Create exploiter instance
+                payload_gen = getattr(self.orchestrator, 'payload_gen', None) if hasattr(self, 'orchestrator') else None
+                
+                exploit_config = {
+                    'le_mode_enabled': le_mode_enabled,
+                    'warrant_validated': True if warrant_id else False,
+                    'ric_endpoint': parameters.get('ric_endpoint', 'http://localhost:8080'),
+                }
+                
+                exploiter = NTN6GExploiter(payload_gen, exploit_config)
+                
+                # Execute exploit based on type
+                if exploit_type == 'beam_hijack':
+                    result = exploiter.beam_hijack(
+                        target_sat_id=target_sat_id,
+                        use_quantum=parameters.get('use_quantum', False),
+                        redirect_to=parameters.get('redirect_to')
+                    )
+                
+                elif exploit_type == 'handover_poison':
+                    source_sat = parameters.get('source_sat', target_sat_id)
+                    result = exploiter.poison_handover(source_sat, target_sat_id)
+                
+                elif exploit_type == 'ris_manipulate':
+                    manipulation_type = parameters.get('manipulation_type', 'beam_redirect')
+                    result = exploiter.manipulate_ris(target_sat_id, manipulation_type)
+                
+                elif exploit_type == 'dos_intercept_chain':
+                    chain_type = parameters.get('chain_type', 'dos_intercept')
+                    result = exploiter.execute_chain(chain_type, target_sat_id)
+                
+                elif exploit_type == 'cve_payload':
+                    cve_id = parameters.get('cve_id', 'CVE-2026-NTN-001')
+                    payload = exploiter.generate_cve_payload(cve_id)
+                    result = {'success': True, 'cve_id': cve_id, 'payload': payload}
+                
+                else:
+                    return jsonify({'error': f'Exploit type not implemented: {exploit_type}'}), 501
+                
+                self.logger.info(f"NTN exploit executed: {exploit_type} on {target_sat_id}, success={result.get('success')}")
+                return jsonify(result)
+                
+            except ValueError as e:
+                self.logger.error(f"NTN exploit validation error: {e}")
+                return jsonify({'error': f'Validation error: {str(e)}'}), 400
+            except Exception as e:
+                self.logger.error(f"NTN exploit error: {e}", exc_info=True)
+                return jsonify({'error': f'Exploit failed: {str(e)}'}), 500
+        
+        @app.route('/api/ntn_6g/satellites', methods=['GET'])
+        @csrf.exempt
+        @limiter.limit("20 per minute")
+        def ntn_6g_satellites():
+            """
+            List all tracked satellites
+            
+            Response:
+            {
+                "total_satellites": 5,
+                "satellites": [
+                    {
+                        "type": "LEO",
+                        "timestamp": "2026-01-02T10:00:00Z",
+                        "doppler_shift": 15234.5,
+                        "technology": "6G_NTN",
+                        "signal_strength": -95.5
+                    },
+                    ...
+                ]
+            }
+            """
+            try:
+                # Import NTN monitor (static access to get tracked satellites)
+                try:
+                    from falconone.monitoring.ntn_6g_monitor import NTN6GMonitor
+                except ImportError:
+                    return jsonify({'error': '6G NTN module not available'}), 501
+                
+                # Create temporary monitor instance to access tracked satellites
+                # In production, this would query a database or cache
+                monitor = NTN6GMonitor(None, None, {})
+                
+                satellites = []
+                for sat in monitor.active_satellites:
+                    satellites.append({
+                        'type': sat['type'],
+                        'timestamp': sat['timestamp'].isoformat() + 'Z',
+                        'doppler_shift': sat['doppler'],
+                        'technology': sat['results'].get('technology', 'UNKNOWN'),
+                        'signal_strength': sat['results'].get('signal_strength_dbm', -120),
+                    })
+                
+                return jsonify({
+                    'total_satellites': len(satellites),
+                    'satellites': satellites
+                })
+                
+            except Exception as e:
+                self.logger.error(f"NTN satellites list error: {e}")
+                return jsonify({'error': f'Failed to list satellites: {str(e)}'}), 500
+        
+        @app.route('/api/ntn_6g/ephemeris/<sat_id>', methods=['GET'])
+        @csrf.exempt
+        @limiter.limit("10 per minute")
+        def ntn_6g_ephemeris(sat_id: str):
+            """
+            Get satellite ephemeris (orbital predictions)
+            
+            Query params:
+                ?hours=24  // Prediction time range (default 24)
+            
+            Response:
+            {
+                "satellite_id": "STARLINK-1234",
+                "time_range_hours": 24,
+                "ephemeris": [
+                    {
+                        "time": "2026-01-02T10:00:00Z",
+                        "altitude_km": 550,
+                        "latitude_deg": 45.0,
+                        "longitude_deg": -122.0,
+                        "elevation_deg": 45.0,
+                        "azimuth_deg": 180.0,
+                        "doppler_hz": 15000
+                    },
+                    ...
+                ]
+            }
+            """
+            try:
+                hours = int(request.args.get('hours', 24))
+                if hours < 1 or hours > 168:  # Max 1 week
+                    return jsonify({'error': 'hours must be between 1 and 168'}), 400
+                
+                # Import NTN monitor
+                try:
+                    from falconone.monitoring.ntn_6g_monitor import NTN6GMonitor
+                except ImportError:
+                    return jsonify({'error': '6G NTN module not available. Install astropy'}), 501
+                
+                monitor = NTN6GMonitor(None, None, {})
+                
+                # Get ephemeris
+                ephemeris = monitor.get_satellite_ephemeris(sat_id, hours)
+                
+                return jsonify({
+                    'satellite_id': sat_id,
+                    'time_range_hours': hours,
+                    'ephemeris': ephemeris
+                })
+                
+            except ValueError as e:
+                return jsonify({'error': f'Invalid parameter: {str(e)}'}), 400
+            except Exception as e:
+                self.logger.error(f"NTN ephemeris error: {e}")
+                return jsonify({'error': f'Ephemeris calculation failed: {str(e)}'}), 500
+        
+        @app.route('/api/ntn_6g/statistics', methods=['GET'])
+        @csrf.exempt
+        @limiter.limit("20 per minute")
+        def ntn_6g_statistics():
+            """
+            Get 6G NTN monitoring statistics
+            
+            Response:
+            {
+                "total_sessions": 10,
+                "satellites_tracked": 5,
+                "doppler_measurements": 100,
+                "isac_measurements": 100,
+                "doppler_stats": {
+                    "mean_hz": 12000.5,
+                    "max_hz": 35000.0
+                },
+                "isac_stats": {
+                    "mean_range_km": 550.0,
+                    "mean_snr_db": 18.5
+                }
+            }
+            """
+            try:
+                # Import NTN monitor
+                try:
+                    from falconone.monitoring.ntn_6g_monitor import NTN6GMonitor
+                except ImportError:
+                    return jsonify({'error': '6G NTN module not available'}), 501
+                
+                monitor = NTN6GMonitor(None, None, {})
+                stats = monitor.get_statistics()
+                
+                return jsonify(stats)
+                
+            except Exception as e:
+                self.logger.error(f"NTN statistics error: {e}")
+                return jsonify({'error': f'Statistics retrieval failed: {str(e)}'}), 500
+        
+        # ==================== ISAC API Endpoints (v1.9.0) ====================
+        
+        @app.route('/api/isac/monitor', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("10 per minute")
+        def isac_monitor():
+            """
+            Start ISAC (Integrated Sensing and Communications) monitoring
+            
+            Request Body:
+            {
+                "mode": "monostatic|bistatic|cooperative",
+                "duration_sec": 10,
+                "frequency_ghz": 150.0,
+                "waveform_type": "OFDM|DFT-s-OFDM|FMCW",
+                "le_mode": false,
+                "warrant_id": "WARRANT-12345"  // Required if le_mode=true
+            }
+            
+            Response:
+            {
+                "mode": "monostatic",
+                "range_m": 250.5,
+                "velocity_mps": 15.2,
+                "angle_deg": 45.0,
+                "doppler_hz": 12000.0,
+                "snr_db": 18.5,
+                "target_count": 1,
+                "sensing_accuracy": 0.95,
+                "timestamp": 1704240000.0,
+                "evidence_hash": "sha256_hash"
+            }
+            """
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'Missing request body'}), 400
+                
+                # Import ISAC monitor
+                try:
+                    from falconone.monitoring.isac_monitor import ISACMonitor
+                    from falconone.core.signal_bus import SignalBus
+                    from falconone.le.evidence_manager import EvidenceManager
+                except ImportError:
+                    return jsonify({'error': 'ISAC module not available'}), 501
+                
+                # Validate parameters
+                mode = data.get('mode', 'monostatic')
+                if mode not in ['monostatic', 'bistatic', 'cooperative']:
+                    return jsonify({'error': 'Invalid mode. Must be monostatic, bistatic, or cooperative'}), 400
+                
+                duration_sec = data.get('duration_sec', 10)
+                if not isinstance(duration_sec, (int, float)) or duration_sec <= 0:
+                    return jsonify({'error': 'duration_sec must be positive number'}), 400
+                
+                frequency_ghz = data.get('frequency_ghz', 150.0)
+                waveform_type = data.get('waveform_type', 'OFDM')
+                
+                # LE mode validation
+                le_mode = data.get('le_mode', False)
+                warrant_id = data.get('warrant_id')
+                
+                if le_mode:
+                    if not warrant_id:
+                        return jsonify({'error': 'LE mode requires warrant_id'}), 403
+                    
+                    # Validate warrant
+                    is_valid = self._validate_warrant_for_isac(warrant_id)
+                    if not is_valid:
+                        return jsonify({'error': 'Invalid or expired warrant'}), 403
+                
+                # Initialize monitor
+                config = {
+                    'isac_enabled': True,
+                    'modes': [mode],
+                    'frequency_default': frequency_ghz * 1e9,
+                    'sensing_resolution': 1.0,
+                    'max_targets': 10
+                }
+                
+                monitor = ISACMonitor(
+                    sdr_manager=None,  # Mock for API
+                    config=config,
+                    signal_bus=SignalBus() if hasattr(self, 'signal_bus') else None,
+                    evidence_manager=EvidenceManager() if le_mode else None
+                )
+                
+                # Start sensing
+                result = monitor.start_sensing(
+                    mode=mode,
+                    duration_sec=duration_sec,
+                    frequency_ghz=frequency_ghz,
+                    waveform_type=waveform_type,
+                    le_mode=le_mode,
+                    warrant_id=warrant_id
+                )
+                
+                # Convert result to dict
+                response = {
+                    'mode': result.mode,
+                    'range_m': result.range_m,
+                    'velocity_mps': result.velocity_mps,
+                    'angle_deg': result.angle_deg,
+                    'doppler_hz': result.doppler_hz,
+                    'snr_db': result.snr_db,
+                    'target_count': result.target_count,
+                    'sensing_accuracy': result.sensing_accuracy,
+                    'timestamp': result.timestamp
+                }
+                
+                if result.evidence_hash:
+                    response['evidence_hash'] = result.evidence_hash
+                
+                self.logger.info(f"ISAC monitoring completed: mode={mode}, range={result.range_m:.1f}m")
+                return jsonify(response)
+                
+            except Exception as e:
+                self.logger.error(f"ISAC monitoring error: {e}")
+                return jsonify({'error': f'Monitoring failed: {str(e)}'}), 500
+        
+        @app.route('/api/isac/exploit', methods=['POST'])
+        @csrf.exempt
+        @limiter.limit("5 per minute")
+        def isac_exploit():
+            """
+            Execute ISAC exploitation attack
+            
+            Request Body:
+            {
+                "exploit_type": "waveform_manipulation|ai_poisoning|control_plane_hijack|quantum_attack|ntn_isac_exploit",
+                "parameters": {
+                    // For waveform_manipulation:
+                    "target_freq": 150e9,
+                    "mode": "monostatic",
+                    "waveform_type": "OFDM",
+                    "cve_id": "CVE-2026-ISAC-001",
+                    
+                    // For ai_poisoning:
+                    "target_system": "oran_rapp",
+                    "poisoning_rate": 0.1,
+                    "cve_id": "CVE-2026-ISAC-003",
+                    
+                    // For control_plane_hijack:
+                    "target_node": "gnb_001",
+                    "exploit_goal": "monostatic_dos|beam_redirect|sensing_disable",
+                    "cve_id": "CVE-2026-ISAC-004",
+                    
+                    // For quantum_attack:
+                    "target_link": "qkd_link_001",
+                    "attack_type": "pns|trojan_horse|shor",
+                    "cve_id": "CVE-2026-ISAC-005",
+                    
+                    // For ntn_isac_exploit:
+                    "satellite_id": "LEO-001",
+                    "exploit_type": "doppler_manipulation|handover_poison|cooperative_dos",
+                    "cve_id": "CVE-2026-ISAC-006"
+                },
+                "le_mode": true,
+                "warrant_id": "WARRANT-12345"
+            }
+            
+            Response:
+            {
+                "exploit_type": "waveform_manipulation",
+                "success": true,
+                "listening_enhanced": true,
+                "sensing_leaked": true,
+                "target_info": {...},
+                "evidence_hash": "sha256_hash",
+                "timestamp": 1704240000.0
+            }
+            """
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'Missing request body'}), 400
+                
+                # Import ISAC exploiter
+                try:
+                    from falconone.exploit.isac_exploiter import ISACExploiter
+                    from falconone.ai.payload_generator import PayloadGenerator
+                    from falconone.core.signal_bus import SignalBus
+                    from falconone.le.evidence_manager import EvidenceManager
+                except ImportError:
+                    return jsonify({'error': 'ISAC exploitation module not available'}), 501
+                
+                # Validate exploit type
+                exploit_type = data.get('exploit_type')
+                if not exploit_type:
+                    return jsonify({'error': 'exploit_type required'}), 400
+                
+                valid_types = ['waveform_manipulation', 'ai_poisoning', 'control_plane_hijack', 
+                               'quantum_attack', 'ntn_isac_exploit']
+                if exploit_type not in valid_types:
+                    return jsonify({'error': f'Invalid exploit_type. Must be one of: {valid_types}'}), 400
+                
+                parameters = data.get('parameters', {})
+                
+                # LE mode validation
+                le_mode = data.get('le_mode', False)
+                warrant_id = data.get('warrant_id')
+                
+                if le_mode:
+                    if not warrant_id:
+                        return jsonify({'error': 'LE mode requires warrant_id'}), 403
+                    
+                    # Validate warrant
+                    is_valid = self._validate_warrant_for_isac(warrant_id)
+                    if not is_valid:
+                        return jsonify({'error': 'Invalid or expired warrant'}), 403
+                
+                # Initialize exploiter
+                exploiter = ISACExploiter(
+                    sdr_manager=None,  # Mock for API
+                    payload_gen=PayloadGenerator(),
+                    signal_bus=SignalBus() if hasattr(self, 'signal_bus') else None,
+                    evidence_manager=EvidenceManager() if le_mode else None
+                )
+                
+                # Execute exploit based on type
+                if exploit_type == 'waveform_manipulation':
+                    result = exploiter.waveform_manipulate(
+                        target_freq=parameters.get('target_freq', 150e9),
+                        mode=parameters.get('mode', 'monostatic'),
+                        waveform_type=parameters.get('waveform_type', 'OFDM'),
+                        cve_id=parameters.get('cve_id', 'CVE-2026-ISAC-001'),
+                        le_mode=le_mode,
+                        warrant_id=warrant_id
+                    )
+                
+                elif exploit_type == 'ai_poisoning':
+                    # Generate mock training data
+                    training_data = np.random.randn(1000, 64)
+                    result = exploiter.ai_poison(
+                        training_data=training_data,
+                        target_system=parameters.get('target_system', 'oran_rapp'),
+                        poisoning_rate=parameters.get('poisoning_rate', 0.1),
+                        cve_id=parameters.get('cve_id', 'CVE-2026-ISAC-003'),
+                        le_mode=le_mode,
+                        warrant_id=warrant_id
+                    )
+                
+                elif exploit_type == 'control_plane_hijack':
+                    result = exploiter.control_plane_hijack(
+                        target_node=parameters.get('target_node', 'gnb_001'),
+                        exploit_goal=parameters.get('exploit_goal', 'monostatic_dos'),
+                        cve_id=parameters.get('cve_id', 'CVE-2026-ISAC-004'),
+                        le_mode=le_mode,
+                        warrant_id=warrant_id
+                    )
+                
+                elif exploit_type == 'quantum_attack':
+                    result = exploiter.quantum_attack(
+                        target_link=parameters.get('target_link', 'qkd_link_001'),
+                        attack_type=parameters.get('attack_type', 'pns'),
+                        cve_id=parameters.get('cve_id', 'CVE-2026-ISAC-005'),
+                        le_mode=le_mode,
+                        warrant_id=warrant_id
+                    )
+                
+                else:  # ntn_isac_exploit
+                    result = exploiter.ntn_isac_exploit(
+                        satellite_id=parameters.get('satellite_id', 'LEO-001'),
+                        exploit_type=parameters.get('exploit_type', 'doppler_manipulation'),
+                        cve_id=parameters.get('cve_id', 'CVE-2026-ISAC-006'),
+                        le_mode=le_mode,
+                        warrant_id=warrant_id
+                    )
+                
+                # Convert result to dict
+                response = {
+                    'exploit_type': result.exploit_type,
+                    'success': result.success,
+                    'listening_enhanced': result.listening_enhanced,
+                    'sensing_leaked': result.sensing_leaked,
+                    'target_info': result.target_info,
+                    'timestamp': result.timestamp
+                }
+                
+                if result.evidence_hash:
+                    response['evidence_hash'] = result.evidence_hash
+                
+                self.logger.info(f"ISAC exploit completed: type={exploit_type}, success={result.success}")
+                return jsonify(response)
+                
+            except Exception as e:
+                self.logger.error(f"ISAC exploit error: {e}")
+                return jsonify({'error': f'Exploitation failed: {str(e)}'}), 500
+        
+        @app.route('/api/isac/sensing_data', methods=['GET'])
+        @csrf.exempt
+        @limiter.limit("20 per minute")
+        def isac_sensing_data():
+            """
+            Get recent ISAC sensing data
+            
+            Query Parameters:
+            - limit: Number of recent entries (default: 10, max: 100)
+            - mode: Filter by sensing mode (monostatic/bistatic/cooperative)
+            
+            Response:
+            {
+                "data": [
+                    {
+                        "mode": "monostatic",
+                        "range_m": 250.5,
+                        "velocity_mps": 15.2,
+                        "timestamp": 1704240000.0
+                    },
+                    ...
+                ],
+                "count": 10
+            }
+            """
+            try:
+                limit = request.args.get('limit', default=10, type=int)
+                limit = min(limit, 100)  # Cap at 100
+                
+                mode_filter = request.args.get('mode')
+                if mode_filter and mode_filter not in ['monostatic', 'bistatic', 'cooperative']:
+                    return jsonify({'error': 'Invalid mode filter'}), 400
+                
+                # In production, fetch from database
+                # For now, return mock data
+                data = []
+                for i in range(limit):
+                    entry = {
+                        'mode': mode_filter or 'monostatic',
+                        'range_m': np.random.uniform(50, 1000),
+                        'velocity_mps': np.random.uniform(0, 50),
+                        'angle_deg': np.random.uniform(-90, 90),
+                        'snr_db': np.random.uniform(10, 25),
+                        'timestamp': time.time() - i * 60
+                    }
+                    data.append(entry)
+                
+                return jsonify({
+                    'data': data,
+                    'count': len(data)
+                })
+                
+            except Exception as e:
+                self.logger.error(f"ISAC sensing data error: {e}")
+                return jsonify({'error': f'Data retrieval failed: {str(e)}'}), 500
+        
+        @app.route('/api/isac/statistics', methods=['GET'])
+        @csrf.exempt
+        @limiter.limit("20 per minute")
+        def isac_statistics():
+            """
+            Get ISAC monitoring and exploitation statistics
+            
+            Response:
+            {
+                "monitoring": {
+                    "total_sessions": 100,
+                    "monostatic_count": 50,
+                    "bistatic_count": 30,
+                    "cooperative_count": 20,
+                    "avg_range_m": 350.5,
+                    "avg_velocity_mps": 12.3,
+                    "avg_accuracy": 0.92,
+                    "privacy_breaches_detected": 5
+                },
+                "exploitation": {
+                    "total_exploits": 50,
+                    "waveform_attacks": 20,
+                    "ai_poisoning_attacks": 10,
+                    "privacy_breaches": 8,
+                    "quantum_attacks": 5,
+                    "ntn_exploits": 7,
+                    "success_count": 35,
+                    "success_rate": 0.70,
+                    "listening_enhancements": 25
+                }
+            }
+            """
+            try:
+                # Import ISAC modules
+                try:
+                    from falconone.monitoring.isac_monitor import ISACMonitor
+                    from falconone.exploit.isac_exploiter import ISACExploiter
+                except ImportError:
+                    return jsonify({'error': 'ISAC modules not available'}), 501
+                
+                # Get monitoring stats
+                monitor_config = {
+                    'isac_enabled': True,
+                    'modes': ['monostatic', 'bistatic', 'cooperative'],
+                    'frequency_default': 150e9,
+                    'sensing_resolution': 1.0,
+                    'max_targets': 10
+                }
+                monitor = ISACMonitor(None, monitor_config)
+                monitoring_stats = monitor.get_statistics()
+                
+                # Get exploitation stats
+                exploiter = ISACExploiter(None, None)
+                exploitation_stats = exploiter.get_statistics()
+                
+                return jsonify({
+                    'monitoring': monitoring_stats,
+                    'exploitation': exploitation_stats
+                })
+                
+            except Exception as e:
+                self.logger.error(f"ISAC statistics error: {e}")
+                return jsonify({'error': f'Statistics retrieval failed: {str(e)}'}), 500
+        
+        def _validate_warrant_for_isac(self, warrant_id: str) -> bool:
+            """
+            Validate LE warrant for ISAC operations
+            
+            Args:
+                warrant_id: Warrant identifier
+                
+            Returns:
+                True if warrant is valid and not expired
+            """
+            if not warrant_id:
+                return False
+            
+            # In production: Check warrant database, expiration, scope
+            # For now: Basic validation
+            if not warrant_id.startswith('WARRANT-'):
+                return False
+            
+            # Simulate warrant expiration check
+            if warrant_id in getattr(self, 'expired_warrants', []):
+                return False
+            
+            return True
+        
+        def _validate_warrant_for_ntn(self, warrant_id: str) -> bool:
+            """Validate warrant for NTN operations (helper method)"""
+            # In production, this would:
+            # 1. Query warrant database
+            # 2. Check expiration date
+            # 3. Verify jurisdiction covers NTN/satellite intercepts
+            # 4. Verify target_identifiers include satellite IDs
+            
+            # Simplified validation for now
+            if not warrant_id or len(warrant_id) < 10:
+                return False
+            
+            # Check if orchestrator has LE mode enabled
+            if hasattr(self, 'orchestrator') and self.orchestrator:
+                le_config = getattr(self.orchestrator.config, 'law_enforcement', {})
+                if not le_config.get('enabled', False):
+                    return False
+            
+            return True  # Placeholder - implement full validation in production
+        
         # ==================== v1.8.0 UNIFIED EXPLOIT API ====================
         # These endpoints integrate RANSacked CVEs with native FalconOne exploits
         

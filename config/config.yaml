@@ -45,6 +45,57 @@ sdr:
   gain: 40
   bandwidth: 20000000  # 20 MHz
 
+# ISAC (Integrated Sensing and Communications) - v1.9.0
+monitoring:
+  isac:
+    enabled: false  # Set true to activate ISAC monitoring/exploitation
+    modes:
+      - monostatic      # Same Tx/Rx (single node)
+      - bistatic        # Separate Tx/Rx (two nodes)
+      - cooperative     # Multi-node network sensing
+    frequency_default: 150e9  # 150 GHz (sub-THz band)
+    sensing_resolution: 1.0   # meters
+    max_targets: 10
+    waveform_types:
+      - OFDM           # Standard joint waveform
+      - DFT-s-OFDM     # Enhanced sensing resolution
+      - FMCW           # Radar-like (high resolution)
+    privacy_detection: true  # Detect unauthorized sensing
+    o_ran_integration:
+      e2sm_kpm: true   # E2SM KPM for sensing KPI extraction
+      e2sm_rc: true    # E2SM RC for ISAC control
+      ric_endpoint: http://localhost:8090/e2
+    quantum_security:
+      qkd_detection: true
+      quantum_attacks_enabled: false  # LE mode only
+    ntn_integration: true  # Integrate with 6G NTN satellites
+
+# Law Enforcement Mode (v1.8.1: Exploit-Enhanced Interception)
+law_enforcement:
+  enabled: false  # Enable LE mode with warrant validation
+  warrant_validation:
+    ocr_enabled: true  # OCR-based warrant document validation
+    ocr_retries: 3  # Retry OCR up to 3 times if validation fails
+    required_fields:  # Fields that must be present in warrant
+      - jurisdiction
+      - case_number
+      - authorized_by
+      - valid_until
+      - target_identifiers
+    warrant_storage_path: logs/warrants/  # Encrypted storage
+  exploit_chain_safeguards:
+    mandate_warrant_for_chains: true  # Require warrant for exploit-listen chains
+    hash_all_intercepts: true  # SHA-256 + timestamp all enhanced intercepts
+    immutable_evidence_log: true  # Append-only blockchain-style evidence chain
+    auto_redact_pii: true  # Redact IMSI/IMEI in logs (hash instead)
+  evidence_export:
+    format: forensic  # forensic (with chain of custody) or standard
+    blockchain_enabled: false  # Optional blockchain evidence chain
+    retention_days: 90  # Auto-delete after 90 days
+  fallback_mode:
+    if_warrant_invalid: passive_scan  # Fallback to passive monitoring if warrant fails
+    timeout_seconds: 300  # Warrant check timeout
+
 # Generation-Specific Monitoring
 monitoring:
   profiling_enabled: true  # v1.7.0: Enable Prometheus/Grafana profiling
@@ -72,6 +123,44 @@ monitoring:
     bands:
       - CDMA800
       - CDMA1900
+  
+  # 6G NTN (Non-Terrestrial Networks) - v1.9.0
+  ntn_6g:
+    enabled: false  # Experimental: Enable 6G NTN monitoring
+    satellite_types:  # Monitor multiple satellite constellations
+      - LEO  # Low Earth Orbit (Starlink-like, 550-1200km)
+      - MEO  # Medium Earth Orbit (O3b-like, 8000km)
+      - GEO  # Geostationary (36000km)
+      - HAPS  # High Altitude Platform Stations (20km)
+      - UAV  # UAV relay nodes (1-10km)
+    sub_thz_bands:  # FR3 experimental bands (100-300 GHz)
+      FR3_LOW: [100e9, 150e9]  # 100-150 GHz (D-band)
+      FR3_MID: [150e9, 200e9]  # 150-200 GHz
+      FR3_HIGH: [200e9, 300e9]  # 200-300 GHz
+    frequency_default: 150e9  # Default 150 GHz
+    doppler_threshold: 10000  # Hz - compensate if shift > 10 kHz
+    isac_enabled: true  # Integrated Sensing and Communications
+    sensing_resolution: 10.0  # meters
+    ground_station:
+      latitude: 0.0  # Set your location
+      longitude: 0.0
+      altitude_m: 0.0
+    ephemeris:
+      use_astropy: true  # Use astropy for precise orbital calculations
+      tle_source: celestrak  # TLE data source (celestrak, space-track)
+      update_interval_hours: 6  # Update TLE data every 6 hours
+    quantum_security:
+      qkd_detection: true  # Detect Quantum Key Distribution
+      quantum_attacks_enabled: false  # Enable quantum cryptanalysis
+    oran_integration:
+      ric_endpoint: http://localhost:8080  # O-RAN RIC endpoint
+      xapp_deployment: true  # Deploy temporary xApps for exploits
+      e2_interface: true  # Enable E2 control interface
+      a1_interface: true  # Enable A1 policy interface
+    ai_orchestration:
+      handover_prediction: true  # ML-based handover prediction
+      beam_management: true  # AI beam tracking
+      resource_allocation: true  # AI resource scheduling
     tools:
       - gr-cdma
   

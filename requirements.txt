@@ -19,7 +19,7 @@ requests>=2.31.0
 
 # SDR & Signal Processing
 numpy>=1.24.0
-scipy>=1.11.0  # v1.4 Phase 3: ISAC/JCAS signal processing
+scipy>=1.11.0  # v1.4 Phase 3: ISAC/JCAS signal processing, v1.9.0: ISAC waveform analysis (chirp, FFT)
 
 # AI/ML Frameworks (v1.5: Transformer support)
 tensorflow>=2.14.0  # v1.5: Multi-head attention, transformer layers
@@ -94,6 +94,16 @@ pytest-cov>=4.1.0  # Test coverage reporting
 # Security & Compliance (v1.7.0 Phase 1)
 cryptography>=41.0.0  # For encryption and security auditing
 trivy>=0.48.0  # Container vulnerability scanning (install via system package manager)
+
+# Law Enforcement Mode (v1.8.1)
+pytesseract>=0.3.10  # OCR for warrant document validation
+Pillow>=10.0.0  # Image processing for OCR
+web3>=6.11.0  # Blockchain evidence chain
+
+# 6G NTN (Non-Terrestrial Networks) - v1.9.0
+astropy>=5.3.0  # Orbital mechanics and ephemeris calculations
+qutip>=4.7.0  # Quantum simulation for QKD attacks
+web3>=6.11.0  # Optional blockchain evidence chain integration
 
 # Sustainability & Monitoring
 codecarbon>=2.2.0

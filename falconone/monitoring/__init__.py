@@ -9,6 +9,8 @@ from .pdcch_tracker import PDCCHTracker
 from .suci_fingerprinter import SUCIFingerprinter
 from .vonr_interceptor import VoNRInterceptor
 from .aiot_monitor import AmbientIoTMonitor
+from .ntn_6g_monitor import NTN6GMonitor  # v1.9.0: 6G NTN support
+from .isac_monitor import ISACMonitor  # v1.9.0: ISAC monitoring
 
 __all__ = [
     'GSMMonitor',
@@ -20,5 +22,7 @@ __all__ = [
     'PDCCHTracker',
     'SUCIFingerprinter',
     'VoNRInterceptor',
-    'AmbientIoTMonitor'
+    'AmbientIoTMonitor',
+    'NTN6GMonitor',  # v1.9.0
+    'ISACMonitor',  # v1.9.0
 ]

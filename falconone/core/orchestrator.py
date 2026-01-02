@@ -81,6 +81,11 @@ class FalconOneOrchestrator:
         self.federated_coordinator = None
         self.kpi_monitor = None
         
+        # LE Mode components (v1.8.1)
+        self.evidence_chain = None
+        self.intercept_enhancer = None
+        self._initialize_le_mode()
+        
         # Safety checks
         self._perform_safety_checks()
         
@@ -135,6 +140,37 @@ class FalconOneOrchestrator:
         
         return False
     
+    def _initialize_le_mode(self):
+        """Initialize Law Enforcement Mode components (v1.8.1)"""
+        # Check if LE mode is enabled in config
+        if not self.config.get('law_enforcement.enabled', False):
+            self.logger.info("LE Mode disabled in configuration")
+            return
+        
+        try:
+            from ..utils.evidence_chain import EvidenceChain
+            from ..le.intercept_enhancer import InterceptEnhancer
+            
+            # Initialize evidence chain
+            self.logger.info("Initializing Evidence Chain (LE Mode)...")
+            self.evidence_chain = EvidenceChain(self.config.data, self.root_logger)
+            
+            # Initialize intercept enhancer (orchestrator linkage deferred until initialize_components)
+            self.logger.info("Initializing Intercept Enhancer (LE Mode)...")
+            self.intercept_enhancer = InterceptEnhancer(
+                self.config.data, 
+                self.root_logger,
+                orchestrator=None  # Will link after exploit engine initialized
+            )
+            
+            self.logger.info("✓ LE Mode components initialized (exploit linkage pending)")
+            self.audit_logger.log_event('LE_MODE_INIT', 'Law Enforcement Mode components initialized')
+            
+        except Exception as e:
+            self.logger.error(f"Failed to initialize LE Mode: {e}")
+            self.logger.warning("Continuing without LE Mode capabilities")
+
+    
     def initialize_components(self):
         """Initialize all system components (lazy initialization with complete integration)"""
         if self.components_initialized:
@@ -162,6 +198,14 @@ class FalconOneOrchestrator:
             self.logger.info("Initializing Exploitation Engine...")
             self.exploit_engine = ExploitationEngine(self.config, self.root_logger)
             self.components['exploit_engine'] = self.exploit_engine
+            
+            # 3b. Link LE Mode intercept enhancer to orchestrator (v1.8.1)
+            if self.intercept_enhancer is not None:
+                self.logger.info("Linking Intercept Enhancer to Orchestrator...")
+                self.intercept_enhancer.orchestrator = self
+                self.components['intercept_enhancer'] = self.intercept_enhancer
+                self.components['evidence_chain'] = self.evidence_chain
+                self.logger.info("✓ LE Mode fully integrated with orchestrator")
             
             # 4. Try to initialize RIC Optimizer
             try:
