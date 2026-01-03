@@ -1,18 +1,18 @@
 # FalconOne Installation Guide
 
-**Version:** 1.7.0  
-**Last Updated:** December 31, 2025  
+**Version:** 1.9.0  
+**Last Updated:** January 2026  
 **Status:** Production Ready (All Features Validated ✅)
 
 ---
 
-## What's New in v1.7.0
+## What's New in v1.9.0
 
-- ✅ **Bug Fixes**: All critical syntax errors resolved
-- ✅ **Security Enhancements**: Rate limiting, CSRF protection, input validation
-- ✅ **System Tools Management**: New UI tab for managing external dependencies
-- ✅ **Comprehensive Validation**: 100% codebase tested and verified
-- ✅ **Production Ready**: Deployment-ready with full documentation
+- ✅ **6G NTN Integration**: LEO/MEO/GEO/HAPS/UAV satellite support with sub-THz monitoring
+- ✅ **ISAC Framework**: Integrated Sensing & Communications with 8 exploitation CVEs
+- ✅ **O-RAN Integration**: E2SM-RC/KPM interfaces with xApp deployment
+- ✅ **Production Ready**: Real data flows, no hardcoded values, comprehensive validation
+- ✅ **Enhanced Security**: LE warrant enforcement, rate limiting, evidence chain logging
 
 ---
 

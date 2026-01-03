@@ -272,9 +272,7 @@ class ISACMonitor:
         # Clamp to mode limits
         range_m = np.clip(range_m, mode_params['min_range_m'], mode_params['max_range_m'])
         
-        # Add resolution-based noise
-        range_m += np.random.normal(0, self.sensing_resolution)
-        
+        # Return measured range (no synthetic noise in production)
         return max(range_m, mode_params['min_range_m'])
     
     def _estimate_velocity(self, samples: np.ndarray, frequency: float) -> Tuple[float, float]:
@@ -297,12 +295,14 @@ class ISACMonitor:
     
     def _estimate_angle(self, samples: np.ndarray, mode: str) -> float:
         """Estimate angle-of-arrival (for bistatic/cooperative)"""
-        # Phase-based AoA (simplified - assumes 2 antennas)
+        # Phase-based AoA (requires proper multi-antenna setup)
         if mode == 'cooperative':
-            # Multi-antenna MUSIC/ESPRIT (simplified as random in range)
-            angle_deg = np.random.uniform(-90, 90)
+            # Production: Requires MUSIC/ESPRIT with multi-antenna array
+            # For now, return 0.0 and log warning (TODO: implement full MUSIC algorithm)
+            logger.warning("Cooperative AoA estimation requires multi-antenna MUSIC/ESPRIT - feature pending")
+            return 0.0  # Placeholder - proper implementation requires scipy.linalg eigenvalue decomposition
         else:
-            # Bistatic: Phase difference
+            # Bistatic: Phase difference between first and last sample
             phase_diff = np.angle(samples[0]) - np.angle(samples[-1])
             angle_deg = np.degrees(phase_diff)
         

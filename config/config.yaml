@@ -64,7 +64,8 @@ monitoring:
     o_ran_integration:
       e2sm_kpm: true   # E2SM KPM for sensing KPI extraction
       e2sm_rc: true    # E2SM RC for ISAC control
-      ric_endpoint: http://localhost:8090/e2
+      # Production: Set ORAN_RIC_ENDPOINT env var (e.g., http://ric.prod.example.com:8090/e2)
+      ric_endpoint: ${ORAN_RIC_ENDPOINT:-http://localhost:8090/e2}
     quantum_security:
       qkd_detection: true
       quantum_attacks_enabled: false  # LE mode only
@@ -153,7 +154,8 @@ monitoring:
       qkd_detection: true  # Detect Quantum Key Distribution
       quantum_attacks_enabled: false  # Enable quantum cryptanalysis
     oran_integration:
-      ric_endpoint: http://localhost:8080  # O-RAN RIC endpoint
+      # Production: Set ORAN_RIC_ENDPOINT_NTN environment variable
+      ric_endpoint: ${ORAN_RIC_ENDPOINT_NTN:-http://localhost:8080}  # O-RAN RIC endpoint
       xapp_deployment: true  # Deploy temporary xApps for exploits
       e2_interface: true  # Enable E2 control interface
       a1_interface: true  # Enable A1 policy interface

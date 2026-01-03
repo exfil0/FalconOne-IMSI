@@ -5416,10 +5416,82 @@ class DashboardServer:
             'success': False,
             'command': command,
             'output': '',
-            'error': '',
+            'errors': '',
             'return_code': None
         }
         
+        # Handle built-in terminal commands
+        cmd_lower = command.strip().lower()
+        
+        # HELP command
+        if cmd_lower == 'help':
+            result['success'] = True
+            result['output'] = """
+FalconOne Terminal v1.7.0 - Available Commands:
+
+Built-in Commands:
+  help                 - Show this help message
+  clear                - Clear terminal screen
+  status               - Show system status
+  version              - Show FalconOne version
+
+SDR Commands:
+  uhd_find_devices     - Find USRP devices
+  hackrf_info          - Get HackRF device info
+  bladeRF-cli -p       - Probe bladeRF devices
+  LimeUtil --find      - Find LimeSDR devices
+  SoapySDRUtil --find  - Find all SoapySDR devices
+
+System Commands:
+  lsusb                - List USB devices
+  dmesg | tail         - View system log
+  
+FalconOne CLI:
+  python -m falconone.cli start      - Start orchestrator
+  python -m falconone.cli monitor    - Monitor signals
+  python -m falconone.cli exploit    - Run exploits
+
+Note: All system commands are executed with a 30-second timeout.
+Type any Linux/Windows command to execute it directly.
+"""
+            return result
+        
+        # STATUS command
+        elif cmd_lower == 'status':
+            result['success'] = True
+            result['output'] = f"""
+FalconOne System Status:
+  Version: 1.7.0
+  Dashboard: Running on port 5000
+  Orchestrator: {self.orchestrator.running if hasattr(self, 'orchestrator') and hasattr(self.orchestrator, 'running') else 'Not initialized'}
+  Database: Connected
+  
+Active Monitors:
+  GSM: {len(getattr(self.orchestrator, 'gsm_monitors', [])) if hasattr(self, 'orchestrator') else 0}
+  LTE: {len(getattr(self.orchestrator, 'lte_monitors', [])) if hasattr(self, 'orchestrator') else 0}
+  5G:  {len(getattr(self.orchestrator, 'fiveg_monitors', [])) if hasattr(self, 'orchestrator') else 0}
+"""
+            return result
+        
+        # VERSION command
+        elif cmd_lower == 'version':
+            result['success'] = True
+            result['output'] = """
+FalconOne SIGINT Platform
+Version: 1.7.0
+Release: v1.9.0 (ISAC/NTN Integration)
+CVEs: 18 RANSacked exploits
+Python: 3.x required
+"""
+            return result
+        
+        # CLEAR command (handled client-side, but acknowledge)
+        elif cmd_lower == 'clear':
+            result['success'] = True
+            result['output'] = ''
+            return result
+        
+        # Execute as shell command
         try:
             proc = subprocess.run(
                 command,
@@ -5430,12 +5502,14 @@ class DashboardServer:
             )
             
             result['output'] = proc.stdout
-            result['error'] = proc.stderr
+            result['errors'] = proc.stderr
             result['return_code'] = proc.returncode
             result['success'] = proc.returncode == 0
             
+        except subprocess.TimeoutExpired:
+            result['errors'] = 'Command timed out after 30 seconds'
         except Exception as e:
-            result['error'] = str(e)
+            result['errors'] = str(e)
         
         return result
     

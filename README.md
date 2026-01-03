@@ -510,6 +510,66 @@ This glossary provides definitions for key terms used throughout the blueprint. 
 - **YateBTS:** An open-source GSM base transceiver station (BTS) software for creating active GSM networks, useful for IMSI catching in lab setups (see Section 6 for installation).
 - **OpenBTS:** An alternative open-source GSM BTS software, enabling active network simulation and integration with SDR hardware for monitoring and testing (see Section 6 for installation).
 
+## 🚀 Production Deployment
+
+**For production deployment**, see the comprehensive [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) guide which covers:
+
+- **Environment Variables**: Required security keys (FALCONONE_SECRET_KEY, FALCONONE_DB_KEY, SIGNAL_BUS_KEY)
+- **O-RAN Integration**: Configure ORAN_RIC_ENDPOINT and ORAN_RIC_ENDPOINT_NTN
+- **External APIs**: OpenCellID API key for tower discovery, Space-Track for satellite TLE data
+- **Configuration**: Production settings in config.yaml (encryption, logging, security)
+- **Database**: SQLCipher encrypted database setup and backup strategies
+- **SDR Setup**: USRP calibration, frequency scanning validation
+- **Security Hardening**: Firewall rules, SSL/TLS, non-root execution, rate limiting
+- **Monitoring**: Log rotation, Prometheus metrics, health checks
+- **Troubleshooting**: Common issues and solutions
+
+### Quick Production Validation
+
+Run the environment validator before deployment:
+
+```bash
+# Validate all production requirements
+python validate_production_env.py
+
+# Expected output:
+# ✅ VALIDATION PASSED - Ready for production deployment
+# or
+# ❌ VALIDATION FAILED - Fix errors before deploying
+```
+
+**Critical Environment Variables** (minimum required):
+
+```bash
+# Generate and set secret key (REQUIRED)
+export FALCONONE_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+
+# Set database encryption key (REQUIRED)
+export FALCONONE_DB_KEY="your-secure-encryption-key-here"
+
+# Set production environment
+export FALCONONE_ENV="production"
+export FALCONONE_LOG_LEVEL="WARNING"
+
+# Configure O-RAN RIC endpoints (if using ISAC/NTN)
+export ORAN_RIC_ENDPOINT="http://ric.prod.example.com:8090/e2"
+export ORAN_RIC_ENDPOINT_NTN="http://ric-ntn.prod.example.com:8080"
+
+# OpenCellID API for tower discovery (optional but recommended)
+export OPENCELLID_API_KEY="your-opencellid-api-key"
+```
+
+**Production Checklist**:
+- ✅ Run `python validate_production_env.py` (all checks pass)
+- ✅ Run `python -m falconone.tests.security_scan` (no critical issues)
+- ✅ Run `pytest falconone/tests/` (87%+ coverage)
+- ✅ Set `system.environment: production` in config.yaml
+- ✅ Enable `signal_bus.enable_encryption: true` in config.yaml
+- ✅ Configure firewall rules (only allow dashboard port from internal network)
+- ✅ Setup SSL/TLS reverse proxy (nginx recommended)
+- ✅ Run as non-root user with systemd service
+- ✅ Configure log rotation and monitoring
+
 ## Table of Contents
 1. [Introduction](#1-introduction)
 2. [Blueprint Overview](#2-blueprint-overview)

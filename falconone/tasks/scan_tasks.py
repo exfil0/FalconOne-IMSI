@@ -6,6 +6,8 @@ Asynchronous scanning tasks for frequency ranges and network discovery
 from celery import Task
 from .celery_app import celery_app
 import logging
+import os
+import numpy as np
 from typing import Dict, List, Any, Optional
 import time
 
@@ -76,21 +78,35 @@ def scan_frequency_range(self, start_freq: float, end_freq: float,
                 'status': f'Scanning {current_freq} MHz...'
             })
             
-            # Simulate signal detection
-            # In production: Use SDR to scan frequency and detect signals
-            # Example: sdr.set_center_freq(current_freq * 1e6)
-            #          samples = sdr.read_samples()
-            #          analyze_samples(samples)
-            
-            # Placeholder signal detection
-            if freq_count % 10 == 0:  # Simulate finding signals
-                results['signals_detected'].append({
-                    'frequency': current_freq,
-                    'power': -50.0,  # dBm
-                    'bandwidth': 5.0,  # MHz
-                    'modulation': 'OFDM',
-                    'generation': '5G' if current_freq > 3000 else 'LTE'
-                })
+            # Signal detection: Use SDR if available, otherwise skip
+            # Production requires: sdr_manager.set_center_freq(), read_samples(), analyze_spectrum()
+            try:
+                # Attempt real SDR scanning if manager available
+                from falconone.sdr.sdr_layer import get_sdr_manager
+                sdr_mgr = get_sdr_manager()
+                
+                if sdr_mgr and sdr_mgr.is_active():
+                    sdr_mgr.set_center_freq(current_freq * 1e6)
+                    samples = sdr_mgr.read_samples(num_samples=8192)
+                    
+                    # Basic power detection
+                    power_dbm = 10 * np.log10(np.mean(np.abs(samples)**2) + 1e-12)
+                    
+                    if power_dbm > -80:  # Signal detected
+                        results['signals_detected'].append({
+                            'frequency': current_freq,
+                            'power': power_dbm,
+                            'bandwidth': 5.0,  # MHz (requires FFT analysis)
+                            'modulation': 'unknown',  # Requires classifier
+                            'generation': '5G' if current_freq > 3000 else 'LTE'
+                        })
+                else:
+                    # No SDR available - log warning
+                    if freq_count == 0:
+                        logger.warning("No SDR available for frequency scanning - results will be empty")
+            except Exception as e:
+                if freq_count == 0:
+                    logger.error(f"SDR scanning error: {e}")
             
             current_freq += step
             time.sleep(0.01)  # Simulate processing time
@@ -146,23 +162,51 @@ def scan_cell_towers(self, latitude: float, longitude: float,
             'start_time': time.time()
         }
         
-        # Simulate tower discovery
-        # In production: Query OpenCellID API, integrate with SDR scanning
-        for gen in generations:
-            time.sleep(0.5)  # Simulate API/scan time
-            
-            # Placeholder tower data
-            results['towers_found'].append({
-                'generation': gen,
-                'cell_id': f"{gen}-CELL-{len(results['towers_found'])+1}",
-                'mcc': '310',  # US
-                'mnc': '260',  # T-Mobile (example)
-                'frequency': 2100.0 if gen == 'LTE' else 3500.0,
-                'latitude': latitude + (0.01 * len(results['towers_found'])),
-                'longitude': longitude + (0.01 * len(results['towers_found'])),
-                'signal_strength': -70.0,  # dBm
-                'distance_km': radius_km * 0.5
-            })
+        # Tower discovery: Query OpenCellID API if available
+        # Production: Requires OPENCELLID_API_KEY environment variable
+        api_key = os.getenv('OPENCELLID_API_KEY')
+        
+        if api_key:
+            # Real OpenCellID API query
+            import requests
+            for gen in generations:
+                try:
+                    # Query OpenCellID API (requires valid coordinates)
+                    response = requests.get(
+                        'https://opencellid.org/cell/getInArea',
+                        params={
+                            'key': api_key,
+                            'lat': latitude,
+                            'lon': longitude,
+                            'radius': radius_km * 1000,  # meters
+                            'format': 'json'
+                        },
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        cells = response.json().get('cells', [])
+                        for cell in cells:
+                            results['towers_found'].append({
+                                'generation': gen,
+                                'cell_id': cell.get('cell'),
+                                'mcc': cell.get('mcc'),
+                                'mnc': cell.get('mnc'),
+                                'frequency': cell.get('averageSignal', 0),
+                                'latitude': cell.get('lat'),
+                                'longitude': cell.get('lon'),
+                                'signal_strength': cell.get('averageSignal', -80),
+                                'distance_km': 0  # Calculate if needed
+                            })
+                except Exception as e:
+                    logger.error(f"OpenCellID API error for {gen}: {e}")
+                    
+            time.sleep(0.5)  # Rate limiting
+        else:
+            # No API key - return empty results with warning
+            logger.warning("OPENCELLID_API_KEY not set - tower discovery disabled. Set environment variable for production.")
+            results['towers_found'] = []
+            results['warning'] = 'OpenCellID API key required for real tower data'
         
         results['end_time'] = time.time()
         results['duration'] = results['end_time'] - results['start_time']
@@ -202,23 +246,32 @@ def scan_network_discovery(self, scan_profile: str = 'full') -> Dict[str, Any]:
             'start_time': time.time()
         }
         
-        # Simulate network discovery phases
+        # Network discovery: Requires SDR scanning for real networks
+        logger.warning("Network discovery requires SDR integration - placeholder data only")
+        
+        # Note: Production requires SDR manager to scan each generation's frequency bands
+        # and decode broadcast channels (SI, SIB) to extract network info
+        
         phases = ['GSM', 'UMTS', 'LTE', '5G', '6G']
         
         for i, phase in enumerate(phases):
             self.update_state(state='PROGRESS', meta={
-                'status': f'Scanning {phase} networks...',
+                'status': f'Scanning {phase} networks... (requires SDR)',
                 'progress': int((i / len(phases)) * 100)
             })
             
             time.sleep(1)  # Simulate scan time
             
-            # Placeholder network data
+            # Production note: Real implementation requires:
+            # 1. SDR frequency scanning per generation (e.g., GSM: 850/900/1800/1900 MHz)
+            # 2. Decode BCCH/SI for GSM, MIB/SIB for LTE/5G
+            # 3. Extract PLMN IDs, cell IDs, operator info
             results['networks_discovered'].append({
                 'generation': phase,
-                'network_count': 2 + i,
-                'cell_ids': [f"{phase}-CELL-{j+1}" for j in range(2+i)],
-                'operators': ['Operator-A', 'Operator-B']
+                'network_count': 0,  # Real: count from SDR scan
+                'cell_ids': [],  # Real: extract from broadcast channels
+                'operators': [],  # Real: decode from PLMN
+                'note': 'SDR integration required for real data'
             })
         
         results['end_time'] = time.time()
