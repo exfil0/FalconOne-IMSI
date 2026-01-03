@@ -176,42 +176,230 @@ class SignalClassifier:
     
     def classify(self, signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Classify signals to determine cellular generation
+        Classify signals to determine cellular generation.
+        
+        Uses CNN model when TensorFlow is available, falls back to
+        heuristic-based classification otherwise.
         
         Args:
-            signals: List of signal data dictionaries
+            signals: List of signal data dictionaries with keys:
+                - 'iq_samples': np.ndarray of IQ data (N, 2) or complex
+                - 'frequency': Center frequency in Hz (optional)
+                - 'bandwidth': Signal bandwidth in Hz (optional)
+                - 'id': Signal identifier (optional)
             
         Returns:
-            Classification results
+            List of classification results with keys:
+                - 'signal_id': Input signal ID
+                - 'predicted_generation': One of self.labels
+                - 'confidence': Prediction confidence (0-1)
+                - 'method': 'cnn' or 'heuristic'
         """
-        if not TF_AVAILABLE:
-            return []
-        
-        # Lazy load models on first classification
-        self._ensure_models_loaded()
-        
-        if not self.model:
-            return []
-        
         results = []
         
         for signal in signals:
             try:
-                # Extract IQ samples (if available)
-                # Preprocess and classify
-                # This is a placeholder - actual implementation would process real SDR data
+                signal_id = signal.get('id', id(signal))
                 
-                result = {
-                    'signal_id': signal.get('id'),
-                    'predicted_generation': 'Unknown',
-                    'confidence': 0.0
-                }
+                # Check for IQ samples
+                iq_samples = signal.get('iq_samples')
+                frequency = signal.get('frequency', 0)
+                bandwidth = signal.get('bandwidth', 0)
+                
+                # Use TensorFlow model if available
+                if TF_AVAILABLE and self.model is not None:
+                    result = self._classify_with_model(signal_id, iq_samples, frequency)
+                else:
+                    # Fallback to heuristic classifier
+                    result = self._classify_heuristic(signal_id, frequency, bandwidth)
+                
                 results.append(result)
                 
             except Exception as e:
                 self.logger.error(f"Classification error: {e}")
+                results.append({
+                    'signal_id': signal.get('id', 'unknown'),
+                    'predicted_generation': 'Unknown',
+                    'confidence': 0.0,
+                    'method': 'error',
+                    'error': str(e)
+                })
         
         return results
+    
+    def _classify_with_model(self, signal_id: Any, iq_samples: Optional[np.ndarray],
+                             frequency: float) -> Dict[str, Any]:
+        """
+        Classify signal using trained CNN model.
+        
+        Args:
+            signal_id: Signal identifier
+            iq_samples: IQ data array
+            frequency: Center frequency in Hz
+            
+        Returns:
+            Classification result dictionary
+        """
+        # Lazy load models on first classification
+        self._ensure_models_loaded()
+        
+        if self.model is None:
+            return self._classify_heuristic(signal_id, frequency, 0)
+        
+        try:
+            # Preprocess IQ samples
+            processed = self._preprocess_signal(iq_samples)
+            
+            if processed is None:
+                return self._classify_heuristic(signal_id, frequency, 0)
+            
+            # Run inference
+            predictions = self.model.predict(processed, verbose=0)
+            predicted_class = np.argmax(predictions[0])
+            confidence = float(predictions[0][predicted_class])
+            
+            return {
+                'signal_id': signal_id,
+                'predicted_generation': self.labels[predicted_class],
+                'confidence': confidence,
+                'method': 'cnn',
+                'raw_probabilities': {
+                    label: float(prob) 
+                    for label, prob in zip(self.labels, predictions[0])
+                }
+            }
+            
+        except Exception as e:
+            self.logger.warning(f"Model inference failed: {e}, using heuristic")
+            return self._classify_heuristic(signal_id, frequency, 0)
+    
+    def _preprocess_signal(self, iq_samples: Optional[np.ndarray]) -> Optional[np.ndarray]:
+        """
+        Preprocess IQ samples for CNN input.
+        
+        Args:
+            iq_samples: Raw IQ data (complex array or Nx2 real array)
+            
+        Returns:
+            Processed array of shape (1, 1024, 2) or None if invalid
+        """
+        if iq_samples is None or len(iq_samples) == 0:
+            return None
+        
+        try:
+            # Convert complex to I/Q if needed
+            if np.iscomplexobj(iq_samples):
+                iq_data = np.column_stack([iq_samples.real, iq_samples.imag])
+            elif iq_samples.ndim == 1:
+                # Assume alternating I/Q
+                iq_data = iq_samples.reshape(-1, 2)
+            else:
+                iq_data = iq_samples
+            
+            # Ensure correct length (1024 samples)
+            target_len = 1024
+            if len(iq_data) < target_len:
+                # Pad with zeros
+                padding = np.zeros((target_len - len(iq_data), 2))
+                iq_data = np.vstack([iq_data, padding])
+            elif len(iq_data) > target_len:
+                # Truncate
+                iq_data = iq_data[:target_len]
+            
+            # Normalize
+            max_val = np.max(np.abs(iq_data))
+            if max_val > 0:
+                iq_data = iq_data / max_val
+            
+            # Add batch dimension
+            return iq_data.reshape(1, target_len, 2).astype(np.float32)
+            
+        except Exception as e:
+            self.logger.warning(f"Signal preprocessing failed: {e}")
+            return None
+    
+    def _classify_heuristic(self, signal_id: Any, frequency: float, 
+                            bandwidth: float) -> Dict[str, Any]:
+        """
+        Fallback heuristic classifier based on frequency bands.
+        
+        Uses frequency and bandwidth to estimate cellular generation
+        when TensorFlow is unavailable or model inference fails.
+        
+        Args:
+            signal_id: Signal identifier
+            frequency: Center frequency in Hz
+            bandwidth: Signal bandwidth in Hz
+            
+        Returns:
+            Classification result dictionary
+        """
+        freq_mhz = frequency / 1e6 if frequency else 0
+        bw_mhz = bandwidth / 1e6 if bandwidth else 0
+        
+        # Heuristic frequency-based classification
+        generation = 'Unknown'
+        confidence = 0.5
+        
+        if freq_mhz > 0:
+            # NTN LEO: L-band and S-band (check first - specific satellite bands)
+            if 1518 <= freq_mhz <= 1559 or 1980 <= freq_mhz <= 2010:
+                generation = 'NTN-LEO'
+                confidence = 0.7
+            
+            # NTN GEO: C-band and Ku-band
+            elif 3700 <= freq_mhz <= 4200 or 10700 <= freq_mhz <= 12750:
+                generation = 'NTN-GEO'
+                confidence = 0.65
+            
+            # GSM: 850, 900, 1800, 1900 MHz with narrow bandwidth (~200 kHz)
+            elif (850 <= freq_mhz <= 960 or 1710 <= freq_mhz <= 1990):
+                if bw_mhz < 1 or bw_mhz == 0:
+                    generation = 'GSM'
+                    confidence = 0.7
+                elif bw_mhz <= 5:
+                    generation = 'UMTS'
+                    confidence = 0.65
+                else:
+                    generation = 'LTE'
+                    confidence = 0.6
+            
+            # CDMA: 800, 1900 MHz
+            elif 800 <= freq_mhz <= 894 or 1850 <= freq_mhz <= 1995:
+                if bw_mhz <= 1.25:
+                    generation = 'CDMA'
+                    confidence = 0.6
+            
+            # LTE: Various bands, wider bandwidth (1.4-20 MHz)
+            elif 700 <= freq_mhz <= 2700:
+                if 1.4 <= bw_mhz <= 20:
+                    generation = 'LTE'
+                    confidence = 0.7
+            
+            # 5G NR FR1: 410 MHz - 7125 MHz
+            elif 2500 <= freq_mhz <= 7125:
+                if bw_mhz >= 20:
+                    generation = '5G'
+                    confidence = 0.75
+            
+            # 5G NR FR2 (mmWave): 24-52 GHz
+            elif 24000 <= freq_mhz <= 52000:
+                generation = '5G'
+                confidence = 0.85
+            
+            # 6G Sub-THz: 100+ GHz
+            elif freq_mhz >= 100000:
+                generation = '6G'
+                confidence = 0.8
+        
+        return {
+            'signal_id': signal_id,
+            'predicted_generation': generation,
+            'confidence': confidence,
+            'method': 'heuristic',
+            'frequency_mhz': freq_mhz,
+            'bandwidth_mhz': bw_mhz
+        }
     
     def train(self, training_data: np.ndarray, labels: np.ndarray, epochs: int = 50):
         """
@@ -521,7 +709,7 @@ class SignalClassifier:
                 if i not in remove_indices
             ]
     
-    def _compute_ewc_penalty(self, weight_decay: float) -> tf.Tensor:
+    def _compute_ewc_penalty(self, weight_decay: float) -> "tf.Tensor | None":
         """
         Compute Elastic Weight Consolidation penalty (v1.9.2).
         
@@ -1880,7 +2068,7 @@ class SignalClassifier:
             
             # Build model if not exists
             if self.model is None:
-                self._load_models()
+                self._ensure_models_loaded()  # Fixed: was _load_models
             
             # Apply quantization-aware training
             quantize_model = tfmot.quantization.keras.quantize_model

@@ -58,6 +58,7 @@ class GSMMonitor:
         self.running = False
         self.capture_thread = None
         self.data_queue = Queue()
+        self.captured_data = Queue()  # Queue for parsed capture results
         
         # GSM configuration
         self.bands = config.get('monitoring.gsm.bands', ['GSM900', 'GSM1800'])
@@ -464,6 +465,14 @@ class GSMMonitor:
         
         try:
             # Launch grgsm_livemon with GSMTAP output
+            # Get device type safely from sdr_manager
+            device_type = 'rtlsdr'  # Default fallback
+            if self.sdr_manager:
+                if hasattr(self.sdr_manager, 'get_device_type'):
+                    device_type = self.sdr_manager.get_device_type()
+                elif hasattr(self.sdr_manager, 'active_device'):
+                    device_type = getattr(self.sdr_manager.active_device, 'device_type', 'rtlsdr')
+            
             cmd = [
                 'grgsm_livemon',
                 '-f', str(freq),  # Frequency in Hz
@@ -471,7 +480,7 @@ class GSMMonitor:
                 '-s', '2000000',  # Sample rate 2 MHz
                 '-g', str(self.config.get('sdr.rx_gain', 40)),
                 '-p', str(self.config.get('gsm.ppm', 0)),
-                '--args', f"driver={self.sdr.get_device_type()}",
+                '--args', f"driver={device_type}",
                 '-o', pcap_file,
                 '-T', '3',  # Capture for 3 seconds
             ]

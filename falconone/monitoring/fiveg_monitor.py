@@ -49,6 +49,10 @@ class FiveGMonitor:
         self.bands = config.get('monitoring.5g.bands', ['n78', 'n79'])
         self.tools = config.get('monitoring.5g.tools', ['srsRAN Project', 'Sni5Gect'])
         
+        # 5G NR configuration (v1.9.2 - Initialize missing attributes)
+        self.nrarfcn = config.get('monitoring.5g.nrarfcn', 620000)  # Default n78 band
+        self.scs = config.get('monitoring.5g.scs', 30)  # Subcarrier spacing in kHz
+        
         self.captured_suci = set()
         self.captured_guti = set()
         self.captured_imsi = set()  # From de-concealment
@@ -93,10 +97,18 @@ class FiveGMonitor:
         try:
             pcap_file = f"/tmp/5g_capture_{int(time.time())}.pcap"
             
+            # Get device type safely from sdr_manager
+            device_type = 'uhd'  # Default for 5G (USRP)
+            if self.sdr_manager:
+                if hasattr(self.sdr_manager, 'get_device_type'):
+                    device_type = self.sdr_manager.get_device_type()
+                elif hasattr(self.sdr_manager, 'active_device'):
+                    device_type = getattr(self.sdr_manager.active_device, 'device_type', 'uhd')
+            
             # Sni5Gect command for passive 5G NR sniffing
             cmd = [
                 'Sni5Gect',
-                '-d', self.sdr.get_device_type(),
+                '-d', device_type,
                 '-g', str(self.config.get('sdr.rx_gain', 40)),
                 '-f', str(self.nrarfcn),
                 '-b', str(self.scs),  # Subcarrier spacing
@@ -149,6 +161,14 @@ class FiveGMonitor:
             config_file = "/tmp/srsran_gnb.yml"
             pcap_file = "/tmp/5g_srsran_capture.pcap"
             
+            # Get device type safely from sdr_manager
+            device_type = 'uhd'  # Default for 5G (USRP)
+            if self.sdr_manager:
+                if hasattr(self.sdr_manager, 'get_device_type'):
+                    device_type = self.sdr_manager.get_device_type()
+                elif hasattr(self.sdr_manager, 'active_device'):
+                    device_type = getattr(self.sdr_manager.active_device, 'device_type', 'uhd')
+            
             # Create minimal gNB config
             config_content = f"""
 amf:
@@ -156,7 +176,7 @@ amf:
   bind_addr: 127.0.0.1
   
 ru_sdr:
-  device_driver: {self.sdr.get_device_type()}
+  device_driver: {device_type}
   device_args: "type=b200"
   srate: 23.04
   tx_gain: 50
