@@ -1,7 +1,7 @@
 # FalconOne SIGINT Platform - Complete System Documentation
 
-**Version:** 1.9.0 with 6G NTN & ISAC Integration  
-**Last Updated:** January 3, 2026  
+**Version:** 1.9.1 with Enhanced Reliability & 3D Geolocation  
+**Last Updated:** January 4, 2026  
 **Status:** Production Ready  
 **License:** Research & Authorized Testing Only
 
@@ -166,6 +166,50 @@ The platform follows these core principles:
 ---
 
 ### 1.3 Version History
+
+#### v1.9.1 (January 2026) - Reliability & Security Hardening
+- ✅ **Circuit Breaker Framework** (`utils/circuit_breaker.py`):
+  - CircuitBreaker class with CLOSED/OPEN/HALF_OPEN states
+  - Exponential backoff retry decorator (`@with_retry`)
+  - Protected loop decorator for resilient iterations
+  - Subprocess context manager for safe external process management
+  - AsyncCircuitBreaker for async/await patterns
+- ✅ **3D Geolocation Engine** (`geolocation/geolocation_3d.py`):
+  - Full 3D positioning with altitude support (WGS-84)
+  - MUSIC algorithm for Direction of Arrival estimation
+  - 6-state Kalman filter [x, y, z, vx, vy, vz]
+  - LLA ↔ ECEF coordinate transforms
+  - Real dataset integration for AI training
+- ✅ **Orchestrator Auto-Retry**:
+  - `_initialize_component_with_retry()` method
+  - Exponential backoff for failed component initialization
+  - Configurable max retries and delays
+- ✅ **OsmocomBB GSM Integration**:
+  - `_capture_with_osmocombb()` full implementation
+  - osmocon socket connection and cell_log parsing
+  - IMSI/TMSI/Cell ID/LAC/MCC/MNC extraction
+- ✅ **Exploit Engine Security Hardening**:
+  - `_validate_target_info()` for input sanitization
+  - IP address validation, path traversal prevention
+  - Timing-safe comparison with `_constant_time_compare()`
+  - `_secure_score_calculation()` for side-channel resistance
+- ✅ **Signal Classifier Federated Learning**:
+  - `train_federated()` for local training rounds
+  - `get_local_gradients()` and `apply_federated_update()`
+  - Differential privacy with gradient clipping
+  - FederatedCoordinator integration support
+- ✅ **Async Monitoring Framework** (`monitoring/async_monitor.py`):
+  - AsyncMonitorBase abstract class for non-blocking monitors
+  - CodeCarbon integration for carbon emissions tracking
+  - AsyncEventLoop for managed event loops in threads
+  - PeriodicTask scheduler with cancellation support
+- ✅ **Fuzzing Test Suite** (`tests/test_fuzzing.py`):
+  - Hypothesis property-based testing integration
+  - Exploit engine payload fuzzing (200+ test cases)
+  - Crypto module fuzzing (HMAC, AES, SUCI)
+  - Network parsing fuzzing (IP headers, IMSI)
+  - Circuit breaker state transition fuzzing
+  - Input validation security tests
 
 #### v1.9.0 (January 2026) - Codebase Audit & Consolidation
 - ✅ Comprehensive codebase audit with 15 issues identified, 12 fixed

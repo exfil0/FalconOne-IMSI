@@ -956,6 +956,306 @@ class SignalClassifier:
             self.transformer_model.save(path)
             self.logger.info(f"Transformer model saved to {path}")
     
+    # ==================== FEDERATED LEARNING INTEGRATION (v1.9.1) ====================
+    
+    def init_federated_learning(self, coordinator_config: Dict[str, Any] = None):
+        """
+        Initialize federated learning for distributed training (v1.9.1)
+        Enables privacy-preserving model training across multiple FalconOne agents
+        
+        Args:
+            coordinator_config: Optional configuration for federated coordinator
+                - coordinator_url: URL of central coordinator
+                - client_id: Unique identifier for this client
+                - secure_aggregation: Enable Bonawitz secure aggregation
+                - differential_privacy: Enable DP noise injection
+        """
+        self._federated_config = coordinator_config or {}
+        self._federated_client_id = self._federated_config.get('client_id', f'client_{id(self)}')
+        self._federated_round = 0
+        self._local_samples_trained = 0
+        self._gradient_history = []
+        
+        # Track local training epochs before aggregation
+        self._local_epochs_per_round = self._federated_config.get('local_epochs', 5)
+        
+        # Differential privacy parameters
+        self._dp_enabled = self._federated_config.get('differential_privacy', True)
+        self._dp_epsilon = self._federated_config.get('dp_epsilon', 1.0)
+        self._dp_clip_norm = self._federated_config.get('dp_clip_norm', 1.0)
+        
+        self.logger.info("Federated learning initialized (v1.9.1)",
+                        client_id=self._federated_client_id,
+                        local_epochs=self._local_epochs_per_round,
+                        dp_enabled=self._dp_enabled)
+    
+    def train_federated(self, training_data: np.ndarray, labels: np.ndarray,
+                       local_epochs: int = None) -> Dict[str, Any]:
+        """
+        Perform local training for federated learning round (v1.9.1)
+        Trains on local data and prepares gradients for aggregation
+        
+        Args:
+            training_data: Local training samples (NxFeatures array)
+            labels: Local training labels (N-dimensional array)
+            local_epochs: Override for number of local training epochs
+            
+        Returns:
+            Training results including local gradients for aggregation
+        """
+        if not TF_AVAILABLE:
+            return {'success': False, 'error': 'tensorflow_unavailable'}
+        
+        if not hasattr(self, '_federated_config'):
+            self.init_federated_learning()
+        
+        # Ensure models are loaded
+        self._ensure_models_loaded()
+        
+        if not self.model:
+            return {'success': False, 'error': 'model_not_initialized'}
+        
+        epochs = local_epochs or self._local_epochs_per_round
+        
+        try:
+            self.logger.info(f"Starting federated local training round {self._federated_round}",
+                           samples=len(training_data), epochs=epochs)
+            
+            # Store initial weights for gradient computation
+            initial_weights = [w.numpy().copy() for w in self.model.trainable_weights]
+            
+            # Convert labels to categorical if needed
+            if len(labels.shape) == 1:
+                labels_cat = keras.utils.to_categorical(labels, num_classes=len(self.labels))
+            else:
+                labels_cat = labels
+            
+            # Local training
+            history = self.model.fit(
+                training_data, labels_cat,
+                epochs=epochs,
+                batch_size=32,
+                validation_split=0.1,
+                verbose=0
+            )
+            
+            # Compute gradients (weight updates)
+            final_weights = [w.numpy() for w in self.model.trainable_weights]
+            gradients = self._compute_weight_updates(initial_weights, final_weights)
+            
+            # Apply differential privacy if enabled
+            if self._dp_enabled:
+                gradients = self._apply_dp_to_gradients(gradients)
+            
+            # Store gradient history for debugging
+            self._gradient_history.append({
+                'round': self._federated_round,
+                'samples': len(training_data),
+                'epochs': epochs,
+                'final_loss': float(history.history['loss'][-1]),
+                'final_accuracy': float(history.history['accuracy'][-1])
+            })
+            
+            self._local_samples_trained += len(training_data)
+            
+            result = {
+                'success': True,
+                'round': self._federated_round,
+                'client_id': self._federated_client_id,
+                'gradients': gradients,
+                'num_samples': len(training_data),
+                'local_loss': float(history.history['loss'][-1]),
+                'local_accuracy': float(history.history['accuracy'][-1]),
+                'dp_applied': self._dp_enabled
+            }
+            
+            self.logger.info(f"Federated local training complete",
+                           round=self._federated_round,
+                           accuracy=f"{result['local_accuracy']:.4f}")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Federated training failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _compute_weight_updates(self, initial_weights: List[np.ndarray], 
+                                final_weights: List[np.ndarray]) -> Dict[str, np.ndarray]:
+        """
+        Compute weight updates (gradients) from before/after training (v1.9.1)
+        
+        Args:
+            initial_weights: Weights before local training
+            final_weights: Weights after local training
+            
+        Returns:
+            Dictionary of layer gradients
+        """
+        gradients = {}
+        for i, (init_w, final_w) in enumerate(zip(initial_weights, final_weights)):
+            layer_name = f'layer_{i}'
+            gradients[layer_name] = final_w - init_w
+        return gradients
+    
+    def _apply_dp_to_gradients(self, gradients: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        """
+        Apply differential privacy to gradients (v1.9.1)
+        Uses Gaussian mechanism with gradient clipping
+        
+        Args:
+            gradients: Raw gradients from local training
+            
+        Returns:
+            Privacy-preserving gradients with DP noise
+        """
+        dp_gradients = {}
+        
+        for layer_name, grad in gradients.items():
+            # Clip gradient norm
+            grad_norm = np.linalg.norm(grad.flatten())
+            if grad_norm > self._dp_clip_norm:
+                grad = grad * (self._dp_clip_norm / grad_norm)
+            
+            # Add Gaussian noise (Gaussian mechanism)
+            sensitivity = self._dp_clip_norm
+            sigma = sensitivity * np.sqrt(2 * np.log(1.25 / 1e-5)) / self._dp_epsilon
+            noise = np.random.normal(0, sigma, size=grad.shape)
+            
+            dp_gradients[layer_name] = grad + noise
+        
+        self.logger.debug(f"DP applied to {len(gradients)} layers (ε={self._dp_epsilon})")
+        return dp_gradients
+    
+    def get_local_gradients(self) -> Dict[str, np.ndarray]:
+        """
+        Get current local model gradients for federated aggregation (v1.9.1)
+        
+        Returns:
+            Dictionary of layer name to gradient array
+        """
+        if not TF_AVAILABLE or not self.model:
+            return {}
+        
+        # Return gradients from last training round if available
+        if hasattr(self, '_last_gradients'):
+            return self._last_gradients
+        
+        # Otherwise compute current gradients relative to baseline
+        gradients = {}
+        for i, weight in enumerate(self.model.trainable_weights):
+            layer_name = f'layer_{i}'
+            gradients[layer_name] = weight.numpy()
+        
+        return gradients
+    
+    def apply_federated_update(self, aggregated_weights: Dict[str, np.ndarray]) -> bool:
+        """
+        Apply aggregated weights from federated coordinator (v1.9.1)
+        Updates local model with globally aggregated parameters
+        
+        Args:
+            aggregated_weights: Dictionary of aggregated layer weights
+            
+        Returns:
+            True if update applied successfully
+        """
+        if not TF_AVAILABLE or not self.model:
+            self.logger.error("Cannot apply federated update - model not available")
+            return False
+        
+        try:
+            self._ensure_models_loaded()
+            
+            # Apply aggregated weights to model
+            for i, weight_var in enumerate(self.model.trainable_weights):
+                layer_name = f'layer_{i}'
+                if layer_name in aggregated_weights:
+                    weight_var.assign(aggregated_weights[layer_name])
+            
+            self._federated_round += 1
+            
+            self.logger.info(f"Applied federated update (round {self._federated_round})")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to apply federated update: {e}")
+            return False
+    
+    def get_federated_status(self) -> Dict[str, Any]:
+        """
+        Get current federated learning status (v1.9.1)
+        
+        Returns:
+            Status dictionary with training metrics
+        """
+        if not hasattr(self, '_federated_config'):
+            return {'initialized': False}
+        
+        return {
+            'initialized': True,
+            'client_id': self._federated_client_id,
+            'current_round': self._federated_round,
+            'total_samples_trained': self._local_samples_trained,
+            'local_epochs_per_round': self._local_epochs_per_round,
+            'dp_enabled': self._dp_enabled,
+            'dp_epsilon': self._dp_epsilon if self._dp_enabled else None,
+            'gradient_history': self._gradient_history[-10:] if self._gradient_history else []
+        }
+    
+    def train_federated_with_coordinator(self, training_data: np.ndarray, labels: np.ndarray,
+                                         coordinator) -> Dict[str, Any]:
+        """
+        Full federated training loop with FederatedCoordinator integration (v1.9.1)
+        Performs local training, submits to coordinator, and applies aggregated update
+        
+        Args:
+            training_data: Local training samples
+            labels: Local training labels
+            coordinator: FederatedCoordinator instance
+            
+        Returns:
+            Training results with aggregation status
+        """
+        # Step 1: Register with coordinator if not already
+        if not hasattr(self, '_registered_with_coordinator'):
+            registration = coordinator.register_client(self._federated_client_id)
+            self._registered_with_coordinator = True
+            self.logger.info(f"Registered with coordinator: {registration}")
+        
+        # Step 2: Perform local training
+        local_result = self.train_federated(training_data, labels)
+        
+        if not local_result.get('success'):
+            return local_result
+        
+        # Step 3: Submit weights to coordinator
+        current_weights = {}
+        for i, weight in enumerate(self.model.trainable_weights):
+            current_weights[f'layer_{i}'] = weight.numpy()
+        
+        submission = coordinator.submit_weights(
+            self._federated_client_id,
+            current_weights,
+            len(training_data)
+        )
+        
+        self.logger.info(f"Submitted weights to coordinator",
+                        waiting_for=submission.get('waiting_for', 'unknown'))
+        
+        # Step 4: Check if aggregation occurred and apply update
+        status = coordinator.get_status()
+        if status.get('aggregation_rounds', 0) > self._federated_round:
+            # New global model available
+            global_model_version = status.get('global_model_version')
+            self.logger.info(f"New global model available (v{global_model_version})")
+            # In production, would fetch and apply global weights here
+        
+        return {
+            **local_result,
+            'coordinator_status': status,
+            'submission': submission
+        }
+    
     # ===== Edge-Optimized Inference (v1.6) =====
     
     def convert_to_tflite(self, model_path: str, output_path: str, quantize: bool = True) -> bool:

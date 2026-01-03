@@ -237,13 +237,128 @@ class GSMMonitor:
     
     def _capture_with_osmocombb(self, arfcn: int):
         """
-        Capture using OsmocomBB
+        Capture using OsmocomBB (v1.9.1 - Full Implementation)
+        
+        OsmocomBB is a free software implementation of the GSM baseband
+        that runs on Calypso-based phones (Motorola C1xx series).
+        
+        Requirements:
+            - OsmocomBB compiled and installed
+            - Calypso phone connected via serial
+            - osmocon running with firmware loaded
         
         Args:
             arfcn: ARFCN to monitor
         """
-        # Placeholder for OsmocomBB integration
-        self.logger.debug(f"OsmocomBB capture for ARFCN {arfcn} - not yet implemented")
+        from ..utils.circuit_breaker import subprocess_context, CircuitBreakerOpenError
+        
+        # OsmocomBB configuration
+        osmocon_socket = self.config.get('monitoring.gsm.osmocon_socket', '/tmp/osmocom_l2')
+        ccch_scan_path = self.config.get('monitoring.gsm.ccch_scan_path', 'ccch_scan')
+        cell_log_path = self.config.get('monitoring.gsm.cell_log_path', 'cell_log')
+        
+        freq = self._arfcn_to_freq(arfcn)
+        
+        try:
+            # Check if osmocon socket exists (firmware must be loaded)
+            if not os.path.exists(osmocon_socket):
+                self.logger.warning(f"OsmocomBB socket not found: {osmocon_socket}")
+                self.logger.info("Ensure osmocon is running: osmocon -p /dev/ttyUSB0 layer1.compalram.bin")
+                return
+            
+            # Use cell_log for comprehensive cell information capture
+            cmd = [
+                cell_log_path,
+                '-O', osmocon_socket,  # OsmocomBB socket
+                '-a', str(arfcn),      # Target ARFCN
+                '-t', '5',             # Capture duration in seconds
+                '-f', 'gsmtap',        # Output format
+            ]
+            
+            self.logger.info(f"OsmocomBB capture on ARFCN {arfcn} ({freq/1e6:.2f} MHz)")
+            
+            # Use circuit breaker protected subprocess
+            try:
+                with subprocess_context(cmd, timeout=10.0, circuit_name='osmocombb') as proc:
+                    stdout, stderr = proc.communicate(timeout=10.0)
+                    
+                    if proc.returncode == 0:
+                        # Parse cell_log output for IMSI/TMSI
+                        self._parse_osmocombb_output(stdout, arfcn)
+                    else:
+                        self.logger.warning(f"OsmocomBB returned code {proc.returncode}: {stderr}")
+                        
+            except CircuitBreakerOpenError:
+                self.logger.warning("OsmocomBB circuit breaker is open, skipping capture")
+                return
+                
+        except FileNotFoundError:
+            self.logger.error(f"OsmocomBB tools not found. Install from https://osmocom.org/projects/baseband")
+        except Exception as e:
+            self.logger.error(f"OsmocomBB capture error: {e}")
+    
+    def _parse_osmocombb_output(self, output: str, arfcn: int):
+        """
+        Parse OsmocomBB cell_log output for identifiers
+        
+        Args:
+            output: cell_log stdout
+            arfcn: Current ARFCN for context
+        """
+        # Parse System Information messages
+        si_pattern = r'SYSTEM INFORMATION TYPE (\d+)'
+        for match in re.finditer(si_pattern, output):
+            si_type = match.group(1)
+            self.logger.debug(f"Captured SI Type {si_type} on ARFCN {arfcn}")
+        
+        # Parse IMSI from Paging Request or Identity Response
+        imsi_pattern = r'IMSI[:\s]+([0-9]{14,15})'
+        for match in re.finditer(imsi_pattern, output):
+            imsi = match.group(1)
+            self.logger.info(f"📱 IMSI captured (OsmocomBB): {imsi}")
+            self.captured_imsi.add(imsi)
+            self.data_queue.put({
+                'type': 'IMSI',
+                'value': imsi,
+                'timestamp': time.time(),
+                'arfcn': arfcn,
+                'protocol': 'GSM',
+                'source': 'OsmocomBB'
+            })
+        
+        # Parse TMSI from Paging Request
+        tmsi_pattern = r'TMSI[:\s]+([0-9A-Fa-f]{8})'
+        for match in re.finditer(tmsi_pattern, output):
+            tmsi = match.group(1).upper()
+            self.logger.info(f"📱 TMSI captured (OsmocomBB): {tmsi}")
+            self.captured_tmsi.add(tmsi)
+            self.data_queue.put({
+                'type': 'TMSI',
+                'value': tmsi,
+                'timestamp': time.time(),
+                'arfcn': arfcn,
+                'protocol': 'GSM',
+                'source': 'OsmocomBB'
+            })
+        
+        # Parse Cell Identity (CI), LAC, MCC, MNC from System Information
+        cell_id_pattern = r'Cell ID[:\s]+(\d+)'
+        lac_pattern = r'LAC[:\s]+(\d+)'
+        mcc_pattern = r'MCC[:\s]+(\d{3})'
+        mnc_pattern = r'MNC[:\s]+(\d{2,3})'
+        
+        for pattern, field in [(cell_id_pattern, 'cell_id'), (lac_pattern, 'lac'),
+                               (mcc_pattern, 'mcc'), (mnc_pattern, 'mnc')]:
+            match = re.search(pattern, output)
+            if match:
+                self.data_queue.put({
+                    'type': field.upper(),
+                    'value': match.group(1),
+                    'timestamp': time.time(),
+                    'arfcn': arfcn,
+                    'protocol': 'GSM',
+                    'source': 'OsmocomBB'
+                })
     
     def _arfcn_to_freq(self, arfcn: int) -> float:
         """

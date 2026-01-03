@@ -241,6 +241,41 @@ class FalconOneOrchestrator:
             self.logger.error(f"Failed to initialize LE Mode: {e}")
             self.logger.warning("Continuing without LE Mode capabilities")
 
+    def _initialize_component_with_retry(self, component_name: str, initializer: callable, 
+                                         max_retries: int = 3, base_delay: float = 1.0) -> any:
+        """
+        Initialize a component with automatic retry on failure (v1.9.1)
+        
+        Args:
+            component_name: Name of the component for logging
+            initializer: Callable that creates the component
+            max_retries: Maximum retry attempts
+            base_delay: Base delay between retries (exponential backoff)
+        
+        Returns:
+            Initialized component or None if all retries failed
+        """
+        last_exception = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                component = initializer()
+                if attempt > 0:
+                    self.logger.info(f"✓ {component_name} initialized after {attempt + 1} attempts")
+                return component
+            except Exception as e:
+                last_exception = e
+                if attempt < max_retries:
+                    delay = base_delay * (2 ** attempt)
+                    self.logger.warning(
+                        f"Failed to initialize {component_name} (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                        f"Retrying in {delay:.1f}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    self.logger.error(f"Failed to initialize {component_name} after {max_retries + 1} attempts: {e}")
+        
+        return None
     
     def initialize_components(self):
         """Initialize all system components (lazy initialization with complete integration)"""
@@ -249,15 +284,24 @@ class FalconOneOrchestrator:
         
         self.logger.info("Initializing components...")
         
+        # v1.9.1: Get retry configuration
+        max_retries = self.config.get('orchestrator.init_retry.max_retries', 3)
+        base_delay = self.config.get('orchestrator.init_retry.base_delay_sec', 1.0)
+        
         try:
             # Import components (lazy to avoid circular imports)
             from ..sdr.sdr_layer import SDRManager
             from ..exploit.exploit_engine import ExploitationEngine
             from ..ai.signal_classifier import SignalClassifier
             
-            # 1. SDR Manager (Foundation)
+            # 1. SDR Manager (Foundation) - with auto-retry
             self.logger.info("Initializing SDR Manager...")
-            self.sdr_manager = SDRManager(self.config, self.root_logger)
+            self.sdr_manager = self._initialize_component_with_retry(
+                "SDR Manager",
+                lambda: SDRManager(self.config, self.root_logger),
+                max_retries=max_retries,
+                base_delay=base_delay
+            )
             self.components['sdr_manager'] = self.sdr_manager
             
             # 2. Signal Classifier (AI Foundation)
