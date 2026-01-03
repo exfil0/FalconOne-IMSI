@@ -90,9 +90,10 @@
    - 13.3 [FAQ](#133-faq)
 
 ### 14. [Appendix](#14-appendix)
-   - 14.1 [Glossary](#141-glossary)
-   - 14.2 [References](#142-references)
-   - 14.3 [Contributing](#143-contributing)
+   - 14.1 [Documentation Index](#141-documentation-index)
+   - 14.2 [Glossary](#142-glossary)
+   - 14.3 [References](#143-references)
+   - 14.4 [Version Information](#144-version-information)
 
 ---
 
@@ -154,6 +155,24 @@ The platform follows these core principles:
 ---
 
 ### 1.3 Version History
+
+#### v1.9.0 (January 2026) - Codebase Audit & Consolidation
+- ✅ Comprehensive codebase audit with 15 issues identified, 12 fixed
+- ✅ Core module enhancements:
+  - signal_bus.py: Added emit() and _setup_encryption() methods
+  - evidence_manager.py: Added log_event(), verify_chain_integrity(), get_evidence_summary()
+  - orchestrator.py: Enhanced _measure_ambient_rf_power() implementation
+  - ntn_6g_exploiter.py: Fixed _calculate_ris_phases() calculation
+  - sdr_layer.py: Added transmit(), receive(), set_frequency(), set_sample_rate()
+  - isac_monitor.py: SDR interface aligned with sdr_layer.py
+  - isac_exploiter.py: AI poison dimension validation added
+  - ntn_6g_monitor.py: Ground location validation with strict mode
+  - dashboard.py: DashboardConfig class replacing magic numbers
+- ✅ Documentation consolidation (34 → 18 active files, 16 archived)
+- ✅ Test consolidation (15 active files, 10 archived)
+- ✅ 6G NTN satellite integration with ISAC exploitation
+- ✅ Complete LE Mode with evidence chain management
+- ✅ All validations passing (quick_validate.py 6/6 tests)
 
 #### v1.8.0 (January 2026) - RANSacked Integration
 - ✅ Integrated 97 RANSacked CVEs from 5 open-source stacks
@@ -2779,7 +2798,7 @@ law_enforcement:
 
 #### Dashboard UI
 
-LE Mode UI integration pending (v1.9.0). Current access via Python API only.
+LE Mode is fully integrated with the dashboard UI in v1.9.0. Access the LE Mode panel from the System tab for warrant validation, exploit chain execution, and evidence management.
 
 See [LE_MODE_QUICKSTART.md](LE_MODE_QUICKSTART.md) for usage examples.
 
@@ -2787,17 +2806,20 @@ See [LE_MODE_QUICKSTART.md](LE_MODE_QUICKSTART.md) for usage examples.
 
 | Component | Status | Version |
 |-----------|--------|--------|
-| Evidence Chain Module | ✅ Production | 1.8.1 |
-| Intercept Enhancer | ✅ Production | 1.8.1 |
-| Warrant Validation Framework | ✅ Production | 1.8.1 |
-| Configuration Section | ✅ Complete | 1.8.1 |
-| API Endpoints | ✅ Complete | 1.8.1 |
-| Orchestrator Integration | ✅ Complete | 1.8.1 |
-| DoS + IMSI Chain | ✅ Implemented | 1.8.1 |
-| Downgrade + VoLTE Chain | ✅ Implemented | 1.8.1 |
-| Additional 3 Chains | 🔄 Pending | 1.9.0 |
-| Dashboard UI | 🔄 Pending | 1.9.0 |
-| Documentation Updates | ✅ Complete | 1.8.1 |
+| Evidence Chain Module | ✅ Production | 1.9.0 |
+| Evidence Manager | ✅ Production | 1.9.0 |
+| Intercept Enhancer | ✅ Production | 1.9.0 |
+| Warrant Validation Framework | ✅ Production | 1.9.0 |
+| Configuration Section | ✅ Complete | 1.9.0 |
+| API Endpoints | ✅ Complete | 1.9.0 |
+| Orchestrator Integration | ✅ Complete | 1.9.0 |
+| DoS + IMSI Chain | ✅ Implemented | 1.9.0 |
+| Downgrade + VoLTE Chain | ✅ Implemented | 1.9.0 |
+| Auth Bypass + SMS Chain | ✅ Implemented | 1.9.0 |
+| Uplink Injection + Location Chain | ✅ Implemented | 1.9.0 |
+| Battery Drain + Profiling Chain | ✅ Implemented | 1.9.0 |
+| Dashboard UI Integration | ✅ Complete | 1.9.0 |
+| Documentation Updates | ✅ Complete | 1.9.0 |
 
 #### Quick Start
 
@@ -3258,7 +3280,69 @@ sdr/
 
 ---
 
-### 6.9 User Interface (`falconone/ui/`)
+### 6.9 Law Enforcement Modules (`falconone/le/`) ⭐ v1.9.0
+
+**Purpose**: Lawful interception with warrant compliance, evidence chain management, and forensic export.
+
+```
+le/
+├── __init__.py
+├── evidence_manager.py      # Evidence chain management (v1.9.0)
+└── intercept_enhancer.py    # Exploit-enhanced interception
+```
+
+#### Key Files
+
+**evidence_manager.py** (v1.9.0 - NEW)
+- `EvidenceManager`: Comprehensive evidence lifecycle management
+- `log_event()`: Record intercept events with metadata
+- `verify_chain_integrity()`: SHA-256 blockchain-style verification
+- `get_evidence_summary()`: Generate evidence statistics
+- `export_forensic()`: Court-admissible forensic package export
+- PII redaction (IMSI/IMEI hashing) for GDPR/CCPA/POPIA compliance
+- Immutable append-only evidence log design
+- 90-day evidence retention policy (configurable)
+
+**intercept_enhancer.py**
+- `InterceptEnhancer`: Exploit-enhanced lawful interception
+- `ChainType`: Enumeration of exploit chains (DOS_IMSI, DOWNGRADE_VOLTE, etc.)
+- `enable_le_mode()`: Activate LE mode with warrant validation
+- `chain_dos_with_imsi_catch()`: DoS + IMSI catching chain (90% success)
+- `chain_downgrade_volte()`: Downgrade + VoLTE interception chain (85% success)
+- `chain_auth_bypass_sms()`: Authentication bypass + SMS hijack
+- `chain_uplink_injection_location()`: Uplink injection + location tracking
+- `chain_battery_drain_profiling()`: Battery drain + app profiling
+- Mandatory warrant validation before exploit execution
+- Automatic evidence hashing and chain-of-custody logging
+
+**__init__.py**
+- Exports: `EvidenceChain`, `InterceptType`, `InterceptEnhancer`, `ChainType`
+- LE mode activation utilities
+
+#### Integration with Orchestrator
+
+```python
+from falconone.core.orchestrator import FalconOneOrchestrator
+
+orchestrator = FalconOneOrchestrator('config/config.yaml')
+
+# Enable LE mode
+orchestrator.intercept_enhancer.enable_le_mode(
+    warrant_id='WRT-2026-00123',
+    warrant_metadata={...}
+)
+
+# Execute exploit chain
+result = orchestrator.intercept_enhancer.chain_dos_with_imsi_catch(
+    target_ip='192.168.1.100',
+    dos_duration=30,
+    listen_duration=300
+)
+```
+
+---
+
+### 6.10 User Interface (`falconone/ui/`)
 
 **Purpose**: Web-based dashboard and visualization.
 
@@ -3304,7 +3388,7 @@ ui/
 
 ---
 
-### 6.10 Utility Modules (`falconone/utils/`)
+### 6.11 Utility Modules (`falconone/utils/`)
 
 **Purpose**: Cross-cutting utilities (logging, config, database, validation).
 
@@ -3368,7 +3452,7 @@ utils/
 
 ---
 
-### 6.11 Other Notable Modules
+### 6.12 Other Notable Modules
 
 #### CLI (`falconone/cli/`)
 ```
@@ -3436,7 +3520,7 @@ tests/
 
 ---
 
-### 6.12 Configuration Files
+### 6.13 Configuration Files
 
 #### `config/config.yaml`
 Main configuration file with sections:
@@ -3456,7 +3540,7 @@ Advanced configuration:
 
 ---
 
-### 6.13 Entry Points
+### 6.14 Entry Points
 
 **main.py**
 - Main entry point: `python main.py`
@@ -8382,43 +8466,70 @@ dashboard:
 
 FalconOne includes a comprehensive testing framework to ensure system reliability, security, and performance. The test suite includes:
 
-- **17 test files** covering unit tests, integration tests, and end-to-end workflows
-- **System-wide validation scripts** (comprehensive_audit.py, validate_system.py)
+- **15 active test files** in `falconone/tests/` covering unit tests, integration tests, and end-to-end workflows
+- **10 archived test files** (3 in `tests/archived/`, 7 in `archive/deprecated_tests/`)
+- **System-wide validation scripts** (quick_validate.py, comprehensive_audit.py)
 - **pytest-based testing framework** with coverage reporting and test markers
 - **Integration tests** for multi-component workflows
-- **Exploit chain tests** validating all 96 CVE payloads
+- **Exploit chain tests** validating all 97 CVE payloads
 - **Performance benchmarks** for signal processing and AI/ML pipelines
 
 ---
 
 ## 12.2 Test Suite Structure
 
-### Test File Organization
+### Active Test Files (v1.9.0)
 
-``
-FalconOne App/
- comprehensive_audit.py         # System-wide validation (12 categories)
- validate_system.py              # Database + module validation
- pytest.ini                      # pytest configuration
- test_v1_8_0.py                 # Version 1.8.0 feature tests
- test_ransacked_quick.py        # Quick RANSacked exploit tests
- test_ransacked_api_integration.py  # RANSacked API integration
- test_ransacked_api.py          # RANSacked API unit tests
- falconone/tests/
-     test_sdr_failover.py       # SDR hardware failover tests
-     test_ransacked_exploits.py # All 96 CVE payload tests
-     test_online_learning.py    # Online learning drift detection
-     test_integration.py        # Multi-component workflows
-     test_exploitation.py       # Exploit engine tests
-     test_explainable_ai.py    # XAI explanation tests
-     test_e2_interface.py       # O-RAN E2 interface tests
-     test_e2e.py                # End-to-end system tests
-     test_database.py           # Database operations tests
-     test_authentication.py     # User authentication tests
-     integration/
-         test_e2e_monitoring.py # E2E GSM-6G monitoring workflow
-         test_e2e_exploit.py    # E2E exploit chain workflow
-``
+```
+falconone/tests/
+├── __init__.py                 # Test package initialization
+├── conftest.py                 # pytest fixtures and configuration
+├── test_authentication.py      # User authentication tests
+├── test_database.py            # Database operations tests
+├── test_e2e.py                 # End-to-end system tests
+├── test_e2_interface.py        # O-RAN E2 interface tests
+├── test_exploitation.py        # Exploit engine tests
+├── test_explainable_ai.py      # XAI explanation tests
+├── test_integration.py         # Multi-component workflows
+├── test_isac.py                # ISAC monitoring tests (v1.9.0)
+├── test_le_mode.py             # Law Enforcement mode tests (v1.9.0)
+├── test_ntn_6g.py              # 6G NTN satellite tests (v1.9.0)
+├── test_online_learning.py     # Online learning drift detection
+├── test_sdr_failover.py        # SDR hardware failover tests
+├── locustfile.py               # Load testing with Locust
+├── security_scan.py            # Security vulnerability scanning
+├── integration/
+│   └── __init__.py             # Integration test package
+└── archived/
+    ├── e2e_validation.py       # (Archived) Legacy E2E tests
+    ├── test_ransacked_exploits.py  # (Archived) Merged into test_exploitation.py
+    └── validation_suite.py     # (Archived) Legacy validation
+
+archive/deprecated_tests/
+├── check_api_responses.py      # (Deprecated) API response tests
+├── check_deps.py               # (Deprecated) Dependency checker
+├── validate_final_integration.py   # (Deprecated) Integration validation
+├── validate_production_env.py  # (Deprecated) Production env check
+├── validate_ransacked_payloads.py  # (Deprecated) Payload validation
+├── validate_system.py          # (Deprecated) System validation
+└── validate_unified_exploits.py    # (Deprecated) Exploit validation
+```
+
+### Quick Validation Script (v1.9.0)
+
+```bash
+# Run quick validation (6 tests, ~5 seconds)
+python quick_validate.py
+
+# Output:
+# ✓ Syntax Validation
+# ✓ Required Packages
+# ✓ Dashboard Import
+# ✓ Wizard Methods
+# ✓ API Endpoints
+# ✓ UI Components
+# 6/6 tests passed
+```
 
 ### Test Categories
 
@@ -8434,17 +8545,37 @@ Tests are organized by pytest markers:
 | `sdr` | SDR hardware tests (requires hardware) | HackRF capture, BladeRF TX/RX |
 | `authentication` | User authentication tests | Login, JWT tokens, RBAC |
 | `exploit` | Exploit payload tests | CVE payload generation, exploit chains |
+| `le_mode` | Law Enforcement mode tests | Warrant validation, evidence chain |
+| `ntn` | NTN satellite tests | Doppler compensation, beam tracking |
+| `isac` | ISAC monitoring tests | SDR interface, signal analysis |
 
 ---
 
 ## 12.3 System Validation Scripts
 
-### 12.3.1 Comprehensive Audit (comprehensive_audit.py)
+### 12.3.1 Quick Validation (quick_validate.py) ⭐ v1.9.0
+
+**Purpose**: Fast system validation (6 core tests, ~5 seconds)
+
+**Usage**:
+```bash
+python quick_validate.py
+```
+
+**What It Validates**:
+1. **Syntax Validation**: All Python files compile without errors
+2. **Required Packages**: Core dependencies importable (Flask, SocketIO, etc.)
+3. **Dashboard Import**: Dashboard module loads successfully
+4. **Wizard Methods**: Setup wizard methods present and callable
+5. **API Endpoints**: All API routes registered correctly
+6. **UI Components**: Template and static files accessible
+
+### 12.3.2 Comprehensive Audit (comprehensive_audit.py)
 
 **Purpose**: System-wide validation of all modules, dependencies, and functionality
 
 **Usage**:
-``bash
+```bash
 cd /path/to/FalconOne
 python comprehensive_audit.py
 ``
@@ -10824,29 +10955,32 @@ python -c "from falconone.exploit.ransacked_oai_5g import OAI5GExploits; print(O
 
 1. **Documentation**: This manual (SYSTEM_DOCUMENTATION.md)
 2. **API Documentation**: API_DOCUMENTATION.md
-3. **GitHub Issues**: https://github.com/yourusername/falconone/issues
-4. **Community Forum**: https://forum.falconone.project
-5. **Email Support**: support@falconone.project
+3. **GitHub Repository**: https://github.com/exfil0/FalconOne-IMSI
+4. **GitHub Issues**: https://github.com/exfil0/FalconOne-IMSI/issues
 
 ### Before Asking for Help
 
- **Run diagnostic tools**:
-`bash
+**Run diagnostic tools**:
+```bash
+python quick_validate.py
 python comprehensive_audit.py
-python validate_system.py
 pytest --collect-only
-`
+```
 
- **Check logs**:
-`bash
+**Check logs**:
+```bash
+# Windows PowerShell
+Get-Content -Path logs/falconone.log -Tail 50
+Get-Content -Path logs/exploit.log -Tail 50
+
+# Linux/macOS
 tail -f logs/falconone.log
 tail -f logs/exploit.log
-tail -f logs/dashboard.log
-`
+```
 
- **Search existing issues**: GitHub issues may have solution
+**Search existing issues**: GitHub issues may have solution
 
- **Provide complete information**:
+**Provide complete information**:
 - FalconOne version
 - Python version
 - Operating system
@@ -10860,3 +10994,121 @@ tail -f logs/dashboard.log
 
 ---
 
+# Section 14: Appendix
+
+## 14.1 Documentation Index (v1.9.0)
+
+### Active Documentation (18 files)
+
+| File | Description | Size |
+|------|-------------|------|
+| [README.md](README.md) | Project overview and quick start | 104 KB |
+| [SYSTEM_DOCUMENTATION.md](SYSTEM_DOCUMENTATION.md) | Complete system documentation (this file) | 312 KB |
+| [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Developer reference and API guide | 45 KB |
+| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | REST API and WebSocket documentation | 44 KB |
+| [USER_MANUAL.md](USER_MANUAL.md) | End-user operation manual | 35 KB |
+| [INSTALLATION.md](INSTALLATION.md) | Installation instructions | 15 KB |
+| [QUICKSTART.md](QUICKSTART.md) | Quick start guide | 12 KB |
+| [LE_MODE_QUICKSTART.md](LE_MODE_QUICKSTART.md) | Law Enforcement mode guide | 10 KB |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and changes | 18 KB |
+| [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) | Documentation navigation | 5 KB |
+| [6G_NTN_INTEGRATION_COMPLETE.md](6G_NTN_INTEGRATION_COMPLETE.md) | 6G/NTN integration details | 8 KB |
+| [EXPLOIT_QUICK_REFERENCE.md](EXPLOIT_QUICK_REFERENCE.md) | CVE exploit quick reference | 12 KB |
+| [CLOUD_DEPLOYMENT.md](CLOUD_DEPLOYMENT.md) | Cloud deployment (AWS/GCP/Azure) | 10 KB |
+| [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) | Production deployment guide | 8 KB |
+| [PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md) | Performance tuning | 7 KB |
+| [DASHBOARD_MANAGEMENT_GUIDE.md](DASHBOARD_MANAGEMENT_GUIDE.md) | Dashboard usage guide | 6 KB |
+| [SYSTEM_DEPENDENCIES.md](SYSTEM_DEPENDENCIES.md) | System dependency requirements | 5 KB |
+| [SYSTEM_TOOLS_MANAGEMENT.md](SYSTEM_TOOLS_MANAGEMENT.md) | Tools management guide | 4 KB |
+
+### Archived Documentation (16 files in `archive/deprecated_docs/`)
+
+| File | Reason for Archive |
+|------|-------------------|
+| CODEBASE_AUDIT_FINDINGS.md | Consolidated into SYSTEM_DOCUMENTATION.md |
+| DEPENDENCY_SECURITY_AUDIT.md | Merged into INSTALLATION.md |
+| DOCUMENTATION_CLEANUP_LOG.md | One-time cleanup record |
+| DOCUMENTATION_FINAL_STATUS.md | Status tracking, superseded |
+| DOCUMENTATION_README.md | Replaced by DOCUMENTATION_INDEX.md |
+| LE_MODE_COMPLETION_REPORT.md | Merged into LE_MODE_QUICKSTART.md |
+| LE_MODE_IMPLEMENTATION_SUMMARY.md | Merged into SYSTEM_DOCUMENTATION.md |
+| LE_MODE_VERIFICATION.md | Merged into LE_MODE_QUICKSTART.md |
+| PRODUCTION_READINESS_AUDIT.md | Merged into PRODUCTION_DEPLOYMENT.md |
+| PROJECT_SUMMARY.md | Merged into README.md |
+| RANSACKED_FINAL_SUMMARY.md | Merged into EXPLOIT_QUICK_REFERENCE.md |
+| RANSACKED_PERFORMANCE_OPTIMIZATION.md | Merged into PERFORMANCE_OPTIMIZATION.md |
+| RANSACKED_PHASE_5_SECURITY_HARDENING.md | Merged into SYSTEM_DOCUMENTATION.md |
+| RANSACKED_SECURITY_REVIEW.md | Merged into SYSTEM_DOCUMENTATION.md |
+| RELEASE_NOTES_v1.7.1.md | Merged into CHANGELOG.md |
+| SYSTEM_STATUS_REPORT.md | Superseded by quick_validate.py output |
+
+---
+
+## 14.2 Glossary
+
+| Term | Definition |
+|------|------------|
+| **IMSI** | International Mobile Subscriber Identity - unique identifier for a SIM card |
+| **TMSI** | Temporary Mobile Subscriber Identity - temporary identifier to protect IMSI |
+| **SUCI** | Subscription Concealed Identifier - encrypted 5G identifier |
+| **SUPI** | Subscription Permanent Identifier - permanent 5G identifier |
+| **gNB** | Next Generation NodeB - 5G base station |
+| **eNB** | Evolved NodeB - LTE base station |
+| **AMF** | Access and Mobility Management Function - 5G core component |
+| **MME** | Mobility Management Entity - LTE core component |
+| **NTN** | Non-Terrestrial Network - satellite-based cellular |
+| **ISAC** | Integrated Sensing and Communication |
+| **RIS** | Reconfigurable Intelligent Surface |
+| **SDR** | Software-Defined Radio |
+| **RRC** | Radio Resource Control - Layer 3 cellular protocol |
+| **NAS** | Non-Access Stratum - signaling between UE and core |
+| **S1-AP** | S1 Application Protocol - LTE interface |
+| **NG-AP** | Next Generation Application Protocol - 5G interface |
+| **CVE** | Common Vulnerabilities and Exposures |
+| **RANSacked** | RAN vulnerabilities research project (97 CVEs) |
+| **LE Mode** | Law Enforcement Mode - lawful interception with warrant |
+| **O-RAN** | Open Radio Access Network |
+| **V2X** | Vehicle-to-Everything communication |
+| **QKD** | Quantum Key Distribution |
+
+---
+
+## 14.3 References
+
+### Academic Papers
+- Bitsikas, E., et al. "RANSacked: A Domain-Informed Tool for Discovering Vulnerabilities in Cellular Network RAN and Core" (2024)
+- 3GPP TS 23.501: System architecture for 5G
+- 3GPP TS 33.501: Security architecture and procedures for 5G
+
+### Standards
+- 3GPP Release 17: NTN (Non-Terrestrial Networks)
+- 3GPP Release 18: 5G-Advanced
+- 3GPP Release 20: Ambient IoT (AIoT)
+
+### Tools & Libraries
+- Scapy: https://scapy.net/
+- SoapySDR: https://github.com/pothosware/SoapySDR
+- Open5GS: https://open5gs.org/
+- OpenAirInterface: https://openairinterface.org/
+- srsRAN: https://www.srsran.com/
+
+---
+
+## 14.4 Version Information
+
+**Current Version**: 1.9.0  
+**Release Date**: January 3, 2026  
+**Python Requirement**: 3.10+  
+**License**: Research & Authorized Testing Only  
+
+**Repository**: https://github.com/exfil0/FalconOne-IMSI
+
+---
+
+**End of FalconOne System Documentation**
+
+---
+
+*© 2026 FalconOne Research Team. All rights reserved.*  
+*This software is provided for authorized security research and testing only.*  
+*Unauthorized use may violate telecommunications regulations and criminal law.*
