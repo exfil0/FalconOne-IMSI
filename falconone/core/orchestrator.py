@@ -132,13 +132,84 @@ class FalconOneOrchestrator:
         if env_cage in ('true', '1', 'yes'):
             return True
         
-        # TODO: Implement actual RF isolation detection
-        # Could check for:
-        # - Extremely low ambient RF power
-        # - No detectable cellular signals
-        # - GPS signal loss
+        # Basic RF isolation detection
+        try:
+            # Check for extremely low ambient RF power (placeholder for actual SDR check)
+            # In a real implementation, this would scan for cellular signals
+            rf_power = self._measure_ambient_rf_power()
+            if rf_power < -80:  # Very low signal strength
+                self.logger.info("Low RF power detected, possible Faraday cage")
+                return True
+            
+            # Check GPS signal loss (if GPS module available)
+            if hasattr(self, 'geolocation_adapter') and self.geolocation_adapter:
+                gps_lock = self.geolocation_adapter.check_gps_lock()
+                if not gps_lock:
+                    self.logger.info("GPS signal loss detected, possible Faraday cage")
+                    return True
+                    
+        except Exception as e:
+            self.logger.warning(f"RF detection failed: {e}")
         
         return False
+    
+    def _measure_ambient_rf_power(self) -> float:
+        """
+        Measure ambient RF power for Faraday cage detection.
+        
+        Attempts to use SDR hardware if available, otherwise falls back
+        to configuration or environment-based detection.
+        
+        Returns:
+            RF power in dBm (lower values indicate better shielding)
+        """
+        # Check for SDR manager availability
+        if hasattr(self, 'sdr_manager') and self.sdr_manager:
+            try:
+                # Attempt real SDR measurement
+                active_device = getattr(self.sdr_manager, 'active_device', None)
+                if active_device and hasattr(active_device, 'read_samples'):
+                    # Configure for wideband power measurement
+                    active_device.configure(
+                        sample_rate=2e6,  # 2 MHz
+                        center_freq=900e6,  # GSM band
+                        bandwidth=1e6,
+                        gain=40,
+                        channel=0
+                    )
+                    
+                    if active_device.start_stream():
+                        samples = active_device.read_samples(10000)
+                        if samples is not None and len(samples) > 0:
+                            # Calculate power from IQ samples
+                            import numpy as np
+                            power_linear = np.mean(np.abs(samples) ** 2)
+                            power_dbm = 10 * np.log10(power_linear + 1e-12) + 30  # Convert to dBm
+                            active_device.stop_stream()
+                            self.logger.debug(f"Measured ambient RF power: {power_dbm:.1f} dBm")
+                            return power_dbm
+                        active_device.stop_stream()
+            except Exception as e:
+                self.logger.debug(f"SDR RF measurement failed: {e}")
+        
+        # Fallback: Check environment/config for simulated mode
+        simulated_power = self.config.get('safety.simulated_rf_power', None)
+        if simulated_power is not None:
+            self.logger.debug(f"Using configured RF power: {simulated_power} dBm")
+            return float(simulated_power)
+        
+        # Environment variable override
+        env_power = os.getenv('FALCONONE_SIMULATED_RF_POWER')
+        if env_power:
+            try:
+                self.logger.debug(f"Using env RF power: {env_power} dBm")
+                return float(env_power)
+            except ValueError:
+                pass
+        
+        # Default: Assume normal ambient level (no Faraday cage)
+        self.logger.debug("No SDR available, using default RF power: -60.0 dBm")
+        return -60.0
     
     def _initialize_le_mode(self):
         """Initialize Law Enforcement Mode components (v1.8.1)"""

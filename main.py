@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 FalconOne Application Entry Point
-Version 1.4 Complete
+Version 1.9.0
 
 Usage:
     python main.py                 # Interactive menu (future)

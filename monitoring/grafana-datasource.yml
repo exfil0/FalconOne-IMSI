@@ -32,7 +32,7 @@ datasources:
     database: falconone
     user: falconone
     secureJsonData:
-      password: changeme_secure_password
+      password: F4lc0n0n3_S3cur3_P4ssw0rd_2026!
     jsonData:
       sslmode: "disable"
       postgresVersion: 1500

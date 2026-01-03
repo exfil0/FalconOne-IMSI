@@ -225,6 +225,130 @@ class SDRDevice:
             except Exception as e:
                 self.logger.error(f"Error stopping stream: {e}")
     
+    def transmit(self, samples: np.ndarray, duration: float = None) -> bool:
+        """
+        Transmit IQ samples via SDR.
+        
+        Args:
+            samples: Complex numpy array of samples to transmit
+            duration: Optional duration in seconds (for repeated transmission)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not SOAPY_AVAILABLE:
+            self.logger.error("SoapySDR not available")
+            return False
+        
+        if not self.device:
+            self.logger.error("Device not opened")
+            return False
+        
+        if self.tx_channels == 0:
+            self.logger.error("Device has no TX capability")
+            return False
+        
+        try:
+            # Setup TX stream
+            tx_stream = self.device.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CF32, [0])
+            self.device.activateStream(tx_stream)
+            
+            # Ensure samples are the right type
+            if samples.dtype != np.complex64:
+                samples = samples.astype(np.complex64)
+            
+            # Calculate transmission parameters
+            if duration is not None:
+                sample_rate = self.device.getSampleRate(SOAPY_SDR_TX, 0)
+                total_samples = int(duration * sample_rate)
+                # Repeat samples to fill duration
+                if len(samples) < total_samples:
+                    repeats = int(np.ceil(total_samples / len(samples)))
+                    samples = np.tile(samples, repeats)[:total_samples]
+            
+            # Write samples in chunks
+            chunk_size = 4096
+            offset = 0
+            
+            while offset < len(samples):
+                chunk = samples[offset:offset + chunk_size]
+                sr = self.device.writeStream(tx_stream, [chunk], len(chunk))
+                
+                if sr.ret < 0:
+                    self.logger.warning(f"TX write returned {sr.ret}")
+                    break
+                
+                offset += chunk_size
+            
+            # Cleanup
+            self.device.deactivateStream(tx_stream)
+            self.device.closeStream(tx_stream)
+            
+            self.logger.info(f"Transmitted {len(samples)} samples")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Transmission failed: {e}")
+            return False
+    
+    def set_frequency(self, freq_hz: float, channel: int = 0) -> bool:
+        """
+        Set center frequency (convenience method).
+        
+        Args:
+            freq_hz: Frequency in Hz
+            channel: Channel number
+            
+        Returns:
+            True if successful
+        """
+        if not self.device:
+            return False
+        
+        try:
+            self.device.setFrequency(SOAPY_SDR_RX, channel, freq_hz)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to set frequency: {e}")
+            return False
+    
+    def set_sample_rate(self, rate: float, channel: int = 0) -> bool:
+        """
+        Set sample rate (convenience method).
+        
+        Args:
+            rate: Sample rate in Hz
+            channel: Channel number
+            
+        Returns:
+            True if successful
+        """
+        if not self.device:
+            return False
+        
+        try:
+            self.device.setSampleRate(SOAPY_SDR_RX, channel, rate)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to set sample rate: {e}")
+            return False
+    
+    def receive(self, num_samples: int) -> Optional[np.ndarray]:
+        """
+        Receive samples (alias for read_samples with auto stream management).
+        
+        Args:
+            num_samples: Number of samples to receive
+            
+        Returns:
+            Complex numpy array of samples, or None on error
+        """
+        if not self.is_streaming:
+            if not self.start_stream():
+                return None
+        
+        return self.read_samples(num_samples)
+    
     def close(self):
         """Close device connection"""
         self.stop_stream()
@@ -262,6 +386,7 @@ class SDRManager:
         self.logger = ModuleLogger('SDR-Manager', logger)
         self.active_device = None
         self.available_devices = []
+        self.devices: Dict[str, SDRDevice] = {}
         
         # v1.4.1: Device cache with TTL (95% latency reduction)
         self._device_cache = None
@@ -279,17 +404,6 @@ class SDRManager:
             'HackRF': 50,
             'RTL-SDR': 40
         }
-        """
-        Initialize SDR manager
-        
-        Args:
-            config: Configuration object
-            logger: Logger instance
-        """
-        self.config = config
-        self.logger = ModuleLogger('SDR-Manager', logger)
-        self.devices: Dict[str, SDRDevice] = {}
-        self.active_device: Optional[SDRDevice] = None
         
         # Device priority from config
         self.device_priority = self._get_device_priority()

@@ -161,15 +161,46 @@ class ISACMonitor:
             raise ValueError("LE mode requires warrant_id")
         
         freq = frequency_ghz * 1e9 if frequency_ghz else self.default_freq
+        sample_rate = 100e6  # 100 MHz for high resolution
         
         logger.info(f"Starting ISAC sensing: mode={mode}, duration={duration_sec}s, freq={freq/1e9:.1f} GHz")
         
-        # Step 1: Configure SDR for sensing
-        self.sdr.set_frequency(freq)
-        self.sdr.set_sample_rate(100e6)  # 100 MHz for high resolution
+        # Step 1: Configure SDR for sensing (using proper SDRDevice interface)
+        if not self.sdr:
+            logger.error("SDR manager not available")
+            raise RuntimeError("SDR not configured")
+        
+        # Get active device and configure
+        active_device = getattr(self.sdr, 'active_device', self.sdr)
+        if hasattr(active_device, 'configure'):
+            # Use full configure method if available
+            active_device.configure(
+                sample_rate=sample_rate,
+                center_freq=freq,
+                bandwidth=sample_rate,
+                gain=40,
+                channel=0
+            )
+        else:
+            # Fallback to individual setters
+            if hasattr(active_device, 'set_frequency'):
+                active_device.set_frequency(freq)
+            if hasattr(active_device, 'set_sample_rate'):
+                active_device.set_sample_rate(sample_rate)
         
         # Step 2: Capture IQ samples
-        samples = self.sdr.receive(duration_sec * 100e6)  # duration * sample_rate
+        num_samples = int(duration_sec * sample_rate)
+        if hasattr(active_device, 'receive'):
+            samples = active_device.receive(num_samples)
+        elif hasattr(active_device, 'read_samples'):
+            if hasattr(active_device, 'start_stream'):
+                active_device.start_stream()
+            samples = active_device.read_samples(num_samples)
+            if hasattr(active_device, 'stop_stream'):
+                active_device.stop_stream()
+        else:
+            logger.error("SDR device has no receive capability")
+            raise RuntimeError("SDR receive not available")
         
         # Step 3: Perform sensing (range/velocity/angle estimation)
         sensing_result = self._perform_sensing(samples, mode, freq)

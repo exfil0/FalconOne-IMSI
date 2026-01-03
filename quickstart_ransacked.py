@@ -237,8 +237,8 @@ def show_summary():
     print("  3. Web GUI for visual exploit selection")
     
     print("\n📖 Documentation:")
-    print("  - RANSACKED_INTEGRATION_COMPLETE.md (comprehensive guide)")
-    print("  - RANSACKED_PAYLOADS_COMPLETE.md (payload details)")
+    print("  - RANSACKED_FINAL_SUMMARY.md (integration summary)")
+    print("  - RANSACKED_SECURITY_REVIEW.md (security analysis)")
     print("  - exploit_chain_examples.py (chain definitions)")
     
     print("\n🔧 Next Steps:")

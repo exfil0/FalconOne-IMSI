@@ -20,7 +20,7 @@ if requirements_file.exists():
 
 setup(
     name='falconone',
-    version='1.7.0-phase1',
+    version='1.9.0',
     description='Multi-Generation Cellular SIGINT Platform with Real-World Resilience Features',
     long_description=long_description,
     long_description_content_type='text/markdown',

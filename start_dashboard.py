@@ -15,7 +15,7 @@ def start_dashboard():
     """Start the FalconOne dashboard"""
     print("="*70)
     print("FalconOne SIGINT Platform Dashboard")
-    print("Version 1.7.0 Phase 1 + Setup Wizard")
+    print("Version 1.9.0 - Production Ready")
     print("="*70)
     print()
     

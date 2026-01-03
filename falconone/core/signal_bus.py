@@ -184,3 +184,52 @@ class SignalBus:
         with self.lock:
             self.buffer.clear()
             self.logger.info("Signal buffer cleared")
+    
+    def emit(self, event_type: str, event_data: Dict[str, Any]):
+        """
+        Emit an event to all subscribers (alias for publish).
+        
+        This method provides a more semantic interface for event-driven
+        communication patterns, wrapping the publish method.
+        
+        Args:
+            event_type: Type of event (e.g., 'exploit_complete', 'anomaly_detected')
+            event_data: Event payload data
+        """
+        self.publish(event_type, event_data)
+    
+    def _setup_encryption(self):
+        """
+        Set up encryption for sensitive channels.
+        
+        Generates or loads encryption key for Fernet symmetric encryption.
+        Keys are stored securely and used for encrypting data on
+        sensitive channels (crypto, exploit, federated).
+        """
+        if not CRYPTO_AVAILABLE:
+            self.logger.warning("Cryptography package not available, encryption disabled")
+            return
+        
+        try:
+            # Try to load existing key or generate new one
+            key_file = os.path.join(os.path.expanduser('~'), '.falconone', 'signal_bus.key')
+            key_dir = os.path.dirname(key_file)
+            
+            if not os.path.exists(key_dir):
+                os.makedirs(key_dir, mode=0o700)
+            
+            if os.path.exists(key_file):
+                with open(key_file, 'rb') as f:
+                    key = f.read()
+            else:
+                key = Fernet.generate_key()
+                with open(key_file, 'wb') as f:
+                    f.write(key)
+                os.chmod(key_file, 0o600)
+            
+            self.cipher_suite = Fernet(key)
+            self.logger.info("Encryption initialized for sensitive channels")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to setup encryption: {e}")
+            self.enable_encryption = False

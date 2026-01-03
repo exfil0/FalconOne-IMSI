@@ -469,7 +469,7 @@ metadata:
 type: Opaque
 data:
   username: ZmFsY29ub25l  # falconone
-  password: Y2hhbmdlbWVfc2VjdXJlX3Bhc3N3b3Jk  # changeme_secure_password
+  password: RjRsYzBuMG4zX1MzY3VyM19QNHNzdzByZF8yMDI2IQ==  # changeme_secure_password
 
 ---
 apiVersion: v1

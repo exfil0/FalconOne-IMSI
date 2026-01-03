@@ -7,7 +7,7 @@
 FROM ubuntu:22.04 as base
 
 LABEL maintainer="FalconOne Intelligence"
-LABEL version="1.8.0"
+LABEL version="1.9.0"
 LABEL description="Multi-generation IMSI/TMSI catcher with AI/ML, SDR, and RANSacked vulnerability auditing"
 LABEL org.opencontainers.image.source="https://github.com/falconone/platform"
 LABEL org.opencontainers.image.documentation="https://docs.falconone.io"

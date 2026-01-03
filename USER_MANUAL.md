@@ -1,7 +1,7 @@
 # FalconOne User Manual
 
-**Version:** 3.2.0  
-**Last Updated:** January 2, 2026  
+**Version:** 3.5.0  
+**Last Updated:** January 3, 2026  
 **Audience:** Security Researchers, Network Engineers, Operators
 
 ---
@@ -15,12 +15,15 @@
 6. [Signal Monitoring](#signal-monitoring)
 7. [Exploit Operations](#exploit-operations)
 8. [RANSacked Exploit Operations](#ransacked-exploit-operations) **(NEW v1.8.0)**
-9. [System Tools Management](#system-tools-management)
-10. [AI/ML Features](#aiml-features)
-11. [O-RAN Integration](#o-ran-integration)
-12. [Reports & Exports](#reports--exports)
-13. [Security & Compliance](#security--compliance)
-14. [Troubleshooting](#troubleshooting)
+9. [6G NTN Operations](#6g-ntn-operations) **(NEW v1.9.0)**
+10. [ISAC Framework](#isac-framework) **(NEW v1.9.0)**
+11. [Law Enforcement Mode](#law-enforcement-mode) **(NEW v1.9.0)**
+12. [System Tools Management](#system-tools-management)
+13. [AI/ML Features](#aiml-features)
+14. [O-RAN Integration](#o-ran-integration)
+15. [Reports & Exports](#reports--exports)
+16. [Security & Compliance](#security--compliance)
+17. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -752,6 +755,125 @@ result = chain.execute('127.0.0.1', dry_run=True)
 print(result)
 "
 ```
+
+---
+
+## 6G NTN Operations
+
+**New in v1.9.0**: Complete 6G Non-Terrestrial Networks (NTN) monitoring and exploitation capabilities.
+
+### Supported Satellite Types
+
+| Type | Altitude | Typical Doppler | Use Case |
+|------|----------|-----------------|----------|
+| **LEO** | 300-2000 km | ±40 kHz | Starlink, OneWeb - Low latency broadband |
+| **MEO** | 2000-35786 km | ±5 kHz | O3b, SES - Moderate latency |
+| **GEO** | 35,786 km | ±500 Hz | Traditional satellite - High latency |
+| **HAPS** | 20-50 km | ±1 kHz | High-Altitude Platforms - Regional coverage |
+| **UAV** | 0-20 km | Variable | Unmanned Aerial Vehicles - Tactical |
+
+### NTN Monitoring
+
+1. Navigate to **6G NTN** tab in the dashboard
+2. Select satellite type from dropdown (LEO/MEO/GEO/HAPS/UAV)
+3. Configure monitoring parameters:
+   - **Duration**: 1-300 seconds
+   - **Frequency**: Center frequency in GHz (default: 150 GHz for sub-THz)
+   - **ISAC Enable**: Toggle integrated sensing
+4. Click **Start Monitoring**
+
+### NTN Exploitation
+
+Available exploit types:
+- **Beam Hijacking** (75% success) - RIS-assisted beam manipulation
+- **Handover Poisoning** (65% success) - AI orchestration attack
+- **Downlink Spoofing** (70% success) - Inject fake downlink signals
+- **Feeder Link Attack** (60% success) - Ground-satellite link attack
+- **NB-IoT NTN** (68% success) - NB-IoT satellite exploitation
+- **Timing Advance** (72% success) - Timing advance manipulation
+- **Quantum Attack** (35% success) - QKD exploitation
+
+---
+
+## ISAC Framework
+
+**New in v1.9.0**: Integrated Sensing and Communications framework for joint radar-communication operations.
+
+### Sensing Modes
+
+| Mode | Description | Best For |
+|------|-------------|----------|
+| **Monostatic** | Same TX/RX antenna | Close-range, single device |
+| **Bistatic** | Separate TX/RX | Long-range, stealth detection |
+| **Cooperative** | Multiple sensors | Wide area, high accuracy |
+
+### Waveform Types
+
+- **OFDM**: Standard 5G waveform, good sensing resolution
+- **DFT-s-OFDM**: Lower PAPR, better for uplink sensing
+- **FMCW**: Traditional radar, highest range resolution
+
+### Starting ISAC Monitoring
+
+1. Navigate to **ISAC** tab
+2. Select sensing mode
+3. Configure parameters:
+   - **Frequency**: 100-300 GHz for sub-THz
+   - **Waveform**: OFDM/DFT-s-OFDM/FMCW
+   - **Duration**: 1-60 seconds
+4. Click **Start Sensing**
+
+### ISAC Exploitation
+
+Available exploit types:
+- **Waveform Manipulation** (80% success) - Inject malformed waveforms
+- **AI Poisoning** (65% success) - ML model poisoning
+- **Privacy Breach** (60% success) - Sensing-based tracking
+- **E2SM Hijack** (70% success) - Control plane attack
+- **Quantum Attack** (35% success) - Quantum radar exploitation
+
+---
+
+## Law Enforcement Mode
+
+**New in v1.9.0**: Legally-compliant interception operations with warrant validation and evidence chain management.
+
+### ⚠️ Important Legal Notice
+
+LE Mode is designed for **authorized law enforcement operations only**. Use requires:
+- Valid court-issued warrant
+- Proper jurisdiction
+- Authorized personnel credentials
+
+### Activating LE Mode
+
+1. Navigate to **LE Mode** tab
+2. Enter warrant details:
+   - **Warrant ID**: Court-issued warrant number
+   - **Jurisdiction**: Issuing court
+   - **Case Number**: Associated case
+   - **Authorized By**: Issuing judge
+   - **Valid Until**: Expiration date
+   - **Target Identifiers**: IMSIs/IMEIs
+3. Upload warrant image (optional)
+4. Click **Validate Warrant**
+
+### Evidence Chain Management
+
+All operations in LE Mode are:
+- **Cryptographically hashed**: SHA-256 evidence integrity
+- **Chain-of-custody tracked**: Complete audit trail
+- **Tamper-evident**: Any modification detected
+- **Export-ready**: Court-compatible packages
+
+### Exporting Evidence
+
+1. Navigate to **LE Mode > Evidence**
+2. Select warrant
+3. Choose export format:
+   - **Court Package**: Complete legal bundle
+   - **Raw Data**: Technical analysis format
+4. Click **Export**
 
 ---
 

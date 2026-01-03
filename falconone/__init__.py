@@ -1,13 +1,13 @@
 """
 FalconOne IMSI/TMSI and SMS Catcher System
-Version 1.8.1 - Multi-Generation Cellular Monitoring Platform
+Version 1.9.0 - Multi-Generation Cellular Monitoring Platform
 Real-World Resilience: Error Recovery, Data Validation, Security Auditing
 LE Mode: Exploit-Enhanced Interception with Warrant Compliance
 
 TOP CONFIDENTIAL - Research and Development Use Only
 """
 
-__version__ = "1.8.1"
+__version__ = "1.9.0"
 __author__ = "FalconOne Research Team"
 
 # Package-level imports for easy access

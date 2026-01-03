@@ -32,11 +32,11 @@ This document serves as both the original **Blueprint** (design specification) a
 
 | Enhancement | Status | Description |
 |-------------|--------|-------------|
-| **RANSacked Vulnerability Auditor** | ✅ **COMPLETE** | 97 CVE database spanning 7 5G implementations (Open5GS, OpenAirInterface, srsRAN, Magma, free5GC, Amarisoft, UERANSIM) |
+| **RANSacked Vulnerability Auditor** | ✅ **COMPLETE** | 96 CVE database spanning 7 5G implementations (Open5GS, OpenAirInterface, srsRAN, Magma, free5GC, Amarisoft, UERANSIM) |
 | **Implementation Scanning API** | ✅ **COMPLETE** | Version-aware CVE scanning with risk scoring, wildcard support, detailed metadata |
 | **Packet-Level Auditing** | ✅ **COMPLETE** | Deep packet inspection for NAS/NGAP/RRC vulnerability patterns (hex/base64 support) |
 | **Dashboard UI Integration** | ✅ **COMPLETE** | RANSacked Audit tab with scanner, packet auditor, real-time statistics, export functionality |
-| **Integration Test Suite** | ✅ **COMPLETE** | 700+ lines, 8 test classes, 100+ tests covering all 96 CVE payloads (pytest-based) |
+| **Integration Test Suite** | ✅ **COMPLETE** | 485 lines, 8 test classes, 100+ tests covering all 96 CVE payloads (pytest-based) |
 | **Exploit Chain Framework** | ✅ **COMPLETE** | 850+ lines, 7 pre-defined chains (reconnaissance, persistent access, multi-implementation attacks) |
 | **RANSacked GUI Controls** | ✅ **COMPLETE** | 950+ lines visual interface with 10 REST API endpoints, multi-select execution, real-time filtering |
 | **Security Hardening** | ✅ **COMPLETE** | XSS protection (23 fields), enhanced rate limiting (60/30/5/3 rpm), comprehensive audit logging |
@@ -62,15 +62,7 @@ This document serves as both the original **Blueprint** (design specification) a
 
 **Total v1.6.2 Addition**: ~2,700 lines | **v1.7.0 Phase 1 Addition**: ~1,330 lines | **Cumulative Total**: ~14,880 lines
 
-📚 **NEW DOCUMENTATION**:
-- [IMPLEMENTATION_SUMMARY_V1.7.0_PHASE1.md](IMPLEMENTATION_SUMMARY_V1.7.0_PHASE1.md) - Phase 1 real-world resilience features
-- [IMPLEMENTATION_SUMMARY_V1.6.2.md](IMPLEMENTATION_SUMMARY_V1.6.2.md) - v1.6.2 grounded modules
-- [IMPLEMENTATION_SUMMARY_V1.5.md](IMPLEMENTATION_SUMMARY_V1.5.md) - v1.5 technical details
-- [ENHANCEMENTS_V1.5.md](ENHANCEMENTS_V1.5.md) - v1.5 feature documentation
-- [DASHBOARD_README_SECTION.md](DASHBOARD_README_SECTION.md) - **NEW**: Complete dashboard feature guide (v2.0)
-- [DASHBOARD_FEATURE_GAP_ANALYSIS.md](DASHBOARD_FEATURE_GAP_ANALYSIS.md) - **NEW**: UI coverage report & roadmap
-- [RESPONSIVE_UI_GUIDE.md](RESPONSIVE_UI_GUIDE.md) - **NEW**: Responsive design implementation
-- [SYSTEM_HEALTH_ENHANCEMENTS.md](SYSTEM_HEALTH_ENHANCEMENTS.md) - **NEW**: Real-time monitoring details
+📚 **DOCUMENTATION** - See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) for complete documentation listing.
 
 ### ✅ Complete System Status (v1.2 Base + v1.3 + v1.4 + v1.5 + v1.6.2 + v1.7.0 + v1.8.0 + v1.9.0)
 
@@ -84,8 +76,8 @@ This document serves as both the original **Blueprint** (design specification) a
 | **ISAC Test Suite (NEW)** | ✅ **v1.9.0** | **65+ tests covering sensing modes, waveform exploits, AI poisoning, quantum attacks, integration (500 lines)** |
 | **NTN API Endpoints (NEW)** | ✅ **v1.9.0** | **5 REST endpoints (monitor, exploit, satellites, ephemeris, statistics), LE warrant validation (350 lines)** |
 | **ISAC API Endpoints (NEW)** | ✅ **v1.9.0** | **4 REST endpoints (monitor, exploit, sensing_data, statistics), rate limiting 5-20 rpm (450 lines)** |
-| **RANSacked Vulnerability Auditor** | ✅ **v1.8.0** | **97 CVE database, implementation scanning, packet auditing, XSS protection, rate limiting, LRU caching (1,580 lines)** |
-| **RANSacked Integration Tests** | ✅ **v1.8.0** | **700+ lines, 8 test classes, 100+ tests covering all 96 CVE payloads, performance benchmarks** |
+| **RANSacked Vulnerability Auditor** | ✅ **v1.8.0** | **96 CVE database, implementation scanning, packet auditing, XSS protection, rate limiting, LRU caching (1,580 lines)** |
+| **RANSacked Integration Tests** | ✅ **v1.8.0** | **485 lines, 8 test classes, 100+ tests covering all 96 CVE payloads, performance benchmarks** |
 | **RANSacked Exploit Chains** | ✅ **v1.8.0** | **850+ lines, 7 pre-defined chains (80-95% success rates), dry-run mode, fallback CVEs** |
 | **RANSacked GUI Controls** | ✅ **v1.8.0** | **950+ lines HTML/JS interface, 10 REST API endpoints, multi-select execution, real-time filtering** |
 | **Monitoring Stack** | ✅ **ENHANCED** | gr-gsm, LTESniffer, srsRAN + 6G ISAC + **6G NTN (v1.9.0)** + Rel-20 A-IoT (v1.6.2) |
@@ -132,21 +124,15 @@ This document serves as both the original **Blueprint** (design specification) a
 - ✅ 9 new REST API endpoints (NTN + ISAC), LE warrant enforcement
 
 **🔧 v1.8.0 Enhancements (January 2025)**:
-- ✅ RANSacked vulnerability auditor (97 CVE database, 7 5G implementations)
+- ✅ RANSacked vulnerability auditor (96 CVE database, 7 5G implementations)
 - ✅ Security hardening (XSS protection, rate limiting, audit logging)
 - ✅ Performance optimization (LRU caching, 10x improvement)
 - ✅ Deployment configuration (Docker 1.8.0, Kubernetes, health checks)
 - ✅ Zero dependency vulnerabilities (pip 25.3, pip-audit clean)
 - ✅ Security compliance: 94% (7.5/8 controls passing)
 
-**📚 Version 1.8.0**: [CHANGELOG.md](CHANGELOG.md) | [RANSACKED_SECURITY_REVIEW.md](RANSACKED_SECURITY_REVIEW.md)  
-**📚 Version 1.7.0 Phase 1**: [IMPLEMENTATION_SUMMARY_V1.7.0_PHASE1.md](IMPLEMENTATION_SUMMARY_V1.7.0_PHASE1.md)  
-**📚 Version 1.6.2**: [IMPLEMENTATION_SUMMARY_V1.6.2.md](IMPLEMENTATION_SUMMARY_V1.6.2.md)  
-**📚 Version 1.5**: [IMPLEMENTATION_SUMMARY_V1.5.md](IMPLEMENTATION_SUMMARY_V1.5.md)  
-**📚 Version 1.4**: [VERSION_1.4_COMPLETE.md](VERSION_1.4_COMPLETE.md)  
-**📚 Version 1.3**: [ENHANCEMENT_SUMMARY.md](ENHANCEMENT_SUMMARY.md)  
-**📚 Version 1.2 Base**: [COMPLETION_SUMMARY.md](COMPLETION_SUMMARY.md)  
-**🔍 Technical Review**: [REVIEW.md](REVIEW.md)  
+**📚 All Documentation**: See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)  
+**📚 Changelog**: [CHANGELOG.md](CHANGELOG.md)  
 **🚀 Quick Start**: [QUICKSTART.md](QUICKSTART.md)
 
 ---
@@ -158,7 +144,7 @@ This document serves as both the original **Blueprint** (design specification) a
 ### RANSacked Core Features (5/5)
 
 1. **RANSacked CVE Database** ([ransacked.py](falconone/audit/ransacked.py))
-   - 97 CVE signatures spanning 2020-2025
+   - 96 CVE signatures spanning 2020-2025
    - Coverage: Open5GS (14), OpenAirInterface (18), srsRAN (15), Magma (12), free5GC (13), Amarisoft (11), UERANSIM (14)
    - CVSS scoring (2.4-9.8), attack vectors (L2/L3/DoS/AuthBypass)
    - Version-aware scanning with wildcard support
@@ -1961,11 +1947,13 @@ bladeRF-cli -p
 
 ## 25. Appendix B: Legal Compliance Checklist
 - Active mode warrant obtained? [ ]
-- Testing in shielded environment (Faraday cage)? [ ]
+- Testing in shielded environment (Faraday cage - **manual verification required**)? [ ]
 - CVD for vulnerabilities? [ ]
 - Data privacy (POPIA compliant)? [ ]
 - Spectrum usage licensed (ICASA)? [ ]
 - Ethical review completed? [ ]
+
+**Note on Faraday Cage**: FalconOne does not provide automated RF shielding detection. Operators must manually verify that all equipment is enclosed in a properly shielded Faraday cage before conducting any transmit operations. Use RF power meters or spectrum analyzers outside the cage to confirm signal containment (<-70 dBm leakage threshold recommended).
 
 ## 26. Appendix C: Performance Benchmarks
 | Task | Metric | Value |

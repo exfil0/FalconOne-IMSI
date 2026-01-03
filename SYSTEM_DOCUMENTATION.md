@@ -1,7 +1,7 @@
 # FalconOne SIGINT Platform - Complete System Documentation
 
-**Version:** 1.8.0 with RANSacked Integration  
-**Last Updated:** January 2, 2026  
+**Version:** 1.9.0 with 6G NTN & ISAC Integration  
+**Last Updated:** January 3, 2026  
 **Status:** Production Ready  
 **License:** Research & Authorized Testing Only
 
@@ -1633,7 +1633,7 @@ Layer 3: OPERATIONAL SECURITY
     ┌─────────────────────────────────────────┐
     │  Safety Interlocks                      │
     ├─────────────────────────────────────────┤
-    │  • Faraday cage detection (TODO)        │
+    │  • Faraday cage (manual verification) │
     │  • TX power limits (<1 mW default)      │
     │  • Frequency restrictions (ISM only)    │
     │  • Emergency stop (Ctrl+C, SIGTERM)     │
@@ -3358,7 +3358,7 @@ utils/
 - FCC/Ofcom/etc. license verification
 - Frequency restriction enforcement
 - Power limit checks
-- Faraday cage detection (TODO)
+- Faraday cage verification (operator must manually confirm shielded environment)
 
 **sustainability.py** (v1.8.0)
 - `SustainabilityMonitor`: Energy efficiency

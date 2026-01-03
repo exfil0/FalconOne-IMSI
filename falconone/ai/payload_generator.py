@@ -232,3 +232,87 @@ class PayloadGenerator:
         except Exception as e:
             self.logger.error(f"Payload morphing failed: {e}")
             return original_payload
+    
+    def generate(self, payload_type: str, config: Dict[str, Any] = None) -> np.ndarray:
+        """
+        Generate payload for specific attack type.
+        
+        This method provides a unified interface for generating payloads
+        across different attack categories (ISAC, NTN, O-RAN, etc.).
+        
+        Args:
+            payload_type: Type of payload to generate
+                - 'isac_waveform_poison': ISAC waveform manipulation payload
+                - 'isac_ai_poison': AI model poisoning samples
+                - 'ntn_beam_hijack': NTN beam hijacking payload
+                - 'oran_xapp_exploit': O-RAN xApp exploitation payload
+                - 'quantum_attack': Quantum attack sequence
+            config: Configuration dict with:
+                - evasion_level: 0-1 (how evasive the payload should be)
+                - target_system: Target system identifier
+                - polymorphic: bool (use GAN for polymorphism)
+                - payload_size: int (override default size)
+                
+        Returns:
+            numpy array containing generated payload samples
+        """
+        config = config or {}
+        evasion_level = config.get('evasion_level', 0.5)
+        target_size = config.get('payload_size', self.payload_size)
+        polymorphic = config.get('polymorphic', True)
+        
+        # Generate base payload using GAN if available
+        if polymorphic and TF_AVAILABLE and self.generator:
+            try:
+                # Generate multiple candidates, select best for evasion
+                num_candidates = max(1, int(10 * evasion_level))
+                latent_samples = np.random.normal(0, 1, size=(num_candidates, self.latent_dim))
+                
+                # Add structured noise based on payload type
+                if 'waveform' in payload_type:
+                    # Add frequency-domain structure for waveform payloads
+                    freq_component = np.sin(np.linspace(0, 4*np.pi, self.latent_dim))
+                    latent_samples += freq_component * 0.3 * evasion_level
+                elif 'ai_poison' in payload_type:
+                    # Add adversarial perturbation structure
+                    latent_samples += np.random.laplace(0, 0.1, latent_samples.shape)
+                
+                candidates = self.generator.predict(latent_samples, verbose=0)
+                
+                # Select candidate with highest variance (more evasive)
+                variances = np.var(candidates, axis=1)
+                best_idx = np.argmax(variances)
+                payload = candidates[best_idx]
+                
+                # Scale to target size if needed
+                if len(payload) != target_size:
+                    payload = np.interp(
+                        np.linspace(0, 1, target_size),
+                        np.linspace(0, 1, len(payload)),
+                        payload
+                    )
+                
+                self.logger.debug(f"Generated {payload_type} payload: size={target_size}, evasion={evasion_level}")
+                return payload.astype(np.float32)
+                
+            except Exception as e:
+                self.logger.warning(f"GAN generation failed, using fallback: {e}")
+        
+        # Fallback: Generate structured random payload
+        if 'waveform' in payload_type:
+            # Generate chirp-like waveform for ISAC attacks
+            t = np.linspace(0, 1, target_size)
+            payload = np.sin(2 * np.pi * (10 + 50 * t) * t) * evasion_level
+            payload += np.random.normal(0, 0.1, target_size)
+        elif 'ai_poison' in payload_type:
+            # Generate adversarial perturbation
+            payload = np.random.laplace(0, 0.05 * evasion_level, target_size)
+        elif 'quantum' in payload_type:
+            # Generate quantum-like superposition states
+            payload = np.random.choice([-1, 1], target_size) * np.random.uniform(0, 1, target_size)
+        else:
+            # Default: Random uniform noise
+            payload = np.random.uniform(-1, 1, target_size) * evasion_level
+        
+        self.logger.debug(f"Generated fallback {payload_type} payload: size={target_size}")
+        return payload.astype(np.float32)

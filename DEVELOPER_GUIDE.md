@@ -1,7 +1,7 @@
 # FalconOne Developer Guide
 
-**Version:** 3.1.0  
-**Last Updated:** January 2, 2026  
+**Version:** 3.5.0  
+**Last Updated:** January 3, 2026  
 **Audience:** Software Developers, Contributors
 
 ---
@@ -808,7 +808,7 @@ def test_target(test_db):
 
 ### Test Suite Overview
 
-**File:** `falconone/tests/test_ransacked_exploits.py` (700+ lines)
+**File:** `falconone/tests/test_ransacked_exploits.py` (485 lines)
 
 **Test Classes:**
 - `TestPayloadGeneration` - Individual CVE payload generation

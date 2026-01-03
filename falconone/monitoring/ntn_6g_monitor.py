@@ -34,6 +34,8 @@ try:
     ASTROPY_AVAILABLE = True
 except ImportError:
     ASTROPY_AVAILABLE = False
+    # Define placeholder types when astropy is not available
+    EarthLocation = object  # Placeholder
     logging.warning("astropy not available - orbital calculations will use simplified models")
 
 # FalconOne integration
@@ -137,17 +139,57 @@ class NTN6GMonitor:
         logger.info(f"NTN6GMonitor initialized: freq={self.sub_thz_freq/1e9:.1f}GHz, "
                    f"astropy={self.use_astropy}, ISAC={self.isac_enabled}")
     
-    def _parse_ground_location(self) -> Optional[EarthLocation]:
-        """Parse ground station location from config"""
+    def _parse_ground_location(self) -> Optional[object]:
+        """
+        Parse ground station location from config.
+        
+        Ground location is required for accurate satellite tracking and
+        Doppler compensation. If not configured, calculations will be
+        significantly less accurate.
+        
+        Returns:
+            EarthLocation object or None if astropy unavailable
+            
+        Raises:
+            ValueError: If strict_location is True and location is not configured
+        """
         if not ASTROPY_AVAILABLE:
+            logger.warning("Astropy not available - satellite calculations will use simplified models")
             return None
         
-        lat = self.config.get('latitude', 0.0)
-        lon = self.config.get('longitude', 0.0)
+        lat = self.config.get('latitude')
+        lon = self.config.get('longitude')
         alt = self.config.get('altitude_m', 0.0)
         
-        if lat == 0 and lon == 0:
-            logger.warning("Ground location not configured, using (0,0)")
+        # Check if location is properly configured
+        location_configured = lat is not None and lon is not None
+        
+        if not location_configured:
+            # Check for strict mode
+            if self.config.get('strict_location', False):
+                raise ValueError(
+                    "Ground location not configured. Set 'latitude' and 'longitude' in config, "
+                    "or set 'strict_location: false' to use default (0,0) with reduced accuracy."
+                )
+            
+            logger.warning(
+                "Ground location not configured - using (0,0). "
+                "Satellite tracking accuracy will be significantly reduced. "
+                "Set 'latitude' and 'longitude' in config for accurate tracking."
+            )
+            lat = 0.0
+            lon = 0.0
+        elif lat == 0.0 and lon == 0.0:
+            # Explicitly set to (0,0) - valid but unlikely
+            logger.info("Ground location set to (0,0) - Gulf of Guinea reference point")
+        
+        # Validate coordinate ranges
+        if not (-90.0 <= lat <= 90.0):
+            raise ValueError(f"Invalid latitude {lat}: must be between -90 and 90")
+        if not (-180.0 <= lon <= 180.0):
+            raise ValueError(f"Invalid longitude {lon}: must be between -180 and 180")
+        
+        self._ground_location_configured = location_configured
         
         return EarthLocation(lat=lat*u.deg, lon=lon*u.deg, height=alt*u.m)
     

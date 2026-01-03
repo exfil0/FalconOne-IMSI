@@ -1,10 +1,10 @@
 # FalconOne System Configuration
-# Version 1.8.0 - Multi-Generation Cellular Monitoring Platform
-# New in v1.8.0: Dynamic scaling, encryption, hot-reload, ISAC support
+# Version 1.9.0 - Multi-Generation Cellular Monitoring Platform
+# New in v1.9.0: Documentation audit, production readiness, LE Mode refinements
 
 system:
   name: FalconOne
-  version: 1.8.0
+  version: 1.9.0
   environment: research
   log_level: INFO
   log_dir: /var/log/falconone

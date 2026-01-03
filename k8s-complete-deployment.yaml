@@ -54,7 +54,7 @@ metadata:
   namespace: falconone
 type: Opaque
 stringData:
-  postgres-password: "changeme_secure_password"
+  postgres-password: "F4lc0n0n3_S3cur3_P4ssw0rd_2026!"
   postgres-user: "falconone"
   redis-password: ""
   smtp-password: "changeme_smtp_password"

@@ -59,7 +59,7 @@
 
 ## Prerequisites
 
-### 1. Install Python 3.10+
+### 1. Install Python 3.11+
 
 **Ubuntu/Debian:**
 ```bash
@@ -284,50 +284,85 @@ python validate_features.py
 
 ### 1. Main Configuration File
 
-Edit `config/config.yaml`:
+FalconOne uses `config/config.yaml` for system-wide settings. A comprehensive annotated example is provided at `config/config.yaml.example` with inline documentation for all 325 configuration options.
+
+**Quick Start:**
+
+```bash
+# Copy the annotated example
+cp config/config.yaml.example config/config.yaml
+
+# Edit with your settings
+nano config/config.yaml
+```
+
+**Key Configuration Sections:**
+
+- **system**: Platform identity, logging, data directories
+- **sdr**: SDR device selection, sample rate, gain, frequency
+- **monitoring**: Enable/disable cellular generations (2G-6G)
+- **ai_ml**: Machine learning models and federated learning
+- **law_enforcement**: Warrant validation and evidence chain of custody
+- **geolocation**: TDOA/AoA/DF algorithms and accuracy targets
+- **safety**: Transmit power limits, Faraday cage requirements
+- **compliance**: Legal requirements (FCC/ETSI/ARIB)
+
+**Minimal Example** (for basic monitoring):
 
 ```yaml
 # FalconOne Configuration
-version: 1.7.0
-
-# Monitoring Configuration
-monitoring:
-  gsm: true
-  umts: true
-  lte: true
-  5g: true
-  6g: false  # Experimental
-  cdma: false
+system:
+  version: 1.9.0
+  environment: research
+  log_level: INFO
 
 # SDR Configuration
 sdr:
-  device: "usrp"  # Options: usrp, hackrf, limesdr, bladerf
-  sample_rate: 20000000  # 20 MHz
+  devices: [USRP, BladeRF, RTL-SDR]
+  priority: USRP
+  sample_rate: 23040000  # 23.04 MHz for LTE
+  center_freq: 2140000000  # 2.14 GHz (LTE Band 1)
   gain: 40
-  frequency: 2450000000  # 2.45 GHz
+  bandwidth: 20000000  # 20 MHz
 
+# Monitoring Configuration
+monitoring:
+  gsm:
+    enabled: true
+    bands: [GSM900, GSM1800]
+  lte:
+    enabled: true
+    bands: [1, 3, 7, 20, 28]
+  5g:
+    enabled: true
+    mode: SA  # Standalone
+    bands: [n1, n78, n79]
+  
+  # 6G Experimental (v1.9.0)
+  ntn_6g:
+    enabled: false  # Requires sub-THz SDR
+  
 # AI/ML Configuration
-ai:
-  enable_federated: false
-  model_path: "./models"
+ai_ml:
+  signal_classification:
+    enabled: true
+    model: CNN
+    accuracy_threshold: 0.90
+  model_zoo_enabled: true  # v1.7.0: Pre-trained models
   
-# Security Configuration
-security:
-  jurisdiction: "usa"  # Options: usa, eu, jp
-  audit_interval: 3600  # seconds
-  block_non_compliant: true
-  
-# Data Validation
-validation:
-  strict_mode: false
-  min_snr_db: 5.0
-  
-# Error Recovery
-recovery:
-  max_retries: 5
-  backoff_base: 2
-  checkpoint_enabled: true
+# Safety Configuration
+safety:
+  require_faraday_cage: false  # Set true for production
+  max_power_dbm: 0  # 1 mW for testing
+  ethical_mode: true
+
+# Compliance
+compliance:
+  faraday_cage: false  # Manual verification required
+  cvd_enabled: true  # Responsible disclosure
 ```
+
+For a complete configuration reference with detailed explanations of all 325 settings, see [config/config.yaml.example](../config/config.yaml.example).
 
 ### 2. FalconOne-Specific Configuration
 

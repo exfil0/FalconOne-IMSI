@@ -1,0 +1,595 @@
+# =============================================================================
+# FalconOne System Configuration - Annotated Example
+# Version 1.9.0 - Multi-Generation Cellular Monitoring Platform
+# =============================================================================
+#
+# This is a comprehensive configuration example with inline documentation.
+# Copy this file to config.yaml and customize for your environment.
+#
+# Quick Start:
+#   1. Copy: cp config/config.yaml.example config/config.yaml
+#   2. Edit SDR settings (section: sdr)
+#   3. Enable desired monitoring modes (section: monitoring)
+#   4. Configure AI/ML features (section: ai_ml)
+#   5. Set legal compliance options (section: compliance, safety)
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SYSTEM CONFIGURATION
+# -----------------------------------------------------------------------------
+# Core system settings that define the platform identity and logging behavior.
+
+system:
+  name: FalconOne                    # Platform name (displayed in UI)
+  version: 1.9.0                     # Current version (auto-updated by releases)
+  environment: research              # Options: research, development, production
+                                     # - research: Relaxed safety, verbose logging
+                                     # - development: Moderate safety, debug logging
+                                     # - production: Strict safety, audit logging only
+  
+  log_level: INFO                    # Logging verbosity: DEBUG, INFO, WARNING, ERROR, CRITICAL
+                                     # Use DEBUG for troubleshooting, INFO for normal operation
+  
+  log_dir: /var/log/falconone        # Directory for log files (ensure write permissions)
+                                     # Logs rotate daily, retained for 30 days
+  
+  data_dir: /var/lib/falconone       # Directory for captured data (PCAP, IQ samples, databases)
+                                     # Requires ~100GB free space for extended monitoring
+
+# -----------------------------------------------------------------------------
+# ORCHESTRATOR CONFIGURATION (v1.8.0)
+# -----------------------------------------------------------------------------
+# Dynamic resource scaling based on system load and anomaly detection rates.
+
+orchestrator:
+  dynamic_scaling: true              # Enable auto-scaling (recommended for production)
+  
+  scaling_thresholds:
+    cpu_high: 0.85                   # Scale up when CPU usage exceeds 85%
+    memory_high: 0.80                # Optimize memory when usage exceeds 80%
+    anomaly_rate_high: 0.20          # Trigger ML scaling when 20% of signals are anomalous
+                                     # Lower threshold = more aggressive scaling
+
+# -----------------------------------------------------------------------------
+# SIGNAL BUS CONFIGURATION (v1.8.0)
+# -----------------------------------------------------------------------------
+# Inter-module communication bus with optional encryption for sensitive channels.
+
+signal_bus:
+  buffer_size: 10000                 # Message queue size per channel
+                                     # Increase if seeing "buffer overflow" warnings
+  
+  enable_encryption: false           # Set true for production environments
+                                     # Requires SIGNAL_BUS_KEY environment variable:
+                                     #   export SIGNAL_BUS_KEY=$(openssl rand -hex 32)
+  
+  encrypted_channels:                # Channels that require encryption when enabled
+    - crypto                         # Cryptanalysis results
+    - exploit                        # Exploitation payloads and results
+    - federated                      # Federated learning model updates
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION MANAGEMENT (v1.8.0)
+# -----------------------------------------------------------------------------
+# Hot-reload allows configuration changes without restarting the system.
+
+config:
+  enable_hot_reload: true            # Watch config.yaml for changes and auto-reload
+                                     # Useful for tuning SDR parameters during operation
+  
+  validation_strict: true            # Reject invalid configuration (recommended)
+                                     # Set false for backwards compatibility with old configs
+
+# -----------------------------------------------------------------------------
+# SDR HARDWARE CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure Software-Defined Radio devices for signal capture and transmission.
+# Supported devices: USRP (all models), BladeRF, RTL-SDR, HackRF One, LimeSDR
+
+sdr:
+  devices:                           # List of available SDR devices (auto-detected at startup)
+    - USRP                           # Ettus USRP family (B200, N210, X310)
+    - BladeRF                        # Nuand bladeRF xA4/xA9
+    - RTL-SDR                        # RTL2832U (receive-only)
+    - HackRF                         # Great Scott Gadgets HackRF One
+  
+  priority: USRP                     # Preferred device when multiple are connected
+  
+  sample_rate: 23040000              # Sample rate in Hz (23.04 MHz for LTE)
+                                     # Common values:
+                                     #   - 2.0e6 (GSM)
+                                     #   - 15.36e6 (LTE 20 MHz)
+                                     #   - 23.04e6 (LTE 20 MHz with oversampling)
+                                     #   - 30.72e6 (5G NR 100 MHz)
+  
+  center_freq: 2140000000            # Center frequency in Hz (2.14 GHz for LTE Band 1 downlink)
+                                     # Check local spectrum allocation before setting
+  
+  gain: 40                           # Receiver gain in dB (0-76 dB for USRP, device-dependent)
+                                     # Start low (20 dB), increase until SNR is adequate
+                                     # Too high = clipping, too low = weak signals
+  
+  bandwidth: 20000000                # Analog bandwidth in Hz (20 MHz for LTE)
+                                     # Should match sample_rate for full channel capture
+
+# -----------------------------------------------------------------------------
+# ISAC (Integrated Sensing and Communications) - v1.9.0
+# -----------------------------------------------------------------------------
+# 6G technology combining communication and radar sensing capabilities.
+
+monitoring:
+  isac:
+    enabled: false                   # Enable ISAC monitoring and exploitation
+                                     # Requires sub-THz capable SDR (100+ GHz)
+    
+    modes:                           # Sensing configurations
+      - monostatic                   # Single node (Tx and Rx colocated)
+      - bistatic                     # Separate Tx/Rx nodes (2 SDRs required)
+      - cooperative                  # Multi-node network sensing (3+ SDRs)
+    
+    frequency_default: 150e9         # Default frequency in Hz (150 GHz, FR3 mid-band)
+                                     # FR3 bands: 100-150 GHz (low), 150-200 GHz (mid), 200-300 GHz (high)
+    
+    sensing_resolution: 1.0          # Spatial resolution in meters
+                                     # Higher resolution requires larger bandwidth
+    
+    max_targets: 10                  # Maximum simultaneous sensing targets
+    
+    waveform_types:                  # Joint communication-sensing waveforms
+      - OFDM                         # Standard OFDM (balanced comms/sensing)
+      - DFT-s-OFDM                   # Enhanced sensing resolution
+      - FMCW                         # Frequency-Modulated Continuous Wave (radar-like, high resolution)
+    
+    privacy_detection: true          # Detect unauthorized sensing (privacy threat)
+                                     # Alerts when sensing overhead >50% or sub-meter ranging detected
+    
+    o_ran_integration:               # Open RAN RIC integration for ISAC control
+      e2sm_kpm: true                 # E2SM KPM for sensing KPI extraction
+      e2sm_rc: true                  # E2SM RC for ISAC radio control
+      ric_endpoint: ${ORAN_RIC_ENDPOINT:-http://localhost:8090/e2}
+                                     # Set ORAN_RIC_ENDPOINT env var in production
+    
+    quantum_security:
+      qkd_detection: true            # Detect Quantum Key Distribution protocols
+      quantum_attacks_enabled: false # Enable quantum cryptanalysis (Shor, Grover)
+                                     # ⚠️  FOR LAW ENFORCEMENT ONLY - Requires warrant
+    
+    ntn_integration: true            # Integrate with 6G NTN satellites (see ntn_6g section)
+
+# -----------------------------------------------------------------------------
+# LAW ENFORCEMENT MODE (v1.8.1)
+# -----------------------------------------------------------------------------
+# Lawful interception features with warrant validation and evidence chain of custody.
+# ⚠️  LEGAL NOTICE: Only activate with valid warrant and proper authorization.
+
+law_enforcement:
+  enabled: false                     # Enable LE mode (requires warrant validation)
+  
+  warrant_validation:
+    ocr_enabled: true                # OCR-based warrant document validation
+                                     # Supports PDF, JPEG, PNG formats
+    
+    ocr_retries: 3                   # Retry OCR up to 3 times if validation fails
+    
+    required_fields:                 # Fields that must be present in warrant document
+      - jurisdiction                 # Issuing jurisdiction (e.g., "Eastern District of NY")
+      - case_number                  # Case identifier (e.g., "CR-2025-12345")
+      - authorized_by                # Authorizing judge/magistrate name
+      - valid_until                  # Warrant expiration date (YYYY-MM-DD)
+      - target_identifiers           # IMSI, IMEI, or phone numbers
+    
+    warrant_storage_path: logs/warrants/  # Encrypted storage for warrant documents
+                                          # Uses AES-256 with key from WARRANT_ENCRYPTION_KEY env var
+  
+  exploit_chain_safeguards:
+    mandate_warrant_for_chains: true # Require warrant for exploit-listen chains
+                                     # Exploit chains: DoS→IMSI intercept, beam hijack→VoNR
+    
+    hash_all_intercepts: true        # SHA-256 hash + timestamp all enhanced intercepts
+                                     # Creates cryptographic proof for evidence integrity
+    
+    immutable_evidence_log: true     # Append-only blockchain-style evidence chain
+                                     # Cannot be modified after creation (forensic integrity)
+    
+    auto_redact_pii: true            # Redact IMSI/IMEI in logs (store hashes instead)
+                                     # Reduces privacy exposure in inadvertent captures
+  
+  evidence_export:
+    format: forensic                 # Export format: forensic (with chain of custody) or standard
+    blockchain_enabled: false        # Optional blockchain evidence chain (requires private blockchain)
+    retention_days: 90               # Auto-delete evidence after 90 days (configurable per jurisdiction)
+  
+  fallback_mode:
+    if_warrant_invalid: passive_scan # Fallback to passive monitoring if warrant validation fails
+                                     # Options: passive_scan, block_all, manual_override
+    
+    timeout_seconds: 300             # Warrant validation timeout (5 minutes)
+
+# -----------------------------------------------------------------------------
+# GENERATION-SPECIFIC MONITORING
+# -----------------------------------------------------------------------------
+# Enable/disable monitoring for each cellular generation (2G through 6G).
+
+monitoring:
+  profiling_enabled: true            # v1.7.0: Enable Prometheus/Grafana performance profiling
+  
+  # --- 2G GSM Configuration ---
+  gsm:
+    enabled: true                    # Enable GSM monitoring (2G)
+    bands:                           # GSM frequency bands to monitor
+      - GSM900                       # 890-960 MHz (global)
+      - GSM1800                      # 1710-1880 MHz (DCS, Europe/Asia)
+      # Other bands: GSM850 (Americas), GSM1900 (PCS, Americas)
+    
+    arfcn_scan: true                 # Scan all ARFCNs in band (automatic channel discovery)
+    
+    tools:                           # External tools for GSM monitoring
+      - gr-gsm                       # GNU Radio GSM decoder
+      - kalibrate-rtl                # GSM base station scanner
+      - OsmocomBB                    # Open-source GSM stack (requires compatible phone)
+  
+  # --- 3G UMTS Configuration ---
+  umts:
+    enabled: true                    # Enable UMTS monitoring (3G)
+    bands:                           # UMTS frequency bands
+      - UMTS2100                     # 1920-2170 MHz (Band I, global)
+      - UMTS1900                     # 1850-1990 MHz (Band II, Americas)
+      # Other bands: UMTS850, UMTS900
+    
+    tools:
+      - gr-umts                      # GNU Radio UMTS decoder (experimental)
+  
+  # --- 3G CDMA2000 Configuration ---
+  cdma2000:
+    enabled: true                    # Enable CDMA2000 monitoring (3G)
+    bands:                           # CDMA frequency bands
+      - CDMA800                      # 824-894 MHz (BC0, Americas/Asia)
+      - CDMA1900                     # 1850-1990 MHz (BC1, Americas)
+    
+    tools:
+      - gr-cdma                      # GNU Radio CDMA decoder
+  
+  # --- 4G LTE Configuration ---
+  lte:
+    enabled: true                    # Enable LTE monitoring (4G)
+    bands: [1, 3, 7, 20, 28]         # LTE bands to monitor
+                                     # Band 1: 2100 MHz (global)
+                                     # Band 3: 1800 MHz (Europe/Asia)
+                                     # Band 7: 2600 MHz (Europe/Asia)
+                                     # Band 20: 800 MHz (Europe)
+                                     # Band 28: 700 MHz (Asia-Pacific)
+    
+    tools:
+      - LTESniffer                   # Real-time LTE control channel sniffer
+      - srsRAN                       # Open-source LTE stack (srsUE, srsENB)
+  
+  # --- 5G NR Configuration ---
+  5g:
+    enabled: true                    # Enable 5G NR monitoring
+    mode: SA                         # Deployment mode: SA (Standalone) or NSA (Non-Standalone)
+                                     # SA: Pure 5G core, NSA: 5G + 4G LTE anchor
+    
+    bands:                           # 5G NR bands (FR1: sub-6 GHz)
+      - n1                           # 2100 MHz (FDD)
+      - n78                          # 3500 MHz (TDD, C-band)
+      - n79                          # 4700 MHz (TDD, Asia)
+      # Other common bands: n41 (2500 MHz), n77 (3700 MHz), n260-n261 (mmWave FR2)
+    
+    tools:
+      - srsRAN Project               # 5G NR stack (successor to srsRAN 4G)
+      - Sni5Gect                     # 5G packet sniffer
+  
+  # --- 6G NTN (Non-Terrestrial Networks) Configuration - v1.9.0 ---
+  ntn_6g:
+    enabled: false                   # ⚠️  EXPERIMENTAL: Enable 6G NTN monitoring
+                                     # Requires sub-THz SDR and satellite ephemeris data
+    
+    satellite_types:                 # Satellite constellation types to monitor
+      - LEO                          # Low Earth Orbit (550-1200 km, e.g., Starlink)
+      - MEO                          # Medium Earth Orbit (8000 km, e.g., O3b)
+      - GEO                          # Geostationary (36000 km)
+      - HAPS                         # High Altitude Platform Stations (20 km, e.g., balloons)
+      - UAV                          # UAV relay nodes (1-10 km, e.g., drones)
+    
+    sub_thz_bands:                   # FR3 experimental bands (100-300 GHz, D-band and above)
+      FR3_LOW: [100e9, 150e9]        # 100-150 GHz (D-band)
+      FR3_MID: [150e9, 200e9]        # 150-200 GHz
+      FR3_HIGH: [200e9, 300e9]       # 200-300 GHz (requires specialized equipment)
+    
+    frequency_default: 150e9         # Default center frequency (150 GHz)
+    
+    doppler_threshold: 10000         # Doppler shift threshold in Hz
+                                     # Compensate if shift exceeds 10 kHz (LEO satellites can cause ±40 kHz)
+    
+    isac_enabled: true               # Integrate ISAC sensing (see isac section)
+    sensing_resolution: 10.0         # Sensing spatial resolution in meters
+    
+    ground_station:                  # Ground station location for satellite tracking
+      latitude: 0.0                  # Your latitude in decimal degrees (e.g., 40.7128 for NYC)
+      longitude: 0.0                 # Your longitude in decimal degrees (e.g., -74.0060 for NYC)
+      altitude_m: 0.0                # Altitude in meters above sea level
+    
+    ephemeris:                       # Satellite orbital tracking
+      use_astropy: true              # Use astropy library for precise orbital calculations
+      tle_source: celestrak          # TLE (Two-Line Element) data source
+                                     # Options: celestrak, space-track (requires account)
+      
+      update_interval_hours: 6       # Update TLE data every 6 hours (satellites drift over time)
+    
+    quantum_security:
+      qkd_detection: true            # Detect Quantum Key Distribution protocols (6G security)
+      quantum_attacks_enabled: false # Enable quantum cryptanalysis (Shor, Grover, PNS attacks)
+                                     # ⚠️  FOR LAW ENFORCEMENT ONLY - Requires warrant
+    
+    oran_integration:                # Open RAN RIC integration for NTN control
+      ric_endpoint: ${ORAN_RIC_ENDPOINT_NTN:-http://localhost:8080}
+                                     # Set ORAN_RIC_ENDPOINT_NTN env var in production
+      
+      xapp_deployment: true          # Deploy temporary xApps for NTN exploits
+      e2_interface: true             # Enable E2 control interface (E2SM-RC, E2SM-KPM)
+      a1_interface: true             # Enable A1 policy interface
+    
+    ai_orchestration:                # AI-based NTN management
+      handover_prediction: true      # ML-based inter-satellite handover prediction
+      beam_management: true          # AI beam tracking for mobile users
+      resource_allocation: true      # AI resource scheduling across satellite constellation
+  
+  # --- 6G Prototype Configuration ---
+  6g:
+    enabled: false                   # Enable 6G prototype monitoring (future)
+    prototype: true                  # Experimental status flag
+    tools:
+      - OAI                          # OpenAirInterface (6G prototypes)
+
+# -----------------------------------------------------------------------------
+# CORE NETWORK CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure connection to cellular core networks (for testing/research).
+
+core_network:
+  open5gs:                           # Open5GS 5G core network
+    enabled: true                    # Enable Open5GS integration
+    mcc: "001"                       # Mobile Country Code (001 = test network)
+    mnc: "01"                        # Mobile Network Code
+    amf_addr: 127.0.0.5              # AMF (Access and Mobility Management) address
+    upf_addr: 127.0.0.7              # UPF (User Plane Function) address
+                                     # Change to actual IPs if using external core network
+
+# -----------------------------------------------------------------------------
+# AI/ML CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure machine learning models for signal classification, device profiling,
+# SUCI de-concealment, KPI monitoring, and payload generation.
+
+ai_ml:
+  model_zoo_enabled: true            # v1.7.0: Enable centralized model registry
+                                     # Allows loading pre-trained models for TensorFlow, PyTorch, scikit-learn
+  
+  model_cache_dir: /var/cache/falconone/models
+                                     # v1.7.0: Directory for cached model files
+                                     # Requires ~5GB space for all pre-trained models
+  
+  # --- Signal Classification ---
+  signal_classification:
+    enabled: true                    # Enable AI-based signal classification (2G/3G/4G/5G/6G detection)
+    model: CNN                       # Model architecture: CNN (default), ResNet, EfficientNet
+    accuracy_threshold: 0.90         # Minimum accuracy to accept classification (90%)
+    
+    use_transformer: true            # v1.5.0: Use transformer architecture (slower but more accurate)
+                                     # Transformers: 94% accuracy vs CNN: 92% accuracy
+    
+    # v1.8.0: ISAC Support
+    isac_enabled: true               # Enable ISAC (Joint Communication and Sensing) classification
+    isac_sensing_modes:              # Sensing configurations to classify
+      - monostatic
+      - bistatic
+    isac_bandwidth_mhz: 100          # ISAC bandwidth (100 MHz)
+    isac_carrier_freq_ghz: 30        # ISAC carrier frequency (30 GHz, FR2)
+  
+  # --- SUCI De-concealment ---
+  suci_deconcealment:
+    enabled: true                    # Enable SUCI (Subscription Concealed Identifier) de-concealment
+                                     # Attempts to recover SUPI (permanent identifier) from SUCI (5G privacy)
+    
+    model: RoBERTa                   # NLP model: RoBERTa (recommended), BERT, GPT-2
+                                     # RoBERTa trained on cellular protocol patterns
+    
+    quantization: true               # Enable model quantization (4x smaller, 2x faster, <2% accuracy loss)
+  
+  # --- KPI Monitoring ---
+  kpi_monitoring:
+    enabled: true                    # Enable AI-based KPI (Key Performance Indicator) monitoring
+    model: LSTM                      # Time-series model: LSTM (default), GRU, Transformer
+                                     # Predicts KPI anomalies (throughput drops, handover failures)
+  
+  # --- Payload Generation ---
+  payload_generation:
+    enabled: false                   # Enable AI-based exploit payload generation
+                                     # ⚠️  FOR RESEARCH ONLY - Requires proper authorization
+    model: GAN                       # Generative model: GAN (default), VAE, Transformer
+                                     # Generates exploit payloads for vulnerability testing
+  
+  # --- Federated Learning (v1.8.0) ---
+  federated:
+    enabled: true                    # Enable federated learning (multi-party ML without data sharing)
+    num_clients: 3                   # Number of federated clients (edge nodes)
+    aggregation_method: fedavg       # Aggregation: fedavg (FederatedAveraging), fedprox, scaffold
+    
+    # Differential Privacy (v1.8.0)
+    differential_privacy: true       # Enable differential privacy (adds noise to protect data)
+    dp_epsilon: 1.0                  # Privacy budget per round (lower = more privacy, less accuracy)
+                                     # Typical values: 0.1 (strong privacy), 1.0 (moderate), 10.0 (weak)
+    dp_delta: 1.0e-5                 # Privacy parameter (probability of privacy breach)
+    dp_clip_norm: 1.0                # Gradient clipping norm (prevents privacy leakage from large gradients)
+    
+    # Secure Aggregation
+    secure_aggregation: true         # Enable secure aggregation (server cannot see individual updates)
+    
+    # Byzantine Robustness
+    byzantine_robust: true           # Enable defense against malicious clients
+    byzantine_threshold: 0.25        # Tolerate 25% malicious clients (Krum algorithm)
+    krum_n_closest: 2                # Krum parameter: number of closest neighbors
+
+# -----------------------------------------------------------------------------
+# CRYPTANALYSIS CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure cryptographic attack capabilities (SCA, DFA, quantum attacks).
+# ⚠️  FOR RESEARCH ONLY - Requires proper authorization.
+
+cryptanalysis:
+  enabled: false                     # Enable cryptanalysis features
+  
+  sca:                               # Side-Channel Analysis (power/EM analysis)
+    tool: Riscure Inspector          # Tool: Riscure Inspector (commercial), ChipWhisperer (open-source)
+    traces_required: 10000           # Number of power/EM traces required for attack
+  
+  dfa:                               # Differential Fault Analysis
+    tool: Riscure Huracan            # Tool: Riscure Huracan (commercial), custom scripts
+    fault_count: 100                 # Number of faults to inject (laser/voltage glitching)
+
+# -----------------------------------------------------------------------------
+# GEOLOCATION CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure geolocation methods for device tracking.
+
+geolocation:
+  enabled: true                      # Enable geolocation features
+  
+  methods:                           # Geolocation algorithms
+    - TDOA                           # Time Difference of Arrival (requires 3+ synchronized SDRs)
+    - AoA                            # Angle of Arrival (requires antenna array)
+    - DF                             # Direction Finding (requires rotatable antenna)
+  
+  min_devices: 3                     # Minimum number of SDRs required for TDOA (3 for 2D, 4 for 3D)
+  
+  gpsdo_sync: true                   # Require GPSDO (GPS-Disciplined Oscillator) synchronization
+                                     # Critical for TDOA accuracy (nanosecond-level timing)
+  
+  accuracy_target: 50                # Target accuracy in meters
+                                     # Achievable with TDOA: 10-50m (urban), 5-10m (rural)
+  
+  environmental_adaptation: true     # v1.7.0: Enable multipath compensation and Kalman filtering
+                                     # Improves accuracy by 20-30% in urban environments
+
+# -----------------------------------------------------------------------------
+# VOICE INTERCEPTION CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure voice call interception (VoLTE, VoNR).
+# ⚠️  FOR LAW ENFORCEMENT ONLY - Requires warrant.
+
+voice_interception:
+  enabled: true                      # Enable voice interception features
+  
+  protocols:                         # Voice protocols to intercept
+    - VoLTE                          # Voice over LTE (4G)
+    - VoNR                           # Voice over NR (5G)
+  
+  codecs:                            # Voice codecs to decode
+    - AMR                            # Adaptive Multi-Rate (GSM/3G/4G)
+    - EVS                            # Enhanced Voice Services (4G/5G, HD voice)
+
+# -----------------------------------------------------------------------------
+# EXPLOITATION CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure exploitation capabilities (protocol attacks, DoS, downgrade).
+# ⚠️  FOR RESEARCH ONLY - Requires proper authorization.
+
+exploitation:
+  enabled: false                     # Enable exploitation features
+  scapy_integration: true            # Use Scapy for packet crafting
+  dos_testing: false                 # Enable DoS (Denial of Service) attacks
+  downgrade_attacks: false           # Enable downgrade attacks (e.g., 5G→4G, 4G→3G)
+
+# -----------------------------------------------------------------------------
+# LEGAL & COMPLIANCE CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure legal compliance and safety settings.
+# ⚠️  CRITICAL: Review and update based on your jurisdiction.
+
+compliance:
+  faraday_cage: false                # Faraday cage requirement (manual verification)
+                                     # ⚠️  Set to true for production - operator must confirm RF shielding
+                                     # System does NOT auto-detect Faraday cage (TODO: implement RF leakage detection)
+  
+  cvd_enabled: true                  # Enable Coordinated Vulnerability Disclosure (CVD)
+                                     # Report discovered vulnerabilities responsibly
+  
+  rica_compliance: true              # RICA (Regulation of Interception of Communications Act, South Africa)
+  icasa_license: false               # ICASA spectrum license (South Africa)
+  popia_compliance: true             # POPIA (Protection of Personal Information Act, South Africa)
+
+# -----------------------------------------------------------------------------
+# SAFETY CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure safety interlocks and power limits.
+# ⚠️  CRITICAL: Verify settings before any transmission.
+
+safety:
+  require_faraday_cage: false        # Require Faraday cage before transmission
+                                     # ⚠️  Set to true for production
+                                     # Currently disabled for development/testing
+  
+  audit_logging: true                # Enable comprehensive audit logging
+                                     # Logs all actions for forensic review
+  
+  max_power_dbm: 20                  # Maximum transmit power in dBm (100 mW)
+                                     # Default: 20 dBm, Legal limit (FCC Part 15): 30 dBm (1W)
+                                     # Recommended: <0 dBm (1 mW) for testing
+  
+  ethical_mode: true                 # Enable ethical mode (restricts dangerous operations)
+                                     # Disables: mass DoS, unwarned downgrade attacks, PII exfiltration
+
+# -----------------------------------------------------------------------------
+# TESTING CONFIGURATION (v1.7.0)
+# -----------------------------------------------------------------------------
+# Configure end-to-end validation and hardware-in-the-loop testing.
+
+testing:
+  e2e_validation: false              # v1.7.0: Enable end-to-end validation framework
+                                     # Runs full-chain tests (SDR → demodulation → decoding → database)
+  
+  validation_chains:                 # Validation test chains
+    - pdcch                          # PDCCH (Physical Downlink Control Channel) validation
+    - aiot                           # Ambient IoT (Rel-20) validation
+    - ntn                            # 6G NTN (Non-Terrestrial Networks) validation
+    - crypto                         # Cryptanalysis validation
+
+# -----------------------------------------------------------------------------
+# PERFORMANCE CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configure system performance and resource allocation.
+
+performance:
+  cpu_cores: 8                       # Number of CPU cores to utilize
+                                     # Recommended: Leave 2 cores for OS (e.g., 10 cores → set to 8)
+  
+  gpu_enabled: true                  # Enable GPU acceleration (CUDA/ROCm)
+                                     # Significantly speeds up ML inference and FFT operations
+  
+  memory_limit_gb: 32                # Memory limit in GB
+                                     # System will trigger garbage collection when approaching limit
+  
+  thermal_monitoring: true           # Enable thermal monitoring (prevent overheating)
+                                     # Throttles CPU/GPU if temperature exceeds 80°C
+  
+  caching_enabled: true              # v1.7.0: Enable signal processing cache
+                                     # LRU cache for demodulated signals (10x speedup on repeated captures)
+  
+  thread_pool_workers: 4             # v1.7.0: Thread pool size for I/O tasks
+                                     # Increase for high-throughput scenarios (e.g., multi-SDR)
+  
+  process_pool_workers: 2            # v1.7.0: Process pool size for CPU-intensive tasks
+                                     # Increase for parallel ML inference
+
+# =============================================================================
+# END OF CONFIGURATION
+# =============================================================================
+#
+# For more information, see:
+#   - Documentation: README.md, INSTALLATION.md, USER_MANUAL.md
+#   - API Reference: API_DOCUMENTATION.md
+#   - Developer Guide: DEVELOPER_GUIDE.md
+#
+# Support: https://github.com/falconone/issues
+# =============================================================================

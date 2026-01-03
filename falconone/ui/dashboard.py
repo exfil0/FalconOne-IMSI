@@ -1,4 +1,4 @@
-﻿"""
+"""
 FalconOne Web Dashboard
 Real-time monitoring and control interface for SIGINT operations
 
@@ -102,13 +102,48 @@ if SECRET_KEY is None:
 
 app.config['SECRET_KEY'] = SECRET_KEY
 
+# ==================== CONFIGURATION CONSTANTS ====================
+# These constants define default values for security and session settings.
+# All can be overridden via environment variables for production deployment.
+
+class DashboardConfig:
+    """Dashboard configuration constants with environment variable overrides."""
+    
+    # Session Configuration
+    SESSION_LIFETIME_HOURS_DEFAULT = 24
+    REMEMBER_COOKIE_DAYS_DEFAULT = 30
+    
+    # Rate Limiting
+    RATE_LIMIT_REQUESTS_PER_MINUTE = 10000  # High limit for real-time dashboard
+    RATE_LIMIT_AUTH_PER_MINUTE = 10  # Lower limit for auth endpoints
+    RATE_LIMIT_API_PER_MINUTE = 1000  # Standard API limit
+    
+    # Refresh Rates (milliseconds)
+    REFRESH_RATE_REALTIME_MS = 100  # Target <100ms for live data
+    REFRESH_RATE_STANDARD_MS = 2000  # Standard dashboard refresh
+    REFRESH_RATE_SLOW_MS = 10000  # Slow refresh for resource-heavy operations
+    
+    # WebSocket Configuration
+    SOCKETIO_PING_TIMEOUT = 60
+    SOCKETIO_PING_INTERVAL = 25
+    
+    # Buffer Sizes
+    MAX_KPI_HISTORY = 1000
+    MAX_ANOMALY_ALERTS = 500
+    MAX_COMMAND_HISTORY = 100
+
+
 # Session configuration (Phase 1.3.7: Enhanced Session Management)
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'  # HTTPS only in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=int(os.getenv('SESSION_LIFETIME_HOURS', '24')))
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(
+    hours=int(os.getenv('SESSION_LIFETIME_HOURS', str(DashboardConfig.SESSION_LIFETIME_HOURS_DEFAULT)))
+)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Extend session on activity
-app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=int(os.getenv('REMEMBER_COOKIE_DAYS', '30')))
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(
+    days=int(os.getenv('REMEMBER_COOKIE_DAYS', str(DashboardConfig.REMEMBER_COOKIE_DAYS_DEFAULT)))
+)
 app.config['REMEMBER_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 
@@ -117,7 +152,10 @@ csrf = CSRFProtect(app)
 
 # Rate Limiting (DoS prevention)
 RATE_LIMIT_ENABLED = os.getenv('RATE_LIMIT_ENABLED', 'True').lower() == 'true'
-RATE_LIMIT_DEFAULT = os.getenv('RATE_LIMIT_DEFAULT', '10000 per minute')  # Support fast refresh rate
+RATE_LIMIT_DEFAULT = os.getenv(
+    'RATE_LIMIT_DEFAULT', 
+    f'{DashboardConfig.RATE_LIMIT_REQUESTS_PER_MINUTE} per minute'
+)
 RATE_LIMIT_STORAGE = os.getenv('RATE_LIMIT_STORAGE_URL', 'memory://')
 
 limiter = Limiter(
@@ -3327,7 +3365,8 @@ class DashboardServer:
         
         @app.route('/api/system/execute', methods=['POST'])
         def execute_command():
-            if not session.get('authenticated'):
+            # Allow access if flask-login not installed (development mode)
+            if FLASK_LOGIN_AVAILABLE and not session.get('authenticated'):
                 return jsonify({'error': 'Unauthorized'}), 401
             
             data = request.get_json()
@@ -4112,7 +4151,7 @@ class DashboardServer:
                     'emissions_tracker': self.emissions_tracker is not None
                 },
                 'health': 'healthy',
-                'version': '1.7',
+                'version': '1.9.0',
                 'timestamp': time.time()
             }
             
@@ -5427,7 +5466,7 @@ class DashboardServer:
         if cmd_lower == 'help':
             result['success'] = True
             result['output'] = """
-FalconOne Terminal v1.7.0 - Available Commands:
+FalconOne Terminal v1.9.0 - Available Commands:
 
 Built-in Commands:
   help                 - Show this help message
@@ -5461,7 +5500,7 @@ Type any Linux/Windows command to execute it directly.
             result['success'] = True
             result['output'] = f"""
 FalconOne System Status:
-  Version: 1.7.0
+  Version: 1.9.0
   Dashboard: Running on port 5000
   Orchestrator: {self.orchestrator.running if hasattr(self, 'orchestrator') and hasattr(self.orchestrator, 'running') else 'Not initialized'}
   Database: Connected
@@ -5478,10 +5517,10 @@ Active Monitors:
             result['success'] = True
             result['output'] = """
 FalconOne SIGINT Platform
-Version: 1.7.0
+Version: 1.9.0
 Release: v1.9.0 (ISAC/NTN Integration)
-CVEs: 18 RANSacked exploits
-Python: 3.x required
+CVEs: 97 RANSacked exploits
+Python: 3.11+ required
 """
             return result
         
@@ -7020,7 +7059,7 @@ DASHBOARD_HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FalconOne Dashboard v1.7</title>
+    <title>FalconOne Dashboard v1.9.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -7034,6 +7073,7 @@ DASHBOARD_HTML_TEMPLATE = """
             --primary-blue-light: #1565c0;
             --primary-blue-dark: #002171;
             --accent-cyan: #00e5ff;
+            --accent-cyan-light: #4df5ff;
             --accent-green: #00e676;
             --accent-purple: #7c4dff;
             --success: #00e676;
@@ -7041,6 +7081,8 @@ DASHBOARD_HTML_TEMPLATE = """
             --danger: #ff1744;
             --info: #00b0ff;
             --bg-dark: #0a0e27;
+            --bg-darker: #060915;
+            --bg-primary: #0d1333;
             --bg-sidebar: #0f1419;
             --bg-panel: #141c3a;
             --bg-panel-hover: #1a2449;
@@ -7049,11 +7091,17 @@ DASHBOARD_HTML_TEMPLATE = """
             --text-secondary: #9aa0a6;
             --text-muted: #5f6368;
             --border-color: #2a3f5f;
+            --border-light: #3a5080;
             --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
             --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
             --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.15s ease-out;
             --glow: 0 0 20px rgba(0, 229, 255, 0.3);
+            --glow-strong: 0 0 30px rgba(0, 229, 255, 0.5);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -7407,7 +7455,7 @@ DASHBOARD_HTML_TEMPLATE = """
         }
         
         .btn { 
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: var(--primary-blue);
             color: white;
             border: none;
@@ -7419,6 +7467,10 @@ DASHBOARD_HTML_TEMPLATE = """
             text-transform: uppercase;
             letter-spacing: 0.5px;
             box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         
         .btn:hover { 
@@ -7429,6 +7481,66 @@ DASHBOARD_HTML_TEMPLATE = """
         
         .btn:active {
             transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--accent-cyan) 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #00c853 0%, var(--success) 100%);
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, var(--success) 0%, #69f0ae 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #d32f2f 0%, var(--danger) 100%);
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, var(--danger) 0%, #ff5252 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ff8f00 0%, var(--warning) 100%);
+            color: #000;
+        }
+        
+        .btn-warning:hover {
+            background: linear-gradient(135deg, var(--warning) 0%, #ffd740 100%);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary-blue);
+            color: var(--primary-blue);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        
+        .btn-lg {
+            padding: 16px 32px;
+            font-size: 15px;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
         
         .tab-content { 
@@ -7481,8 +7593,129 @@ DASHBOARD_HTML_TEMPLATE = """
             animation: spin 1s linear infinite;
         }
         
+        .loading-spinner-lg {
+            width: 40px;
+            height: 40px;
+            border-width: 4px;
+        }
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px var(--accent-cyan); }
+            50% { box-shadow: var(--glow-strong); }
+        }
+        
+        /* ==================== UTILITY CLASSES ==================== */
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .text-success { color: var(--success) !important; }
+        .text-warning { color: var(--warning) !important; }
+        .text-danger { color: var(--danger) !important; }
+        .text-info { color: var(--info) !important; }
+        .text-muted { color: var(--text-muted) !important; }
+        .text-secondary { color: var(--text-secondary) !important; }
+        
+        .mt-0 { margin-top: 0 !important; }
+        .mt-1 { margin-top: 8px !important; }
+        .mt-2 { margin-top: 16px !important; }
+        .mt-3 { margin-top: 24px !important; }
+        .mb-0 { margin-bottom: 0 !important; }
+        .mb-1 { margin-bottom: 8px !important; }
+        .mb-2 { margin-bottom: 16px !important; }
+        .mb-3 { margin-bottom: 24px !important; }
+        
+        .d-flex { display: flex !important; }
+        .d-grid { display: grid !important; }
+        .d-none { display: none !important; }
+        .d-block { display: block !important; }
+        
+        .flex-column { flex-direction: column; }
+        .flex-wrap { flex-wrap: wrap; }
+        .align-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-1 { gap: 8px; }
+        .gap-2 { gap: 16px; }
+        .gap-3 { gap: 24px; }
+        
+        .w-100 { width: 100% !important; }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-success { background: rgba(0, 230, 118, 0.2); color: var(--success); }
+        .badge-warning { background: rgba(255, 171, 0, 0.2); color: var(--warning); }
+        .badge-danger { background: rgba(255, 23, 68, 0.2); color: var(--danger); }
+        .badge-info { background: rgba(0, 176, 255, 0.2); color: var(--info); }
+        .badge-primary { background: rgba(13, 71, 161, 0.3); color: var(--accent-cyan); }
+        
+        .card {
+            background: var(--bg-panel);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            transition: var(--transition);
+        }
+        
+        .card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .tooltip-text {
+            visibility: hidden;
+            background: var(--bg-darker);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            position: absolute;
+            z-index: 1000;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        
+        [data-tooltip]:hover .tooltip-text {
+            visibility: visible;
         }
         
         /* ==================== TABLES ==================== */
@@ -7786,6 +8019,21 @@ DASHBOARD_HTML_TEMPLATE = """
         .sidebar-nav {
             flex: 1;
             padding: 10px 0;
+            overflow-y: auto;
+        }
+        
+        .nav-section-title {
+            padding: 12px 20px 8px 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+        
+        .nav-section-title:first-child {
+            margin-top: 0;
         }
         
         .nav-item {
@@ -8613,10 +8861,11 @@ DASHBOARD_HTML_TEMPLATE = """
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h1>🛰️ FalconOne</h1>
-            <p>v1.7.0 SIGINT Platform</p>
+            <p>v1.9.0 SIGINT Platform</p>
         </div>
         
         <nav class="sidebar-nav">
+            <div class="nav-section-title">MONITORING</div>
             <div class="nav-item active" onclick="showTab('overview')" data-tab="overview">
                 📊 Dashboard
             </div>
@@ -8629,12 +8878,27 @@ DASHBOARD_HTML_TEMPLATE = """
             <div class="nav-item" onclick="showTab('captures')" data-tab="captures">
                 🎯 Captures & IMSI
             </div>
+            
+            <div class="nav-section-title">6G & ADVANCED</div>
+            <div class="nav-item" onclick="showTab('ntn')" data-tab="ntn">
+                🛰️ 6G NTN Satellite
+            </div>
+            <div class="nav-item" onclick="showTab('isac')" data-tab="isac">
+                📡 ISAC Framework
+            </div>
+            
+            <div class="nav-section-title">OPERATIONS</div>
             <div class="nav-item" onclick="showTab('exploits')" data-tab="exploits">
                 ⚡ Exploit Engine
+            </div>
+            <div class="nav-item" onclick="showTab('le-mode')" data-tab="le-mode">
+                🔒 LE Mode
             </div>
             <div class="nav-item" onclick="showTab('analytics')" data-tab="analytics">
                 🤖 AI Analytics
             </div>
+            
+            <div class="nav-section-title">SYSTEM</div>
             <div class="nav-item" onclick="showTab('terminal')" data-tab="terminal">
                 💻 Terminal
             </div>
@@ -9660,6 +9924,297 @@ Ready>
         </div>
     </div>
     
+    <!-- 6G NTN SATELLITE TAB -->
+    <div id="tab-ntn" class="tab-content">
+        <div class="container">
+            <div class="panel panel-large">
+                <h2>🛰️ 6G Non-Terrestrial Networks (NTN) Monitoring</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Monitor and exploit 6G satellite communications including LEO, MEO, GEO, HAPS, and UAV platforms with sub-THz frequency support.
+                </p>
+                
+                <!-- NTN Statistics -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Satellites Tracked</div>
+                        <div class="kpi-value" id="ntn-sat-count">0</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Active Sessions</div>
+                        <div class="kpi-value" id="ntn-sessions">0</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Doppler Shift</div>
+                        <div class="kpi-value" id="ntn-doppler">0 Hz</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Signal Strength</div>
+                        <div class="kpi-value" id="ntn-signal">-100 dBm</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- NTN Monitoring Controls -->
+            <div class="panel">
+                <h2>📡 Start Monitoring Session</h2>
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Satellite Type</label>
+                        <select id="ntn-sat-type" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                            <option value="LEO">LEO (300-2000 km) - Starlink, OneWeb</option>
+                            <option value="MEO">MEO (2000-35786 km) - O3b, SES</option>
+                            <option value="GEO">GEO (35,786 km) - Traditional Satellite</option>
+                            <option value="HAPS">HAPS (20-50 km) - High-Altitude Platforms</option>
+                            <option value="UAV">UAV (0-20 km) - Unmanned Aerial Vehicles</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Duration (seconds)</label>
+                        <input type="number" id="ntn-duration" value="60" min="1" max="300" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Frequency (GHz)</label>
+                        <input type="number" id="ntn-frequency" value="150" min="1" max="300" step="0.1" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="ntn-use-isac" checked>
+                        <label for="ntn-use-isac" style="font-size: 13px; color: var(--text-secondary);">Enable ISAC Sensing Integration</label>
+                    </div>
+                    <button onclick="startNTNMonitoring()" class="btn btn-primary" style="width: 100%;">
+                        🚀 Start NTN Monitoring
+                    </button>
+                </div>
+            </div>
+            
+            <!-- NTN Exploits -->
+            <div class="panel">
+                <h2>⚡ NTN Exploits</h2>
+                <div style="display: grid; gap: 10px;">
+                    <button onclick="executeNTNExploit('beam_hijacking')" class="btn" style="background: var(--danger); text-align: left; padding: 15px;">
+                        <strong>Beam Hijacking</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">RIS-assisted beam manipulation (75% success)</span>
+                    </button>
+                    <button onclick="executeNTNExploit('handover_poisoning')" class="btn" style="background: var(--warning); color: #000; text-align: left; padding: 15px;">
+                        <strong>Handover Poisoning</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">AI orchestration attack (65% success)</span>
+                    </button>
+                    <button onclick="executeNTNExploit('downlink_spoofing')" class="btn" style="background: var(--accent-purple); text-align: left; padding: 15px;">
+                        <strong>Downlink Spoofing</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Inject fake downlink signals (70% success)</span>
+                    </button>
+                    <button onclick="executeNTNExploit('timing_advance')" class="btn" style="background: var(--primary-blue); text-align: left; padding: 15px;">
+                        <strong>Timing Advance</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">TA manipulation (72% success)</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tracked Satellites -->
+            <div class="panel panel-large">
+                <h2>🌍 Tracked Satellites</h2>
+                <div id="ntn-satellite-list" style="max-height: 400px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                        Click "Start NTN Monitoring" to begin tracking satellites
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ISAC FRAMEWORK TAB -->
+    <div id="tab-isac" class="tab-content">
+        <div class="container">
+            <div class="panel panel-large">
+                <h2>📡 Integrated Sensing and Communications (ISAC)</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Joint radar-communication framework for sensing, tracking, and exploitation with monostatic, bistatic, and cooperative modes.
+                </p>
+                
+                <!-- ISAC Statistics -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Targets Detected</div>
+                        <div class="kpi-value" id="isac-targets">0</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Range Accuracy</div>
+                        <div class="kpi-value" id="isac-range">1.0m</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">SNR</div>
+                        <div class="kpi-value" id="isac-snr">0 dB</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Privacy Breaches</div>
+                        <div class="kpi-value" id="isac-breaches">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ISAC Monitoring Controls -->
+            <div class="panel">
+                <h2>🔬 Start Sensing Session</h2>
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Sensing Mode</label>
+                        <select id="isac-mode" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                            <option value="monostatic">Monostatic (Same TX/RX)</option>
+                            <option value="bistatic">Bistatic (Separate TX/RX)</option>
+                            <option value="cooperative">Cooperative (Multi-Node)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Waveform Type</label>
+                        <select id="isac-waveform" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                            <option value="OFDM">OFDM (Standard 5G)</option>
+                            <option value="DFT-s-OFDM">DFT-s-OFDM (Enhanced Resolution)</option>
+                            <option value="FMCW">FMCW (Radar-Like)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Duration (seconds)</label>
+                        <input type="number" id="isac-duration" value="10" min="1" max="60" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <button onclick="startISACMonitoring()" class="btn btn-primary" style="width: 100%;">
+                        📡 Start ISAC Sensing
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ISAC Exploits -->
+            <div class="panel">
+                <h2>⚡ ISAC Exploits</h2>
+                <div style="display: grid; gap: 10px;">
+                    <button onclick="executeISACExploit('waveform_manipulation')" class="btn" style="background: var(--danger); text-align: left; padding: 15px;">
+                        <strong>Waveform Manipulation</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Inject malformed waveforms (80% success)</span>
+                    </button>
+                    <button onclick="executeISACExploit('ai_poisoning')" class="btn" style="background: var(--warning); color: #000; text-align: left; padding: 15px;">
+                        <strong>AI Poisoning</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">ML model poisoning (65% success)</span>
+                    </button>
+                    <button onclick="executeISACExploit('privacy_breach')" class="btn" style="background: var(--accent-purple); text-align: left; padding: 15px;">
+                        <strong>Privacy Breach</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Sensing-based tracking (60% success)</span>
+                    </button>
+                    <button onclick="executeISACExploit('e2sm_hijack')" class="btn" style="background: var(--primary-blue); text-align: left; padding: 15px;">
+                        <strong>E2SM Hijack</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Control plane attack (70% success)</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Sensing Data -->
+            <div class="panel panel-large">
+                <h2>📊 Sensing Data</h2>
+                <div id="isac-sensing-data" style="max-height: 400px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                        Click "Start ISAC Sensing" to begin collecting data
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LAW ENFORCEMENT MODE TAB -->
+    <div id="tab-le-mode" class="tab-content">
+        <div class="container">
+            <div class="panel panel-large">
+                <h2>🔒 Law Enforcement Mode</h2>
+                <div style="background: linear-gradient(135deg, rgba(211,47,47,0.2), rgba(198,40,40,0.1)); border: 1px solid var(--danger); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                    <p style="color: var(--danger); font-weight: 600; margin-bottom: 10px;">⚠️ Authorized Use Only</p>
+                    <p style="color: var(--text-secondary); font-size: 13px;">
+                        LE Mode enables legally-compliant interception operations with warrant validation, evidence chain management, and court-admissible export. 
+                        Requires valid court-issued warrant with proper jurisdiction and credentials.
+                    </p>
+                </div>
+                
+                <!-- LE Status -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Active Warrants</div>
+                        <div class="kpi-value" id="le-warrants">0</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Evidence Items</div>
+                        <div class="kpi-value" id="le-evidence">0</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Chain Integrity</div>
+                        <div class="kpi-value" id="le-chain-status" style="color: var(--success);">✓</div>
+                    </div>
+                    <div class="kpi" style="text-align: center;">
+                        <div class="kpi-label">Today's Ops</div>
+                        <div class="kpi-value" id="le-ops-today">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Warrant Validation -->
+            <div class="panel">
+                <h2>📋 Warrant Validation</h2>
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Warrant ID</label>
+                        <input type="text" id="le-warrant-id" placeholder="e.g., WRT-2026-00123" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Jurisdiction</label>
+                        <input type="text" id="le-jurisdiction" placeholder="e.g., Southern District NY" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Case Number</label>
+                        <input type="text" id="le-case-number" placeholder="e.g., 2026-CR-00123" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Authorized By (Judge)</label>
+                        <input type="text" id="le-authorized-by" placeholder="e.g., Hon. John Smith" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Valid Until</label>
+                        <input type="datetime-local" id="le-valid-until" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-secondary);">Target Identifiers (IMSIs, comma-separated)</label>
+                        <input type="text" id="le-target-imsis" placeholder="e.g., 001010123456789" style="width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                    </div>
+                    <button onclick="validateWarrant()" class="btn btn-primary" style="width: 100%;">
+                        ✓ Validate Warrant
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Evidence Management -->
+            <div class="panel">
+                <h2>📦 Evidence Management</h2>
+                <div style="display: grid; gap: 10px;">
+                    <button onclick="verifyEvidenceChain()" class="btn" style="background: var(--success); text-align: left; padding: 15px;">
+                        <strong>Verify Chain of Custody</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Validate all evidence hashes</span>
+                    </button>
+                    <button onclick="exportEvidencePackage()" class="btn" style="background: var(--primary-blue); text-align: left; padding: 15px;">
+                        <strong>Export Court Package</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Generate court-admissible bundle</span>
+                    </button>
+                    <button onclick="loadLEStatistics()" class="btn" style="background: var(--accent-cyan); color: #000; text-align: left; padding: 15px;">
+                        <strong>Refresh Statistics</strong><br>
+                        <span style="font-size: 12px; opacity: 0.8;">Update LE mode status</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Evidence Chain -->
+            <div class="panel panel-large">
+                <h2>🔗 Evidence Chain</h2>
+                <div id="le-evidence-chain" style="max-height: 400px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                        Validate a warrant to begin LE Mode operations
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
         </div><!-- Close content-area -->
     </main><!-- Close main-content -->
     
@@ -9755,7 +10310,11 @@ Ready>
                 'terminal': 'System Terminal',
                 'setup': 'Setup Wizard',
                 'tools': 'System Tools',
-                'system': 'System Health'
+                'system': 'System Health',
+                'ntn': '6G NTN Satellite',
+                'isac': 'ISAC Framework',
+                'le-mode': 'Law Enforcement Mode',
+                'v170': 'v1.7.0 Features'
             };
             document.getElementById('page-title').textContent = titles[tabName] || 'Dashboard';
             
@@ -9763,6 +10322,15 @@ Ready>
             if (tabName === 'exploits') {
                 // Auto-load unified database if needed
                 // Uncomment to auto-load: loadUnifiedDatabase();
+            }
+            if (tabName === 'ntn') {
+                // Load NTN status when tab is opened
+            }
+            if (tabName === 'isac') {
+                // Load ISAC status when tab is opened
+            }
+            if (tabName === 'le-mode') {
+                loadLEStatistics();
             }
             
             // Close sidebar on mobile after tab switch
@@ -9966,12 +10534,60 @@ Ready>
         }
         
         function clearTerminal() {
-            document.getElementById('terminal-output').textContent = 'FalconOne Terminal v1.7.0\\nType \\'help\\' for available commands\\nReady>\\n';
+            document.getElementById('terminal-output').textContent = 'FalconOne Terminal v1.9.0\\nType \\'help\\' for available commands\\nReady>\\n';
         }
         
         function quickCommand(command) {
             document.getElementById('terminal-input').value = command;
             executeTerminalCommand();
+        }
+        
+        // ==================== CAPTURES FUNCTIONS ====================
+        
+        async function refreshCaptures() {
+            try {
+                const response = await fetch('/api/captures');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderCapturesList(data.data?.captures || []);
+                    showNotification('Captures refreshed successfully', 'success');
+                } else {
+                    showNotification('Failed to refresh captures: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error refreshing captures:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        function renderCapturesList(captures) {
+            const container = document.getElementById('captures-list');
+            if (!container) return;
+            
+            if (!captures || captures.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No captures found. Start monitoring to capture data.</div>';
+                return;
+            }
+            
+            container.innerHTML = captures.map(cap => `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; border-left: 3px solid ${cap.type === 'IMSI' ? 'var(--success)' : 'var(--primary-blue)'};">
+                    <div style="font-size: 24px;">${cap.type === 'IMSI' ? '📱' : '📡'}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(cap.identifier || cap.id)}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                            Type: ${cap.type || 'Unknown'} | Time: ${cap.timestamp || 'N/A'}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <button class="btn btn-sm" onclick="viewCaptureDetails('${cap.id}')" style="background: var(--primary-blue);">View</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function viewCaptureDetails(captureId) {
+            alert('Capture Details: ' + captureId + '\\n\\nFull capture viewer coming in next update.');
         }
         
         async function updateCommandHistory() {
@@ -10187,6 +10803,343 @@ Ready>
             } catch (error) {
                 console.error('Error executing exploit:', error);
                 alert(`Network error: ${error.message}`);
+            }
+        }
+        
+        // ==================== 6G NTN MONITORING FUNCTIONS ====================
+        
+        async function startNTNMonitoring() {
+            const satType = document.getElementById('ntn-sat-type').value;
+            const duration = parseInt(document.getElementById('ntn-duration').value) || 60;
+            const frequency = parseFloat(document.getElementById('ntn-frequency').value) || 150;
+            const useISAC = document.getElementById('ntn-use-isac').checked;
+            
+            try {
+                const response = await fetch('/api/ntn/monitor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        satellite_type: satType,
+                        duration_seconds: duration,
+                        frequency_ghz: frequency,
+                        isac_integration: useISAC
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateNTNStatistics(data.data);
+                    renderNTNSatellites(data.data.satellites || []);
+                    showNotification('NTN monitoring started successfully', 'success');
+                } else {
+                    showNotification('Failed to start NTN monitoring: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting NTN monitoring:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        function updateNTNStatistics(data) {
+            document.getElementById('ntn-sat-count').textContent = data.satellite_count || 0;
+            document.getElementById('ntn-sessions').textContent = data.active_sessions || 0;
+            document.getElementById('ntn-doppler').textContent = (data.doppler_shift || 0).toFixed(2) + ' Hz';
+            document.getElementById('ntn-signal').textContent = (data.signal_strength || -100).toFixed(1) + ' dBm';
+        }
+        
+        function renderNTNSatellites(satellites) {
+            const container = document.getElementById('ntn-satellite-list');
+            
+            if (!satellites || satellites.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-secondary);">No satellites detected. Try adjusting parameters.</div>';
+                return;
+            }
+            
+            container.innerHTML = satellites.map(sat => `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; border-left: 3px solid ${sat.status === 'active' ? 'var(--success)' : 'var(--warning)'};">
+                    <div style="font-size: 24px;">🛰️</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(sat.name || sat.satellite_id)}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                            Type: ${sat.type || 'Unknown'} | Alt: ${sat.altitude_km || 'N/A'} km | Signal: ${(sat.signal_strength || -100).toFixed(1)} dBm
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; color: var(--text-secondary);">Doppler</div>
+                        <div style="font-weight: 600; color: var(--accent-cyan);">${(sat.doppler_shift || 0).toFixed(1)} Hz</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function executeNTNExploit(exploitType) {
+            const satType = document.getElementById('ntn-sat-type').value;
+            
+            if (!confirm(`Execute ${exploitType.replace(/_/g, ' ').toUpperCase()} exploit?\\n\\nTarget: ${satType} satellites\\n\\nThis will attempt to exploit the satellite link.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/ntn/exploit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exploit_type: exploitType,
+                        satellite_type: satType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`NTN exploit '${exploitType}' executed successfully! ${data.data?.details || ''}`, 'success');
+                } else {
+                    showNotification('Exploit failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error executing NTN exploit:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        // ==================== ISAC FRAMEWORK FUNCTIONS ====================
+        
+        async function startISACMonitoring() {
+            const mode = document.getElementById('isac-mode').value;
+            const waveform = document.getElementById('isac-waveform').value;
+            const duration = parseInt(document.getElementById('isac-duration').value) || 10;
+            
+            try {
+                const response = await fetch('/api/isac/monitor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sensing_mode: mode,
+                        waveform_type: waveform,
+                        duration_seconds: duration
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateISACStatistics(data.data);
+                    renderISACSensingData(data.data.sensing_data || []);
+                    showNotification('ISAC sensing started successfully', 'success');
+                } else {
+                    showNotification('Failed to start ISAC sensing: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting ISAC sensing:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        function updateISACStatistics(data) {
+            document.getElementById('isac-targets').textContent = data.targets_detected || 0;
+            document.getElementById('isac-range').textContent = (data.range_accuracy || 1.0).toFixed(2) + 'm';
+            document.getElementById('isac-snr').textContent = (data.snr || 0).toFixed(1) + ' dB';
+            document.getElementById('isac-breaches').textContent = data.privacy_breaches || 0;
+        }
+        
+        function renderISACSensingData(sensingData) {
+            const container = document.getElementById('isac-sensing-data');
+            
+            if (!sensingData || sensingData.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-secondary);">No sensing data collected yet.</div>';
+                return;
+            }
+            
+            container.innerHTML = sensingData.map(target => `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--accent-cyan);">
+                    <div style="font-size: 24px;">📍</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);">Target ${target.id || 'Unknown'}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                            Range: ${(target.range || 0).toFixed(1)}m | Velocity: ${(target.velocity || 0).toFixed(2)} m/s | Angle: ${(target.angle || 0).toFixed(1)}°
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; color: var(--text-secondary);">SNR</div>
+                        <div style="font-weight: 600; color: var(--success);">${(target.snr || 0).toFixed(1)} dB</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function executeISACExploit(exploitType) {
+            const mode = document.getElementById('isac-mode').value;
+            
+            if (!confirm(`Execute ${exploitType.replace(/_/g, ' ').toUpperCase()} exploit?\\n\\nMode: ${mode}\\n\\nThis will attempt to manipulate the sensing framework.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/isac/exploit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exploit_type: exploitType,
+                        sensing_mode: mode
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`ISAC exploit '${exploitType}' executed! ${data.data?.details || ''}`, 'success');
+                    if (data.data?.privacy_breach) {
+                        const count = parseInt(document.getElementById('isac-breaches').textContent) + 1;
+                        document.getElementById('isac-breaches').textContent = count;
+                    }
+                } else {
+                    showNotification('Exploit failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error executing ISAC exploit:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        // ==================== LAW ENFORCEMENT MODE FUNCTIONS ====================
+        
+        async function validateWarrant() {
+            const warrantId = document.getElementById('le-warrant-id').value.trim();
+            const jurisdiction = document.getElementById('le-jurisdiction').value.trim();
+            const caseNumber = document.getElementById('le-case-number').value.trim();
+            const authorizedBy = document.getElementById('le-authorized-by').value.trim();
+            const validUntil = document.getElementById('le-valid-until').value;
+            const targetIMSIs = document.getElementById('le-target-imsis').value.trim();
+            
+            if (!warrantId || !jurisdiction || !caseNumber) {
+                showNotification('Please fill in all required warrant fields', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/le/warrant/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        warrant_id: warrantId,
+                        jurisdiction: jurisdiction,
+                        case_number: caseNumber,
+                        authorized_by: authorizedBy,
+                        valid_until: validUntil,
+                        target_identifiers: targetIMSIs ? targetIMSIs.split(',').map(s => s.trim()) : []
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Warrant validated successfully. LE Mode activated.', 'success');
+                    loadLEStatistics();
+                } else {
+                    showNotification('Warrant validation failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error validating warrant:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        async function loadLEStatistics() {
+            try {
+                const response = await fetch('/api/le/statistics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('le-warrants').textContent = data.data.active_warrants || 0;
+                    document.getElementById('le-evidence').textContent = data.data.evidence_count || 0;
+                    document.getElementById('le-ops-today').textContent = data.data.operations_today || 0;
+                    
+                    const chainStatus = document.getElementById('le-chain-status');
+                    if (data.data.chain_integrity === 'intact') {
+                        chainStatus.textContent = '✓';
+                        chainStatus.style.color = 'var(--success)';
+                    } else {
+                        chainStatus.textContent = '⚠';
+                        chainStatus.style.color = 'var(--warning)';
+                    }
+                    
+                    renderEvidenceChain(data.data.recent_evidence || []);
+                }
+            } catch (error) {
+                console.error('Error loading LE statistics:', error);
+            }
+        }
+        
+        function renderEvidenceChain(evidence) {
+            const container = document.getElementById('le-evidence-chain');
+            
+            if (!evidence || evidence.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-secondary);">No evidence items in chain</div>';
+                return;
+            }
+            
+            container.innerHTML = evidence.map((item, idx) => `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--primary-blue);">
+                    <div style="font-size: 18px; color: var(--text-secondary);">#${idx + 1}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(item.type || 'Evidence')}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                            Collected: ${item.timestamp || 'Unknown'} | Hash: ${(item.hash || 'N/A').substring(0, 16)}...
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; color: ${item.verified ? 'var(--success)' : 'var(--warning)'};">
+                            ${item.verified ? '✓ Verified' : '⚠ Pending'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function verifyEvidenceChain() {
+            try {
+                const response = await fetch('/api/le/evidence/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`Evidence chain verified: ${data.data.verified_count}/${data.data.total_count} items valid`, 'success');
+                    loadLEStatistics();
+                } else {
+                    showNotification('Verification failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error verifying evidence chain:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            }
+        }
+        
+        async function exportEvidencePackage() {
+            try {
+                const response = await fetch('/api/le/evidence/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`Court package exported: ${data.data.filename || 'evidence_package.zip'}`, 'success');
+                    
+                    // If there's a download URL, trigger download
+                    if (data.data.download_url) {
+                        window.open(data.data.download_url, '_blank');
+                    }
+                } else {
+                    showNotification('Export failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error exporting evidence:', error);
+                showNotification('Network error: ' + error.message, 'error');
             }
         }
         

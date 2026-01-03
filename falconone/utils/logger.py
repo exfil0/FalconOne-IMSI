@@ -32,7 +32,7 @@ class ColoredFormatter(logging.Formatter):
 
 def setup_logger(
     name: str = 'falconone',
-    log_dir: str = '/var/log/falconone',
+    log_dir: str = None,
     log_level: str = 'INFO',
     console_output: bool = True,
     file_output: bool = True
@@ -42,7 +42,7 @@ def setup_logger(
     
     Args:
         name: Logger name
-        log_dir: Directory for log files
+        log_dir: Directory for log files (None for auto-detect)
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         console_output: Enable console output
         file_output: Enable file output
@@ -50,6 +50,24 @@ def setup_logger(
     Returns:
         Configured logger instance
     """
+    # Auto-detect log directory if not specified
+    if log_dir is None:
+        # Check environment variable first
+        log_dir = os.getenv('FALCONONE_LOG_DIR')
+        
+        if log_dir is None:
+            # Use platform-appropriate default
+            import platform
+            if platform.system() == 'Windows':
+                # Use user's AppData on Windows
+                appdata = os.getenv('LOCALAPPDATA', os.path.expanduser('~'))
+                log_dir = os.path.join(appdata, 'FalconOne', 'logs')
+            else:
+                # Use /var/log on Linux/Mac (with fallback)
+                if os.access('/var/log', os.W_OK):
+                    log_dir = '/var/log/falconone'
+                else:
+                    log_dir = os.path.join(os.path.expanduser('~'), '.falconone', 'logs')
     # Create logger
     logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, log_level.upper()))

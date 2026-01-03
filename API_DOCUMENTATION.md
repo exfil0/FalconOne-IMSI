@@ -1,20 +1,26 @@
 # FalconOne API Documentation
 
-**Version:** 3.3.0  
-**Last Updated:** January 2, 2026  
+**Version:** 3.4.0  
+**Last Updated:** January 3, 2026  
 **Base URL:** `http://localhost:5000/api` (Development) | `https://api.falconone.example.com` (Production)  
 **Authentication:** JWT Bearer Token  
 **Content-Type:** `application/json`
 
+**Changelog v3.4.0:**
+- Added 6G NTN API endpoints (5 new endpoints for satellite monitoring and exploitation)
+- Added ISAC API endpoints (4 new endpoints for Integrated Sensing & Communications)
+- Added LE Mode API endpoints (6 new endpoints for Law Enforcement warrant validation)
+- Updated documentation to match v1.9.0 implementation
+
 **Changelog v3.3.0:**
-- Added RANSacked Integration Testing Suite (700+ lines, 8 test classes, 100+ tests)
+- Added RANSacked Integration Testing Suite (485 lines, 8 test classes, 100+ tests)
 - Added RANSacked Exploit Chain Framework (7 pre-defined chains with 80-95% success rates)
 - Added RANSacked GUI Controls (10 new REST API endpoints for visual exploit selection)
 - New endpoints: `/api/ransacked/payloads`, `/api/ransacked/payload/<cve>`, `/api/ransacked/generate`, `/api/ransacked/execute`, `/api/ransacked/chains/available`, `/api/ransacked/chains/execute`, `/api/ransacked/stats`
 - Enhanced rate limiting: 60/30/5/3 requests per minute for RANSacked operations
 
 **Changelog v3.2.0:**
-- Added RANSacked Vulnerability Auditor API (97 CVEs across 7 cellular core implementations)
+- Added RANSacked Vulnerability Auditor API (96 CVEs across 7 cellular core implementations)
 - New endpoints: `/api/audit/ransacked/scan`, `/api/audit/ransacked/packet`, `/api/audit/ransacked/stats`
 
 ---
@@ -25,6 +31,9 @@
 - [Scanning API](#scanning-api)
 - [Exploits API](#exploits-api)
 - [RANSacked Exploit Integration API](#ransacked-exploit-integration-api) **(NEW v1.8.0)**
+- [6G NTN API](#6g-ntn-api) **(NEW v1.9.0)**
+- [ISAC API](#isac-api) **(NEW v1.9.0)**
+- [LE Mode API](#le-mode-api) **(NEW v1.9.0)**
 - [Monitoring API](#monitoring-api)
 - [AI/ML API](#aiml-api)
 - [O-RAN API](#o-ran-api)
@@ -661,6 +670,497 @@ Authorization: Bearer {token}
 
 ---
 
+## 6G NTN API
+
+**New in v1.9.0**: Complete 6G Non-Terrestrial Networks (NTN) monitoring and exploitation API with support for LEO, MEO, GEO, HAPS, and UAV satellite types.
+
+### Start NTN Monitoring
+```http
+POST /api/ntn_6g/monitor
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "sat_type": "LEO",
+  "duration_sec": 60,
+  "use_isac": true,
+  "frequency_ghz": 150,
+  "le_mode": false,
+  "warrant_id": "optional-warrant-id"
+}
+```
+
+**Rate Limit:** 10 requests/minute
+
+**Parameters:**
+- `sat_type` (string, required): Satellite type - `LEO`, `MEO`, `GEO`, `HAPS`, `UAV`
+- `duration_sec` (int, optional): Monitoring duration 1-300 seconds (default: 60)
+- `use_isac` (bool, optional): Enable ISAC sensing (default: true)
+- `frequency_ghz` (float, optional): Center frequency in GHz (default: 150)
+- `le_mode` (bool, optional): Enable Law Enforcement mode (default: false)
+- `warrant_id` (string, optional): Required if le_mode is true
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "timestamp": "2026-01-02T10:00:00Z",
+  "satellite_type": "LEO",
+  "technology": "6G_NTN",
+  "signal_detected": true,
+  "signal_strength_dbm": -95.5,
+  "doppler_shift_hz": 15234.5,
+  "isac_data": {
+    "range_m": 550000,
+    "velocity_mps": 7500,
+    "angle_deg": 45.0,
+    "snr_db": 18.5
+  },
+  "evidence_hash": "abc123..."
+}
+```
+
+### Execute NTN Exploit
+```http
+POST /api/ntn_6g/exploit
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "exploit_type": "beam_hijacking",
+  "sat_type": "LEO",
+  "target_beam_id": "beam_001",
+  "le_mode": false,
+  "warrant_id": "optional-warrant-id"
+}
+```
+
+**Rate Limit:** 5 requests/minute
+
+**Parameters:**
+- `exploit_type` (string, required): One of:
+  - `beam_hijacking` - Hijack satellite beam via RIS manipulation (75% success)
+  - `handover_poisoning` - AI orchestration attack on handover (65% success)
+  - `downlink_spoofing` - Inject fake downlink signals (70% success)
+  - `feeder_link_attack` - Attack ground-satellite link (60% success)
+  - `nb_iot_ntn` - NB-IoT satellite exploitation (68% success)
+  - `timing_advance` - Timing advance manipulation (72% success)
+  - `quantum_attack` - Quantum key distribution attack (35% success)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "exploit_type": "beam_hijacking",
+  "satellite_type": "LEO",
+  "execution_time_ms": 1250,
+  "result": {
+    "status": "success",
+    "beam_captured": true,
+    "old_beam_id": "beam_original",
+    "new_beam_id": "beam_001"
+  },
+  "evidence_hash": "def456..."
+}
+```
+
+### List Tracked Satellites
+```http
+GET /api/ntn_6g/satellites
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 20 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "satellites": [
+    {
+      "sat_id": "STARLINK-1234",
+      "sat_type": "LEO",
+      "altitude_km": 550,
+      "inclination_deg": 53.0,
+      "longitude_deg": -122.5,
+      "latitude_deg": 37.8,
+      "velocity_kms": 7.5,
+      "doppler_hz": 15234.5,
+      "visible": true,
+      "signal_strength_dbm": -95.5
+    }
+  ],
+  "count": 15,
+  "timestamp": "2026-01-02T10:00:00Z"
+}
+```
+
+### Get Satellite Ephemeris
+```http
+GET /api/ntn_6g/ephemeris/{sat_id}
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 10 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "sat_id": "STARLINK-1234",
+  "ephemeris": {
+    "epoch": "2026-01-02T10:00:00Z",
+    "semi_major_axis_km": 6928,
+    "eccentricity": 0.0001,
+    "inclination_deg": 53.0,
+    "raan_deg": 120.5,
+    "arg_perigee_deg": 45.0,
+    "mean_anomaly_deg": 180.0
+  },
+  "predictions": [
+    {
+      "time": "2026-01-02T10:10:00Z",
+      "latitude_deg": 38.5,
+      "longitude_deg": -121.0,
+      "altitude_km": 550.1,
+      "doppler_hz": 14500.0
+    }
+  ]
+}
+```
+
+### Get NTN Statistics
+```http
+GET /api/ntn_6g/statistics
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 20 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "total_sessions": 10,
+  "satellites_tracked": 5,
+  "doppler_measurements": 100,
+  "isac_measurements": 100,
+  "doppler_stats": {
+    "mean_hz": 12000.5,
+    "max_hz": 35000.0
+  },
+  "isac_stats": {
+    "mean_range_km": 550.0,
+    "mean_snr_db": 18.5
+  }
+}
+```
+
+---
+
+## ISAC API
+
+**New in v1.9.0**: Integrated Sensing and Communications (ISAC) monitoring and exploitation API supporting monostatic, bistatic, and cooperative sensing modes.
+
+### Start ISAC Monitoring
+```http
+POST /api/isac/monitor
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "mode": "monostatic",
+  "duration_sec": 10,
+  "frequency_ghz": 150.0,
+  "waveform_type": "OFDM",
+  "le_mode": false,
+  "warrant_id": "WARRANT-12345"
+}
+```
+
+**Rate Limit:** 10 requests/minute
+
+**Parameters:**
+- `mode` (string, required): `monostatic`, `bistatic`, `cooperative`
+- `duration_sec` (int, optional): Duration 1-60 seconds (default: 10)
+- `frequency_ghz` (float, optional): Frequency in GHz (default: 150)
+- `waveform_type` (string, optional): `OFDM`, `DFT-s-OFDM`, `FMCW`
+- `le_mode` (bool, optional): Enable LE mode (default: false)
+- `warrant_id` (string, optional): Required if le_mode is true
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "timestamp": "2026-01-02T10:00:00Z",
+  "mode": "monostatic",
+  "waveform": "OFDM",
+  "targets_detected": 3,
+  "sensing_data": [
+    {
+      "range_m": 250.5,
+      "velocity_mps": 15.2,
+      "angle_deg": 45.0,
+      "snr_db": 22.5
+    }
+  ],
+  "privacy_analysis": {
+    "breach_detected": false,
+    "risk_level": "low"
+  }
+}
+```
+
+### Execute ISAC Exploit
+```http
+POST /api/isac/exploit
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "exploit_type": "waveform_manipulation",
+  "target_freq_ghz": 150.0,
+  "le_mode": false,
+  "warrant_id": "WARRANT-12345"
+}
+```
+
+**Rate Limit:** 5 requests/minute
+
+**Parameters:**
+- `exploit_type` (string, required): One of:
+  - `waveform_manipulation` - Inject malformed waveforms (80% success)
+  - `ai_poisoning` - ML model poisoning attack (65% success)
+  - `privacy_breach` - Exploit sensing for tracking (60% success)
+  - `e2sm_hijack` - E2SM control plane attack (70% success)
+  - `quantum_attack` - Quantum radar exploitation (35% success)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "exploit_type": "waveform_manipulation",
+  "execution_time_ms": 450,
+  "result": {
+    "status": "success",
+    "targets_affected": 2,
+    "dos_achieved": true,
+    "data_leaked": false
+  }
+}
+```
+
+### Get Sensing Data
+```http
+GET /api/isac/sensing_data?limit=10&mode=monostatic
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 20 requests/minute
+
+**Query Parameters:**
+- `limit` (int, optional): Number of entries (default: 10, max: 100)
+- `mode` (string, optional): Filter by mode
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "mode": "monostatic",
+      "range_m": 250.5,
+      "velocity_mps": 15.2,
+      "angle_deg": 45.0,
+      "snr_db": 22.5,
+      "timestamp": 1704240000.0
+    }
+  ],
+  "count": 10
+}
+```
+
+### Get ISAC Statistics
+```http
+GET /api/isac/statistics
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 20 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "monitoring": {
+    "total_sessions": 100,
+    "monostatic_count": 50,
+    "bistatic_count": 30,
+    "cooperative_count": 20,
+    "avg_range_m": 350.5,
+    "avg_velocity_mps": 12.3,
+    "privacy_breaches_detected": 5
+  },
+  "exploitation": {
+    "total_exploits": 50,
+    "waveform_attacks": 20,
+    "ai_poisoning_attacks": 10,
+    "success_rate": 0.70
+  }
+}
+```
+
+---
+
+## LE Mode API
+
+**New in v1.9.0**: Law Enforcement Mode API for warrant validation, evidence chain management, and legally-compliant interception operations.
+
+### Validate Warrant
+```http
+POST /api/le/warrant/validate
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "warrant_id": "WRT-2026-00123",
+  "warrant_image": "base64_encoded_image",
+  "metadata": {
+    "jurisdiction": "Southern District NY",
+    "case_number": "2026-CR-00123",
+    "authorized_by": "Judge Smith",
+    "valid_until": "2026-06-30T23:59:59Z",
+    "target_identifiers": ["001010123456789"],
+    "operator": "officer_jones"
+  }
+}
+```
+
+**Rate Limit:** 10 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "warrant_id": "WRT-2026-00123",
+  "status": "validated",
+  "valid_until": "2026-06-30T23:59:59Z",
+  "message": "LE Mode activated with warrant WRT-2026-00123"
+}
+```
+
+### Enhance Exploit for LE
+```http
+POST /api/le/enhance_exploit
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "exploit_type": "imsi_catch",
+  "warrant_id": "WRT-2026-00123",
+  "parameters": {
+    "target_imsi": "001010123456789"
+  }
+}
+```
+
+**Rate Limit:** 5 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "enhanced": true,
+  "evidence_hash": "sha256:abc123...",
+  "timestamp": "2026-01-02T10:00:00Z",
+  "audit_entry_id": "aud_12345"
+}
+```
+
+### Get Evidence Details
+```http
+GET /api/le/evidence/{evidence_id}
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 20 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "evidence_id": "EVD-2026-00001",
+  "warrant_id": "WRT-2026-00123",
+  "created_at": "2026-01-02T10:00:00Z",
+  "data_type": "intercept_capture",
+  "hash": "sha256:abc123...",
+  "chain_valid": true,
+  "metadata": {
+    "target_imsi": "001010123456789",
+    "operator": "officer_jones"
+  }
+}
+```
+
+### Verify Evidence Chain
+```http
+GET /api/le/chain/verify
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 10 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "chain_valid": true,
+  "total_entries": 150,
+  "verified_entries": 150,
+  "last_verified": "2026-01-02T10:00:00Z"
+}
+```
+
+### Get LE Statistics
+```http
+GET /api/le/statistics
+Authorization: Bearer {token}
+```
+
+**Rate Limit:** 20 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "active_warrants": 3,
+  "total_evidence_items": 150,
+  "operations_today": 12,
+  "chain_integrity": true
+}
+```
+
+### Export Evidence Package
+```http
+POST /api/le/evidence/export
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "warrant_id": "WRT-2026-00123",
+  "format": "court_package",
+  "include_chain": true
+}
+```
+
+**Rate Limit:** 5 requests/minute
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "export_id": "EXP-2026-00001",
+  "format": "court_package",
+  "file_path": "/exports/WRT-2026-00123_court_package.zip",
+  "hash": "sha256:def456...",
+  "entries_included": 25
+}
+```
+
+---
+
 ## Monitoring API
 
 ### Get Network Metrics
@@ -1153,7 +1653,7 @@ Authorization: Bearer {token}
 
 ## RANSacked Vulnerability Auditor API
 
-The RANSacked API provides vulnerability scanning and packet auditing capabilities based on the RANSacked project's research, which identified 119 vulnerabilities (97 CVEs) across 7 cellular core implementations.
+The RANSacked API provides vulnerability scanning and packet auditing capabilities based on the RANSacked project's research, which identified 119 vulnerabilities (96 CVEs) across 7 cellular core implementations.
 
 ### Scan Implementation
 
@@ -1572,9 +2072,13 @@ const targets = await client.targets.list({ limit: 50 });
 
 ## OpenAPI Specification
 
-Full OpenAPI 3.0 specification available at:
-- **Swagger UI**: `http://localhost:5000/api/docs`
-- **OpenAPI JSON**: `http://localhost:5000/api/openapi.json`
+**Status**: Planned for future release
+
+OpenAPI 3.0 specification generation is currently in development. Once available, it will be accessible at:
+- **Swagger UI**: `http://localhost:5000/api/docs` (planned)
+- **OpenAPI JSON**: `http://localhost:5000/api/openapi.json` (planned)
+
+For current API documentation, refer to the REST endpoints documented above or use the interactive dashboard at `http://localhost:5000`.
 
 ---
 

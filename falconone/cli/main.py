@@ -16,11 +16,11 @@ from ..utils.config import Config
 @click.group()
 @click.option('--config', '-c', type=click.Path(exists=True), help='Configuration file path')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
-@click.version_option(version='1.4.0', prog_name='FalconOne')
+@click.version_option(version='1.9.0', prog_name='FalconOne')
 @click.pass_context
 def cli(ctx, config: Optional[str], verbose: bool):
     """
-    FalconOne SIGINT Platform - v1.4 Complete
+    FalconOne SIGINT Platform - v1.9.0
     
     Multi-generation cellular monitoring and analysis platform
     with agentic AI, quantum cryptanalysis, and 6G capabilities.
