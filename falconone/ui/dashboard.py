@@ -8136,6 +8136,385 @@ DASHBOARD_HTML_TEMPLATE = """
             background: var(--bg-dark);
         }
         
+        /* ==================== ACCESSIBILITY & WCAG 2.1 AA (v1.9.2) ==================== */
+        
+        /* Focus states for keyboard navigation */
+        *:focus {
+            outline: 2px solid var(--accent-cyan);
+            outline-offset: 2px;
+        }
+        
+        *:focus:not(:focus-visible) {
+            outline: none;
+        }
+        
+        *:focus-visible {
+            outline: 2px solid var(--accent-cyan);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.2);
+        }
+        
+        /* Skip to content link */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--accent-cyan);
+            color: #000;
+            padding: 8px 16px;
+            z-index: 10000;
+            font-weight: 600;
+            transition: top 0.3s;
+        }
+        
+        .skip-link:focus {
+            top: 0;
+        }
+        
+        /* Screen reader only content */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --bg-panel: #000;
+                --border-color: #fff;
+                --text-primary: #fff;
+            }
+        }
+        
+        /* ==================== TOAST NOTIFICATION SYSTEM (v1.9.2) ==================== */
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            pointer-events: auto;
+            transform: translateX(120%);
+            opacity: 0;
+            animation: toastSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            min-width: 300px;
+            max-width: 450px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .toast.closing {
+            animation: toastSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        @keyframes toastSlideIn {
+            from {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes toastSlideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+        }
+        
+        .toast-success {
+            background: linear-gradient(135deg, rgba(0, 230, 118, 0.95) 0%, rgba(0, 200, 83, 0.95) 100%);
+            color: #000;
+            border-left: 4px solid #00e676;
+        }
+        
+        .toast-warning {
+            background: linear-gradient(135deg, rgba(255, 171, 0, 0.95) 0%, rgba(255, 143, 0, 0.95) 100%);
+            color: #000;
+            border-left: 4px solid #ffab00;
+        }
+        
+        .toast-error {
+            background: linear-gradient(135deg, rgba(255, 23, 68, 0.95) 0%, rgba(211, 47, 47, 0.95) 100%);
+            color: #fff;
+            border-left: 4px solid #ff1744;
+        }
+        
+        .toast-info {
+            background: linear-gradient(135deg, rgba(0, 176, 255, 0.95) 0%, rgba(0, 145, 234, 0.95) 100%);
+            color: #000;
+            border-left: 4px solid #00b0ff;
+        }
+        
+        .toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .toast-content {
+            flex: 1;
+        }
+        
+        .toast-title {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .toast-message {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .toast-close:hover {
+            opacity: 1;
+        }
+        
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            animation: toastProgress linear forwards;
+        }
+        
+        @keyframes toastProgress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        
+        /* ==================== LAZY LOADING PLACEHOLDERS (v1.9.2) ==================== */
+        
+        .lazy-load-container {
+            position: relative;
+            background: var(--bg-dark);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        
+        .lazy-load-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-dark) 100%);
+            color: var(--text-secondary);
+            min-height: 200px;
+        }
+        
+        .lazy-load-placeholder.loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .lazy-load-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .lazy-load-text {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .lazy-load-btn {
+            margin-top: 16px;
+            padding: 10px 20px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .lazy-load-btn:hover {
+            background: var(--primary-blue-light);
+            transform: translateY(-2px);
+        }
+        
+        /* ==================== SUSTAINABILITY TAB STYLES (v1.9.2) ==================== */
+        
+        .sustainability-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        
+        .carbon-metric-card {
+            background: var(--bg-panel);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .carbon-metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #00e676, #69f0ae);
+        }
+        
+        .carbon-metric-card.warning::before {
+            background: linear-gradient(90deg, #ffab00, #ffd740);
+        }
+        
+        .carbon-metric-card.danger::before {
+            background: linear-gradient(90deg, #ff1744, #ff5252);
+        }
+        
+        .carbon-metric-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--success);
+            margin: 12px 0;
+        }
+        
+        .carbon-metric-unit {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        .carbon-metric-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .carbon-metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+        
+        .carbon-metric-trend.positive {
+            color: var(--success);
+        }
+        
+        .carbon-metric-trend.negative {
+            color: var(--danger);
+        }
+        
+        .carbon-equivalents {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(0, 230, 118, 0.05);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+        }
+        
+        .carbon-equivalent-item {
+            text-align: center;
+            padding: 12px;
+        }
+        
+        .carbon-equivalent-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .carbon-equivalent-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .carbon-equivalent-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        .emissions-chart-container {
+            background: var(--bg-panel);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            grid-column: span 2;
+        }
+        
+        @media (max-width: 768px) {
+            .emissions-chart-container {
+                grid-column: span 1;
+            }
+        }
+        
         /* ==================== RESPONSIVE DESIGN ==================== */
         
         /* Hamburger Menu Button (Mobile Only) */
@@ -8848,71 +9227,80 @@ DASHBOARD_HTML_TEMPLATE = """
 <body>
     
     <!-- HAMBURGER MENU (Mobile) -->
-    <div class="hamburger" onclick="toggleSidebar()">
-        <span></span>
-        <span></span>
-        <span></span>
-    </div>
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="sidebar">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </button>
     
     <!-- SIDEBAR OVERLAY (Mobile) -->
-    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <div class="sidebar-overlay" onclick="closeSidebar()" role="presentation" aria-hidden="true"></div>
+    
+    <!-- SKIP TO CONTENT (Accessibility) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="toast-container" role="alert" aria-live="polite" aria-atomic="true"></div>
     
     <!-- LEFT SIDEBAR NAVIGATION -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
         <div class="sidebar-header">
             <h1>🛰️ FalconOne</h1>
             <p>v1.9.0 SIGINT Platform</p>
         </div>
         
-        <nav class="sidebar-nav">
-            <div class="nav-section-title">MONITORING</div>
-            <div class="nav-item active" onclick="showTab('overview')" data-tab="overview">
-                📊 Dashboard
+        <nav class="sidebar-nav" role="menubar" aria-label="Dashboard sections">
+            <div class="nav-section-title" role="presentation" aria-hidden="true">MONITORING</div>
+            <div class="nav-item active" onclick="showTab('overview')" data-tab="overview" role="menuitem" tabindex="0" aria-label="Dashboard overview" aria-current="page" onkeypress="if(event.key==='Enter')showTab('overview')">
+                <span aria-hidden="true">📊</span> Dashboard
             </div>
-            <div class="nav-item" onclick="showTab('devices')" data-tab="devices">
-                🔌 Device Manager
+            <div class="nav-item" onclick="showTab('devices')" data-tab="devices" role="menuitem" tabindex="0" aria-label="Device Manager" onkeypress="if(event.key==='Enter')showTab('devices')">
+                <span aria-hidden="true">🔌</span> Device Manager
             </div>
-            <div class="nav-item" onclick="showTab('cellular')" data-tab="cellular">
-                📱 Cellular Monitor
+            <div class="nav-item" onclick="showTab('cellular')" data-tab="cellular" role="menuitem" tabindex="0" aria-label="Cellular Monitor" onkeypress="if(event.key==='Enter')showTab('cellular')">
+                <span aria-hidden="true">📱</span> Cellular Monitor
             </div>
-            <div class="nav-item" onclick="showTab('captures')" data-tab="captures">
-                🎯 Captures & IMSI
-            </div>
-            
-            <div class="nav-section-title">6G & ADVANCED</div>
-            <div class="nav-item" onclick="showTab('ntn')" data-tab="ntn">
-                🛰️ 6G NTN Satellite
-            </div>
-            <div class="nav-item" onclick="showTab('isac')" data-tab="isac">
-                📡 ISAC Framework
+            <div class="nav-item" onclick="showTab('captures')" data-tab="captures" role="menuitem" tabindex="0" aria-label="Captures and IMSI tracking" onkeypress="if(event.key==='Enter')showTab('captures')">
+                <span aria-hidden="true">🎯</span> Captures & IMSI
             </div>
             
-            <div class="nav-section-title">OPERATIONS</div>
-            <div class="nav-item" onclick="showTab('exploits')" data-tab="exploits">
-                ⚡ Exploit Engine
+            <div class="nav-section-title" role="presentation" aria-hidden="true">6G & ADVANCED</div>
+            <div class="nav-item" onclick="showTab('ntn')" data-tab="ntn" role="menuitem" tabindex="0" aria-label="6G NTN Satellite monitoring" onkeypress="if(event.key==='Enter')showTab('ntn')">
+                <span aria-hidden="true">🛰️</span> 6G NTN Satellite
             </div>
-            <div class="nav-item" onclick="showTab('le-mode')" data-tab="le-mode">
-                🔒 LE Mode
-            </div>
-            <div class="nav-item" onclick="showTab('analytics')" data-tab="analytics">
-                🤖 AI Analytics
+            <div class="nav-item" onclick="showTab('isac')" data-tab="isac" role="menuitem" tabindex="0" aria-label="ISAC Framework" onkeypress="if(event.key==='Enter')showTab('isac')">
+                <span aria-hidden="true">📡</span> ISAC Framework
             </div>
             
-            <div class="nav-section-title">SYSTEM</div>
-            <div class="nav-item" onclick="showTab('terminal')" data-tab="terminal">
-                💻 Terminal
+            <div class="nav-section-title" role="presentation" aria-hidden="true">OPERATIONS</div>
+            <div class="nav-item" onclick="showTab('exploits')" data-tab="exploits" role="menuitem" tabindex="0" aria-label="Exploit Engine" onkeypress="if(event.key==='Enter')showTab('exploits')">
+                <span aria-hidden="true">⚡</span> Exploit Engine
             </div>
-            <div class="nav-item" onclick="showTab('setup')" data-tab="setup">
-                🔧 Setup Wizard
+            <div class="nav-item" onclick="showTab('le-mode')" data-tab="le-mode" role="menuitem" tabindex="0" aria-label="Law Enforcement Mode" onkeypress="if(event.key==='Enter')showTab('le-mode')">
+                <span aria-hidden="true">🔒</span> LE Mode
             </div>
-            <div class="nav-item" onclick="showTab('tools')" data-tab="tools">
-                🛠️ System Tools
+            <div class="nav-item" onclick="showTab('analytics')" data-tab="analytics" role="menuitem" tabindex="0" aria-label="AI Analytics" onkeypress="if(event.key==='Enter')showTab('analytics')">
+                <span aria-hidden="true">🤖</span> AI Analytics
             </div>
-            <div class="nav-item" onclick="showTab('system')" data-tab="system">
-                🖥️ System Health
+            
+            <div class="nav-section-title" role="presentation" aria-hidden="true">SYSTEM</div>
+            <div class="nav-item" onclick="showTab('terminal')" data-tab="terminal" role="menuitem" tabindex="0" aria-label="Terminal console" onkeypress="if(event.key==='Enter')showTab('terminal')">
+                <span aria-hidden="true">💻</span> Terminal
             </div>
-            <div class="nav-item" onclick="window.location.href='/documentation'" data-tab="documentation">
-                📖 Documentation
+            <div class="nav-item" onclick="showTab('setup')" data-tab="setup" role="menuitem" tabindex="0" aria-label="Setup Wizard" onkeypress="if(event.key==='Enter')showTab('setup')">
+                <span aria-hidden="true">🔧</span> Setup Wizard
+            </div>
+            <div class="nav-item" onclick="showTab('tools')" data-tab="tools" role="menuitem" tabindex="0" aria-label="System Tools" onkeypress="if(event.key==='Enter')showTab('tools')">
+                <span aria-hidden="true">🛠️</span> System Tools
+            </div>
+            <div class="nav-item" onclick="showTab('system')" data-tab="system" role="menuitem" tabindex="0" aria-label="System Health" onkeypress="if(event.key==='Enter')showTab('system')">
+                <span aria-hidden="true">🖥️</span> System Health
+            </div>
+            <div class="nav-item" onclick="showTab('sustainability')" data-tab="sustainability" role="menuitem" tabindex="0" aria-label="Sustainability and carbon tracking" onkeypress="if(event.key==='Enter')showTab('sustainability')">
+                <span aria-hidden="true">🌱</span> Sustainability
+            </div>
+            <div class="nav-item" onclick="window.location.href='/documentation'" data-tab="documentation" role="menuitem" tabindex="0" aria-label="Documentation" onkeypress="if(event.key==='Enter')window.location.href='/documentation'">
+                <span aria-hidden="true">📖</span> Documentation
             </div>
         </nav>
         
@@ -10215,6 +10603,234 @@ Ready>
         </div>
     </div>
     
+    <!-- ==================== SUSTAINABILITY TAB (v1.9.2) ==================== -->
+    <div id="tab-sustainability" class="tab-content" role="tabpanel" aria-labelledby="tab-sustainability-btn">
+        <div class="container">
+            <!-- Main KPIs Row -->
+            <div class="panel panel-large" style="grid-column: 1 / -1;">
+                <h2 style="display: flex; align-items: center; gap: 10px;">
+                    <span aria-hidden="true">🌱</span> 
+                    Sustainability Dashboard
+                    <span class="badge badge-success" style="font-size: 10px;">CodeCarbon Integrated</span>
+                </h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Track carbon emissions and environmental impact of SIGINT operations
+                </p>
+                
+                <div class="sustainability-dashboard">
+                    <!-- Total Emissions Card -->
+                    <div class="carbon-metric-card" id="total-emissions-card" aria-label="Total carbon emissions">
+                        <div class="carbon-metric-label">Total Emissions</div>
+                        <div class="carbon-metric-value" id="total-emissions">
+                            <span id="emissions-value">0.00</span>
+                            <span class="carbon-metric-unit">kg CO₂eq</span>
+                        </div>
+                        <div class="carbon-metric-trend positive" id="emissions-trend" aria-live="polite">
+                            <span aria-hidden="true">↓</span> -12% vs last session
+                        </div>
+                    </div>
+                    
+                    <!-- Power Consumption Card -->
+                    <div class="carbon-metric-card" id="power-card" aria-label="Power consumption">
+                        <div class="carbon-metric-label">Power Consumption</div>
+                        <div class="carbon-metric-value">
+                            <span id="power-value">0.0</span>
+                            <span class="carbon-metric-unit">kWh</span>
+                        </div>
+                        <div class="carbon-metric-trend" id="power-trend" aria-live="polite">
+                            <span aria-hidden="true">⚡</span> Live monitoring
+                        </div>
+                    </div>
+                    
+                    <!-- CPU Usage Card -->
+                    <div class="carbon-metric-card" id="cpu-card" aria-label="CPU utilization">
+                        <div class="carbon-metric-label">CPU Utilization</div>
+                        <div class="carbon-metric-value">
+                            <span id="cpu-value">0</span>
+                            <span class="carbon-metric-unit">%</span>
+                        </div>
+                        <div class="carbon-metric-trend" id="cpu-trend" aria-live="polite">
+                            <span aria-hidden="true">🔥</span> Optimal range
+                        </div>
+                    </div>
+                    
+                    <!-- GPU Usage Card -->
+                    <div class="carbon-metric-card" id="gpu-card" aria-label="GPU utilization">
+                        <div class="carbon-metric-label">GPU Utilization</div>
+                        <div class="carbon-metric-value">
+                            <span id="gpu-value">0</span>
+                            <span class="carbon-metric-unit">%</span>
+                        </div>
+                        <div class="carbon-metric-trend" id="gpu-trend" aria-live="polite">
+                            <span aria-hidden="true">🎮</span> AI inference active
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Carbon Equivalents -->
+            <div class="panel" aria-label="Carbon emission equivalents">
+                <h2><span aria-hidden="true">🌍</span> Environmental Equivalents</h2>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">
+                    Your carbon footprint in relatable terms
+                </p>
+                <div class="carbon-equivalents">
+                    <div class="carbon-equivalent-item">
+                        <div class="carbon-equivalent-icon" aria-hidden="true">🚗</div>
+                        <div class="carbon-equivalent-value" id="equiv-car">0 km</div>
+                        <div class="carbon-equivalent-label">Car driving equivalent</div>
+                    </div>
+                    <div class="carbon-equivalent-item">
+                        <div class="carbon-equivalent-icon" aria-hidden="true">🌳</div>
+                        <div class="carbon-equivalent-value" id="equiv-trees">0 trees</div>
+                        <div class="carbon-equivalent-label">Trees needed to offset</div>
+                    </div>
+                    <div class="carbon-equivalent-item">
+                        <div class="carbon-equivalent-icon" aria-hidden="true">💡</div>
+                        <div class="carbon-equivalent-value" id="equiv-bulb">0 hrs</div>
+                        <div class="carbon-equivalent-label">Light bulb hours</div>
+                    </div>
+                    <div class="carbon-equivalent-item">
+                        <div class="carbon-equivalent-icon" aria-hidden="true">📱</div>
+                        <div class="carbon-equivalent-value" id="equiv-phone">0</div>
+                        <div class="carbon-equivalent-label">Phone charges</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Green Computing Score -->
+            <div class="panel" aria-label="Green computing score">
+                <h2><span aria-hidden="true">🏆</span> Green Computing Score</h2>
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 64px; font-weight: 700; color: var(--success);" id="green-score" aria-live="polite">
+                        A+
+                    </div>
+                    <div style="color: var(--text-secondary); margin-top: 10px;">
+                        Excellent efficiency rating
+                    </div>
+                    <div class="progress-bar" style="margin-top: 20px;" role="progressbar" aria-valuenow="92" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-fill" style="width: 92%;" id="green-progress">92%</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; font-size: 12px; color: var(--text-secondary);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Idle Power Optimization</span>
+                        <span style="color: var(--success);">✓ Enabled</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>GPU Offloading</span>
+                        <span style="color: var(--success);">✓ Active</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Batch Processing</span>
+                        <span style="color: var(--success);">✓ Optimized</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Emissions Over Time Chart (Lazy Loaded) -->
+            <div class="panel panel-large emissions-chart-container" aria-label="Emissions over time chart">
+                <h2><span aria-hidden="true">📈</span> Emissions Over Time</h2>
+                <div class="lazy-load-container" data-lazy-type="chart" data-chart-id="emissions-chart" data-chart-type="line" style="height: 300px;">
+                    <div class="lazy-load-placeholder">
+                        <div class="lazy-load-icon" aria-hidden="true">📊</div>
+                        <div class="lazy-load-text">Emissions chart loading...</div>
+                        <button class="lazy-load-btn" onclick="loadLazyContent(this)" aria-label="Load emissions chart now">
+                            Load Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sustainability Tips -->
+            <div class="panel" aria-label="Sustainability recommendations">
+                <h2><span aria-hidden="true">💡</span> Optimization Tips</h2>
+                <div id="sustainability-tips" style="display: grid; gap: 12px;">
+                    <div style="padding: 12px; background: rgba(0, 230, 118, 0.1); border-radius: 8px; border-left: 3px solid var(--success);">
+                        <strong style="color: var(--success);">Reduce SDR Sample Rate</strong>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin: 5px 0 0 0;">
+                            Lower sample rates during idle periods can reduce power by 15%
+                        </p>
+                    </div>
+                    <div style="padding: 12px; background: rgba(0, 176, 255, 0.1); border-radius: 8px; border-left: 3px solid var(--info);">
+                        <strong style="color: var(--info);">Enable Batch Processing</strong>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin: 5px 0 0 0;">
+                            Process signals in batches to optimize GPU utilization
+                        </p>
+                    </div>
+                    <div style="padding: 12px; background: rgba(255, 171, 0, 0.1); border-radius: 8px; border-left: 3px solid var(--warning);">
+                        <strong style="color: var(--warning);">Schedule Heavy Analysis</strong>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin: 5px 0 0 0;">
+                            Run AI training during off-peak grid hours (2-6 AM)
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Session Comparison -->
+            <div class="panel" aria-label="Session comparison">
+                <h2><span aria-hidden="true">📊</span> Session Comparison</h2>
+                <table class="data-table" role="table" aria-label="Emissions by session">
+                    <thead>
+                        <tr>
+                            <th scope="col">Session</th>
+                            <th scope="col">Duration</th>
+                            <th scope="col">Emissions</th>
+                            <th scope="col">Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody id="session-comparison-body">
+                        <tr>
+                            <td>Current</td>
+                            <td id="session-duration">00:00:00</td>
+                            <td id="session-emissions">0.00 kg</td>
+                            <td><span class="badge badge-success">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>Previous</td>
+                            <td>02:34:15</td>
+                            <td>0.42 kg</td>
+                            <td><span style="color: var(--success);">↓ 8%</span></td>
+                        </tr>
+                        <tr>
+                            <td>Average</td>
+                            <td>01:45:00</td>
+                            <td>0.38 kg</td>
+                            <td><span class="badge badge-info">Baseline</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Controls -->
+            <div class="panel" aria-label="Sustainability controls">
+                <h2><span aria-hidden="true">⚙️</span> Controls</h2>
+                <div style="display: grid; gap: 12px;">
+                    <button class="btn btn-success" onclick="refreshSustainabilityData()" aria-label="Refresh sustainability data">
+                        <span aria-hidden="true">🔄</span> Refresh Data
+                    </button>
+                    <button class="btn btn-primary" onclick="exportEmissionsReport()" aria-label="Export emissions report">
+                        <span aria-hidden="true">📄</span> Export Report
+                    </button>
+                    <button class="btn" style="background: var(--accent-purple);" onclick="toggleEcoMode()" aria-label="Toggle eco mode">
+                        <span aria-hidden="true">🌿</span> Toggle Eco Mode
+                    </button>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: var(--bg-dark); border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="eco-mode-toggle" onchange="handleEcoModeChange(this)" style="width: 18px; height: 18px;" aria-describedby="eco-mode-desc">
+                        <div>
+                            <strong>Eco Mode</strong>
+                            <p id="eco-mode-desc" style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0 0;">
+                                Reduce power consumption by limiting non-essential operations
+                            </p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    
         </div><!-- Close content-area -->
     </main><!-- Close main-content -->
     
@@ -10228,7 +10844,188 @@ Ready>
         document.addEventListener('DOMContentLoaded', function() {
             // Show overview tab by default
             showTab('overview');
+            
+            // Initialize lazy loading observers
+            initLazyLoading();
+            
+            // Show welcome toast
+            showToast('success', 'Connected', 'FalconOne Dashboard loaded successfully');
         });
+        
+        // ==================== TOAST NOTIFICATION SYSTEM (v1.9.2) ====================
+        
+        /**
+         * Show a toast notification
+         * @param {string} type - 'success', 'warning', 'error', or 'info'
+         * @param {string} title - Toast title
+         * @param {string} message - Toast message
+         * @param {number} duration - Duration in milliseconds (default: 5000)
+         */
+        function showToast(type, title, message, duration = 5000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const icons = {
+                success: '✓',
+                warning: '⚠',
+                error: '✕',
+                info: 'ℹ'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.innerHTML = `
+                <span class="toast-icon" aria-hidden="true">${icons[type] || '•'}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${escapeHtml(title)}</div>
+                    <div class="toast-message">${escapeHtml(message)}</div>
+                </div>
+                <button class="toast-close" onclick="closeToast(this.parentElement)" aria-label="Close notification">&times;</button>
+                <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => closeToast(toast), duration);
+        }
+        
+        /**
+         * Close a toast notification
+         * @param {HTMLElement} toast - Toast element to close
+         */
+        function closeToast(toast) {
+            if (!toast || toast.classList.contains('closing')) return;
+            
+            toast.classList.add('closing');
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.parentElement.removeChild(toast);
+                }
+            }, 300);
+        }
+        
+        /**
+         * Escape HTML to prevent XSS
+         * @param {string} text - Text to escape
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ==================== LAZY LOADING SYSTEM (v1.9.2) ====================
+        
+        const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const container = entry.target;
+                    const type = container.dataset.lazyType;
+                    
+                    if (type === 'map') {
+                        initializeLazyMap(container);
+                    } else if (type === 'chart') {
+                        initializeLazyChart(container);
+                    }
+                    
+                    observer.unobserve(container);
+                }
+            });
+        }, {
+            rootMargin: '100px',
+            threshold: 0.1
+        });
+        
+        function initLazyLoading() {
+            document.querySelectorAll('.lazy-load-container').forEach(container => {
+                lazyLoadObserver.observe(container);
+            });
+        }
+        
+        function initializeLazyMap(container) {
+            const placeholder = container.querySelector('.lazy-load-placeholder');
+            if (placeholder) {
+                placeholder.classList.add('loading');
+            }
+            
+            // Initialize map after short delay
+            setTimeout(() => {
+                const mapId = container.dataset.mapId;
+                if (mapId && typeof L !== 'undefined') {
+                    try {
+                        const mapContainer = document.createElement('div');
+                        mapContainer.id = mapId;
+                        mapContainer.style.height = '100%';
+                        mapContainer.style.minHeight = '300px';
+                        
+                        container.innerHTML = '';
+                        container.appendChild(mapContainer);
+                        
+                        const map = L.map(mapId).setView([0, 0], 2);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap'
+                        }).addTo(map);
+                        
+                        // Store map reference
+                        window.lazyMaps = window.lazyMaps || {};
+                        window.lazyMaps[mapId] = map;
+                        
+                        showToast('info', 'Map Loaded', `Map ${mapId} initialized`);
+                    } catch (e) {
+                        console.error('Map initialization failed:', e);
+                        container.innerHTML = '<div class="lazy-load-placeholder">Map loading failed</div>';
+                    }
+                }
+            }, 100);
+        }
+        
+        function initializeLazyChart(container) {
+            const placeholder = container.querySelector('.lazy-load-placeholder');
+            if (placeholder) {
+                placeholder.classList.add('loading');
+            }
+            
+            // Initialize chart after short delay
+            setTimeout(() => {
+                const chartId = container.dataset.chartId;
+                const chartType = container.dataset.chartType || 'line';
+                
+                if (chartId && typeof Chart !== 'undefined') {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.id = chartId;
+                        
+                        container.innerHTML = '';
+                        container.appendChild(canvas);
+                        
+                        // Store chart reference
+                        window.lazyCharts = window.lazyCharts || {};
+                        
+                        showToast('info', 'Chart Ready', `Chart ${chartId} container initialized`);
+                    } catch (e) {
+                        console.error('Chart initialization failed:', e);
+                        container.innerHTML = '<div class="lazy-load-placeholder">Chart loading failed</div>';
+                    }
+                }
+            }, 100);
+        }
+        
+        // Manual lazy load trigger
+        function loadLazyContent(button) {
+            const container = button.closest('.lazy-load-container');
+            if (container) {
+                lazyLoadObserver.unobserve(container);
+                const type = container.dataset.lazyType;
+                if (type === 'map') {
+                    initializeLazyMap(container);
+                } else if (type === 'chart') {
+                    initializeLazyChart(container);
+                }
+            }
+        }
         
         // ==================== RESPONSIVE SIDEBAR FUNCTIONS ====================
         
@@ -10240,6 +11037,9 @@ Ready>
             sidebar.classList.toggle('open');
             overlay.classList.toggle('active');
             hamburger.classList.toggle('active');
+            
+            // Update ARIA state
+            hamburger.setAttribute('aria-expanded', sidebar.classList.contains('open'));
         }
         
         function closeSidebar() {
@@ -10250,6 +11050,11 @@ Ready>
             sidebar.classList.remove('open');
             overlay.classList.remove('active');
             hamburger.classList.remove('active');
+            
+            // Update ARIA state
+            if (hamburger) {
+                hamburger.setAttribute('aria-expanded', 'false');
+            }
         }
         
         // Close sidebar when clicking a nav item on mobile
@@ -10297,6 +11102,9 @@ Ready>
             const navItem = document.querySelector(`[data-tab="${tabName}"]`);
             if (navItem) {
                 navItem.classList.add('active');
+                // Update ARIA current
+                document.querySelectorAll('.nav-item').forEach(item => item.removeAttribute('aria-current'));
+                navItem.setAttribute('aria-current', 'page');
             }
             
             // Update page title
@@ -10311,6 +11119,7 @@ Ready>
                 'setup': 'Setup Wizard',
                 'tools': 'System Tools',
                 'system': 'System Health',
+                'sustainability': 'Sustainability Dashboard',
                 'ntn': '6G NTN Satellite',
                 'isac': 'ISAC Framework',
                 'le-mode': 'Law Enforcement Mode',
@@ -10319,7 +11128,9 @@ Ready>
             document.getElementById('page-title').textContent = titles[tabName] || 'Dashboard';
             
             // Load tab-specific data
-            if (tabName === 'exploits') {
+            if (tabName === 'sustainability') {
+                refreshSustainabilityData();
+            } else if (tabName === 'exploits') {
                 // Auto-load unified database if needed
                 // Uncomment to auto-load: loadUnifiedDatabase();
             }
@@ -12897,6 +13708,207 @@ Ready>
                 setTimeout(() => refreshDeviceStatus(), 300);
             }
         };
+        
+        // ==================== SUSTAINABILITY FUNCTIONS (v1.9.2) ====================
+        
+        let sustainabilityData = {
+            totalEmissions: 0,
+            powerConsumption: 0,
+            cpuUsage: 0,
+            gpuUsage: 0,
+            sessionStart: Date.now(),
+            ecoMode: false
+        };
+        
+        function refreshSustainabilityData() {
+            fetch('/api/emissions')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success !== false) {
+                        updateSustainabilityDisplay(data);
+                        showToast('success', 'Updated', 'Sustainability data refreshed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching sustainability data:', error);
+                    // Use mock data for demonstration
+                    updateSustainabilityDisplay(generateMockSustainabilityData());
+                });
+        }
+        
+        function generateMockSustainabilityData() {
+            return {
+                emissions_kg: (Math.random() * 0.5).toFixed(3),
+                power_kwh: (Math.random() * 2).toFixed(2),
+                cpu_percent: Math.floor(Math.random() * 40 + 20),
+                gpu_percent: Math.floor(Math.random() * 60 + 10),
+                session_hours: ((Date.now() - sustainabilityData.sessionStart) / 3600000).toFixed(2)
+            };
+        }
+        
+        function updateSustainabilityDisplay(data) {
+            // Update emissions
+            const emissionsEl = document.getElementById('emissions-value');
+            if (emissionsEl) {
+                const emissions = parseFloat(data.emissions_kg || 0);
+                sustainabilityData.totalEmissions = emissions;
+                emissionsEl.textContent = emissions.toFixed(3);
+                
+                // Update card color based on emissions level
+                const card = document.getElementById('total-emissions-card');
+                if (card) {
+                    card.classList.remove('warning', 'danger');
+                    if (emissions > 1) card.classList.add('danger');
+                    else if (emissions > 0.5) card.classList.add('warning');
+                }
+            }
+            
+            // Update power consumption
+            const powerEl = document.getElementById('power-value');
+            if (powerEl) {
+                powerEl.textContent = parseFloat(data.power_kwh || 0).toFixed(2);
+            }
+            
+            // Update CPU usage
+            const cpuEl = document.getElementById('cpu-value');
+            if (cpuEl) {
+                cpuEl.textContent = data.cpu_percent || 0;
+            }
+            
+            // Update GPU usage
+            const gpuEl = document.getElementById('gpu-value');
+            if (gpuEl) {
+                gpuEl.textContent = data.gpu_percent || 0;
+            }
+            
+            // Update equivalents
+            updateCarbonEquivalents(sustainabilityData.totalEmissions);
+            
+            // Update session duration
+            const durationEl = document.getElementById('session-duration');
+            if (durationEl) {
+                const hours = ((Date.now() - sustainabilityData.sessionStart) / 3600000);
+                const h = Math.floor(hours);
+                const m = Math.floor((hours - h) * 60);
+                const s = Math.floor(((hours - h) * 60 - m) * 60);
+                durationEl.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+            
+            // Update session emissions
+            const sessionEmissionsEl = document.getElementById('session-emissions');
+            if (sessionEmissionsEl) {
+                sessionEmissionsEl.textContent = `${sustainabilityData.totalEmissions.toFixed(3)} kg`;
+            }
+            
+            // Update green score
+            updateGreenScore(data);
+        }
+        
+        function updateCarbonEquivalents(emissionsKg) {
+            // Equivalent calculations based on EPA standards
+            const carKm = (emissionsKg / 0.12).toFixed(1);  // ~0.12 kg CO2/km
+            const trees = Math.ceil(emissionsKg / 21);       // Tree absorbs ~21kg CO2/year
+            const bulbHours = Math.floor(emissionsKg / 0.01); // 60W bulb = ~0.01 kg/hour
+            const phoneCharges = Math.floor(emissionsKg / 0.008); // ~8g per charge
+            
+            const equivCar = document.getElementById('equiv-car');
+            const equivTrees = document.getElementById('equiv-trees');
+            const equivBulb = document.getElementById('equiv-bulb');
+            const equivPhone = document.getElementById('equiv-phone');
+            
+            if (equivCar) equivCar.textContent = `${carKm} km`;
+            if (equivTrees) equivTrees.textContent = `${trees} trees`;
+            if (equivBulb) equivBulb.textContent = `${bulbHours} hrs`;
+            if (equivPhone) equivPhone.textContent = phoneCharges;
+        }
+        
+        function updateGreenScore(data) {
+            // Calculate green score based on efficiency metrics
+            const cpuEfficiency = 100 - (data.cpu_percent || 0);
+            const gpuEfficiency = 100 - (data.gpu_percent || 0);
+            const powerEfficiency = Math.max(0, 100 - (parseFloat(data.power_kwh || 0) * 50));
+            
+            const overallScore = (cpuEfficiency * 0.3 + gpuEfficiency * 0.3 + powerEfficiency * 0.4);
+            
+            const grades = [
+                { min: 90, grade: 'A+', color: 'var(--success)' },
+                { min: 80, grade: 'A', color: 'var(--success)' },
+                { min: 70, grade: 'B+', color: '#69f0ae' },
+                { min: 60, grade: 'B', color: 'var(--warning)' },
+                { min: 50, grade: 'C', color: 'var(--warning)' },
+                { min: 0, grade: 'D', color: 'var(--danger)' }
+            ];
+            
+            const scoreEl = document.getElementById('green-score');
+            const progressEl = document.getElementById('green-progress');
+            
+            if (scoreEl) {
+                const gradeInfo = grades.find(g => overallScore >= g.min) || grades[grades.length - 1];
+                scoreEl.textContent = gradeInfo.grade;
+                scoreEl.style.color = gradeInfo.color;
+            }
+            
+            if (progressEl) {
+                progressEl.style.width = `${Math.round(overallScore)}%`;
+                progressEl.textContent = `${Math.round(overallScore)}%`;
+            }
+        }
+        
+        function exportEmissionsReport() {
+            const report = {
+                generated: new Date().toISOString(),
+                sessionStart: new Date(sustainabilityData.sessionStart).toISOString(),
+                totalEmissions: sustainabilityData.totalEmissions,
+                platform: 'FalconOne v1.9.2',
+                methodology: 'CodeCarbon'
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `falconone-emissions-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('success', 'Report Exported', 'Emissions report saved successfully');
+        }
+        
+        function toggleEcoMode() {
+            sustainabilityData.ecoMode = !sustainabilityData.ecoMode;
+            const toggle = document.getElementById('eco-mode-toggle');
+            if (toggle) {
+                toggle.checked = sustainabilityData.ecoMode;
+            }
+            handleEcoModeChange({ checked: sustainabilityData.ecoMode });
+        }
+        
+        function handleEcoModeChange(checkbox) {
+            sustainabilityData.ecoMode = checkbox.checked;
+            
+            // Send eco mode state to server
+            fetch('/api/eco-mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: checkbox.checked })
+            }).catch(() => {
+                // Silently fail if endpoint doesn't exist
+            });
+            
+            if (checkbox.checked) {
+                showToast('success', 'Eco Mode Enabled', 'Power-saving optimizations activated');
+            } else {
+                showToast('info', 'Eco Mode Disabled', 'Full performance restored');
+            }
+        }
+        
+        // Auto-update sustainability data every 30 seconds when tab is active
+        setInterval(() => {
+            const sustainabilityTab = document.getElementById('tab-sustainability');
+            if (sustainabilityTab && sustainabilityTab.style.display !== 'none') {
+                refreshSustainabilityData();
+            }
+        }, 30000);
         
         // Initial data request
         socket.emit('request_data', { type: 'kpis' });

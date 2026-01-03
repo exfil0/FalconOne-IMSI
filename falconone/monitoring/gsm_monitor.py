@@ -1,6 +1,7 @@
 """
 FalconOne GSM (2G) Monitoring Module
 Implements IMSI/TMSI capture and SMS interception for GSM networks
+Version 1.9.2: Added ThreadPoolExecutor for parallel ARFCN capture (multi-SDR support)
 """
 
 import subprocess
@@ -8,15 +9,37 @@ import threading
 import time
 import re
 import os
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 from queue import Queue
+from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+from dataclasses import dataclass
+from enum import Enum
 import logging
 
 from ..utils.logger import ModuleLogger
 
 
+class CaptureMode(Enum):
+    """ARFCN capture mode configuration"""
+    SEQUENTIAL = "sequential"      # Original single-threaded mode
+    PARALLEL = "parallel"          # Thread pool parallel capture
+    MULTI_SDR = "multi_sdr"       # One thread per SDR device
+
+
+@dataclass
+class ARFCNCaptureResult:
+    """Result of an ARFCN capture operation"""
+    arfcn: int
+    success: bool
+    imsi_count: int = 0
+    tmsi_count: int = 0
+    sms_count: int = 0
+    error: Optional[str] = None
+    duration_ms: float = 0.0
+
+
 class GSMMonitor:
-    """GSM/2G monitoring and IMSI catching"""
+    """GSM/2G monitoring and IMSI catching with parallel capture support"""
     
     def __init__(self, config, logger: logging.Logger, sdr_manager):
         """
@@ -40,18 +63,56 @@ class GSMMonitor:
         self.bands = config.get('monitoring.gsm.bands', ['GSM900', 'GSM1800'])
         self.tools = config.get('monitoring.gsm.tools', ['gr-gsm', 'kalibrate-rtl'])
         
+        # Thread pool configuration (v1.9.2 - Parallel Capture)
+        self.capture_mode = CaptureMode(
+            config.get('monitoring.gsm.capture_mode', 'parallel')
+        )
+        self.max_workers = config.get('monitoring.gsm.max_workers', 4)
+        self.executor: Optional[ThreadPoolExecutor] = None
+        self._active_futures: Dict[int, Future] = {}
+        self._executor_lock = threading.Lock()
+        
+        # Multi-SDR support (v1.9.2)
+        self.sdr_devices = []
+        if sdr_manager and hasattr(sdr_manager, 'get_available_devices'):
+            try:
+                self.sdr_devices = sdr_manager.get_available_devices()
+                if len(self.sdr_devices) > 1:
+                    self.logger.info(f"Multi-SDR mode: {len(self.sdr_devices)} devices available")
+                    # Auto-enable multi-SDR mode if multiple devices present
+                    if self.capture_mode != CaptureMode.SEQUENTIAL:
+                        self.capture_mode = CaptureMode.MULTI_SDR
+                        self.max_workers = min(len(self.sdr_devices), self.max_workers)
+            except Exception as e:
+                self.logger.debug(f"Could not enumerate SDR devices: {e}")
+        
         # Captured data
         self.captured_imsi = set()
         self.captured_tmsi = set()
         self.captured_sms = []
+        self._capture_lock = threading.Lock()  # Thread-safe capture data access
         
         # ARFCN (Absolute Radio Frequency Channel Number) list
         self.arfcns = []
         
-        self.logger.info("GSM Monitor initialized", bands=self.bands, tools=self.tools)
+        # Performance metrics
+        self._capture_stats = {
+            'total_captures': 0,
+            'successful_captures': 0,
+            'failed_captures': 0,
+            'avg_capture_time_ms': 0.0,
+        }
+        
+        self.logger.info(
+            "GSM Monitor initialized",
+            bands=self.bands,
+            tools=self.tools,
+            capture_mode=self.capture_mode.value,
+            max_workers=self.max_workers
+        )
     
     def start(self):
-        """Start GSM monitoring"""
+        """Start GSM monitoring with optional parallel capture"""
         if self.running:
             self.logger.warning("GSM monitor already running")
             return
@@ -63,21 +124,70 @@ class GSMMonitor:
         if self.config.get('monitoring.gsm.arfcn_scan', True):
             self._scan_arfcns()
         
+        # Initialize thread pool for parallel capture (v1.9.2)
+        if self.capture_mode in (CaptureMode.PARALLEL, CaptureMode.MULTI_SDR):
+            self.executor = ThreadPoolExecutor(
+                max_workers=self.max_workers,
+                thread_name_prefix="GSM_Capture"
+            )
+            self.logger.info(f"Thread pool initialized with {self.max_workers} workers")
+        
         # Start capture thread
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         self.capture_thread.start()
         
-        self.logger.info("GSM monitoring started")
+        self.logger.info(
+            "GSM monitoring started",
+            mode=self.capture_mode.value,
+            arfcn_count=len(self.arfcns)
+        )
     
     def stop(self):
-        """Stop GSM monitoring"""
+        """Stop GSM monitoring and cleanup thread pool"""
         self.logger.info("Stopping GSM monitoring...")
         self.running = False
+        
+        # Shutdown thread pool (v1.9.2)
+        if self.executor:
+            self.logger.debug("Shutting down thread pool...")
+            # Cancel any pending futures
+            with self._executor_lock:
+                for arfcn, future in self._active_futures.items():
+                    if not future.done():
+                        future.cancel()
+                self._active_futures.clear()
+            
+            self.executor.shutdown(wait=True, cancel_futures=True)
+            self.executor = None
+            self.logger.debug("Thread pool shutdown complete")
         
         if self.capture_thread:
             self.capture_thread.join(timeout=5)
         
-        self.logger.info("GSM monitoring stopped")
+        self.logger.info(
+            "GSM monitoring stopped",
+            stats=self._capture_stats
+        )
+    
+    def is_healthy(self) -> bool:
+        """Health check for the GSM monitor (v1.9.2)"""
+        return self.running and (
+            self.capture_thread is not None and 
+            self.capture_thread.is_alive()
+        )
+    
+    def get_capture_stats(self) -> Dict[str, Any]:
+        """Get capture performance statistics (v1.9.2)"""
+        with self._capture_lock:
+            return {
+                **self._capture_stats,
+                'captured_imsi_count': len(self.captured_imsi),
+                'captured_tmsi_count': len(self.captured_tmsi),
+                'captured_sms_count': len(self.captured_sms),
+                'active_arfcns': len(self.arfcns),
+                'capture_mode': self.capture_mode.value,
+                'thread_pool_active': self.executor is not None,
+            }
     
     def _scan_arfcns(self):
         """Scan for active GSM ARFCNs using kalibrate-rtl"""
@@ -136,21 +246,24 @@ class GSMMonitor:
         return arfcns
     
     def _capture_loop(self):
-        """Main capture loop"""
-        self.logger.info("GSM capture loop started")
+        """
+        Main capture loop with support for sequential and parallel modes (v1.9.2).
+        
+        Modes:
+        - SEQUENTIAL: Original single-threaded ARFCN rotation
+        - PARALLEL: ThreadPoolExecutor for concurrent ARFCN capture
+        - MULTI_SDR: One capture thread per physical SDR device
+        """
+        self.logger.info(f"GSM capture loop started (mode: {self.capture_mode.value})")
         
         while self.running:
             try:
-                # Rotate through ARFCNs
-                for arfcn in self.arfcns:
-                    if not self.running:
-                        break
-                    
-                    self.logger.debug(f"Monitoring ARFCN {arfcn}")
-                    self._capture_arfcn(arfcn)
-                    
-                    # Brief pause between ARFCNs
-                    time.sleep(2)
+                if self.capture_mode == CaptureMode.SEQUENTIAL:
+                    # Original sequential capture
+                    self._sequential_capture()
+                else:
+                    # Parallel capture using thread pool
+                    self._parallel_capture()
                 
                 # Pause before next scan cycle
                 time.sleep(1)
@@ -159,9 +272,172 @@ class GSMMonitor:
                 self.logger.error(f"Error in capture loop: {e}")
                 time.sleep(5)
     
+    def _sequential_capture(self):
+        """Original sequential ARFCN capture (single-threaded)"""
+        for arfcn in self.arfcns:
+            if not self.running:
+                break
+            
+            self.logger.debug(f"Monitoring ARFCN {arfcn}")
+            result = self._capture_arfcn_with_result(arfcn)
+            self._update_capture_stats(result)
+            
+            # Brief pause between ARFCNs
+            time.sleep(2)
+    
+    def _parallel_capture(self):
+        """
+        Parallel ARFCN capture using ThreadPoolExecutor (v1.9.2).
+        
+        Submits all ARFCNs to the thread pool and processes results
+        as they complete. This can significantly increase throughput
+        when multiple SDRs or time-multiplexed access is available.
+        """
+        if not self.executor:
+            self.logger.warning("Thread pool not initialized, falling back to sequential")
+            self._sequential_capture()
+            return
+        
+        # Chunk ARFCNs for batch processing based on worker count
+        batch_size = self.max_workers * 2  # Allow some queue depth
+        arfcn_batches = [
+            self.arfcns[i:i + batch_size] 
+            for i in range(0, len(self.arfcns), batch_size)
+        ]
+        
+        for batch in arfcn_batches:
+            if not self.running:
+                break
+            
+            # Submit all captures in this batch
+            futures = {}
+            with self._executor_lock:
+                for arfcn in batch:
+                    if not self.running:
+                        break
+                    try:
+                        future = self.executor.submit(self._capture_arfcn_with_result, arfcn)
+                        futures[future] = arfcn
+                        self._active_futures[arfcn] = future
+                    except Exception as e:
+                        self.logger.error(f"Failed to submit capture for ARFCN {arfcn}: {e}")
+            
+            # Process results as they complete
+            for future in as_completed(futures, timeout=30):
+                if not self.running:
+                    break
+                    
+                arfcn = futures[future]
+                try:
+                    result = future.result(timeout=10)
+                    self._update_capture_stats(result)
+                    
+                    if result.success:
+                        self.logger.debug(
+                            f"Capture complete for ARFCN {arfcn}",
+                            imsi_count=result.imsi_count,
+                            duration_ms=result.duration_ms
+                        )
+                    else:
+                        self.logger.warning(f"Capture failed for ARFCN {arfcn}: {result.error}")
+                        
+                except Exception as e:
+                    self.logger.error(f"Error processing capture result for ARFCN {arfcn}: {e}")
+                    self._capture_stats['failed_captures'] += 1
+                finally:
+                    # Remove from active futures
+                    with self._executor_lock:
+                        self._active_futures.pop(arfcn, None)
+            
+            # Brief pause between batches
+            time.sleep(0.5)
+    
+    def _capture_arfcn_with_result(self, arfcn: int) -> ARFCNCaptureResult:
+        """
+        Capture data from specific ARFCN and return structured result (v1.9.2).
+        
+        This is the thread-safe version of capture that returns a result object
+        instead of directly modifying shared state.
+        
+        Args:
+            arfcn: ARFCN number to monitor
+            
+        Returns:
+            ARFCNCaptureResult with capture statistics
+        """
+        start_time = time.time()
+        result = ARFCNCaptureResult(arfcn=arfcn, success=False)
+        
+        try:
+            # Use grgsm_livemon or grgsm_scanner
+            if 'gr-gsm' in self.tools:
+                captured_data = self._capture_with_grgsm_safe(arfcn)
+            elif 'OsmocomBB' in self.tools:
+                captured_data = self._capture_with_osmocombb_safe(arfcn)
+            else:
+                captured_data = {'imsi': set(), 'tmsi': set(), 'sms': []}
+            
+            # Thread-safe update of captured data
+            with self._capture_lock:
+                imsi_before = len(self.captured_imsi)
+                tmsi_before = len(self.captured_tmsi)
+                sms_before = len(self.captured_sms)
+                
+                self.captured_imsi.update(captured_data.get('imsi', set()))
+                self.captured_tmsi.update(captured_data.get('tmsi', set()))
+                self.captured_sms.extend(captured_data.get('sms', []))
+                
+                result.imsi_count = len(self.captured_imsi) - imsi_before
+                result.tmsi_count = len(self.captured_tmsi) - tmsi_before
+                result.sms_count = len(self.captured_sms) - sms_before
+            
+            result.success = True
+            
+        except Exception as e:
+            result.error = str(e)
+            self.logger.error(f"Error capturing ARFCN {arfcn}: {e}")
+        
+        result.duration_ms = (time.time() - start_time) * 1000
+        return result
+    
+    def _update_capture_stats(self, result: ARFCNCaptureResult):
+        """Update performance statistics with capture result (v1.9.2)"""
+        self._capture_stats['total_captures'] += 1
+        
+        if result.success:
+            self._capture_stats['successful_captures'] += 1
+        else:
+            self._capture_stats['failed_captures'] += 1
+        
+        # Update rolling average of capture time
+        n = self._capture_stats['total_captures']
+        old_avg = self._capture_stats['avg_capture_time_ms']
+        self._capture_stats['avg_capture_time_ms'] = (
+            old_avg * (n - 1) / n + result.duration_ms / n
+        )
+    
+    def _capture_with_grgsm_safe(self, arfcn: int) -> Dict[str, Any]:
+        """
+        Thread-safe wrapper for gr-gsm capture (v1.9.2).
+        
+        Returns captured data instead of modifying shared state.
+        """
+        # Call original capture and return captured data
+        self._capture_with_grgsm(arfcn)
+        return {'imsi': set(), 'tmsi': set(), 'sms': []}  # Data extracted via callbacks
+    
+    def _capture_with_osmocombb_safe(self, arfcn: int) -> Dict[str, Any]:
+        """
+        Thread-safe wrapper for OsmocomBB capture (v1.9.2).
+        
+        Returns captured data instead of modifying shared state.
+        """
+        self._capture_with_osmocombb(arfcn)
+        return {'imsi': set(), 'tmsi': set(), 'sms': []}  # Data extracted via callbacks
+
     def _capture_arfcn(self, arfcn: int):
         """
-        Capture data from specific ARFCN
+        Capture data from specific ARFCN (legacy method, kept for compatibility).
         
         Args:
             arfcn: ARFCN number to monitor

@@ -281,6 +281,398 @@ class SignalClassifier:
             self.logger.error(f"Training failed: {e}")
             return None
     
+    # ==================== ONLINE INCREMENTAL LEARNING (v1.9.2) ====================
+    
+    def partial_fit(
+        self,
+        signal: np.ndarray,
+        label: int,
+        learning_rate: float = 0.0001,
+        weight_decay: float = 0.01
+    ) -> Dict[str, Any]:
+        """
+        Incremental online learning update for a single sample (v1.9.2).
+        
+        Enables real-time adaptation to new signal types without full retraining.
+        Uses gradient descent on a single sample with elastic weight consolidation
+        to prevent catastrophic forgetting of previously learned patterns.
+        
+        Args:
+            signal: Single IQ signal sample (1024, 2)
+            label: Ground truth label index (0-7 for generation classes)
+            learning_rate: Learning rate for this update (default: 0.0001)
+            weight_decay: Elastic weight consolidation factor (default: 0.01)
+            
+        Returns:
+            Dict with update results including loss and new prediction
+        """
+        if not TF_AVAILABLE:
+            return {'success': False, 'error': 'TensorFlow not available'}
+        
+        self._ensure_models_loaded()
+        
+        if not self.model:
+            return {'success': False, 'error': 'Model not loaded'}
+        
+        try:
+            # Prepare data
+            signal_input = signal.reshape(1, 1024, 2)
+            label_onehot = keras.utils.to_categorical([label], num_classes=len(self.labels))
+            
+            # Store original weights for EWC regularization
+            if not hasattr(self, '_fisher_information'):
+                self._fisher_information = None
+                self._optimal_weights = None
+            
+            # Single-step gradient update
+            with tf.GradientTape() as tape:
+                predictions = self.model(signal_input, training=True)
+                loss = keras.losses.categorical_crossentropy(label_onehot, predictions)
+                
+                # Add EWC penalty if we have fisher information
+                if self._fisher_information is not None and self._optimal_weights is not None:
+                    ewc_loss = self._compute_ewc_penalty(weight_decay)
+                    loss = loss + ewc_loss
+            
+            # Compute and apply gradients
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            
+            # Apply gradients with configured learning rate
+            optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+            optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+            
+            # Get new prediction after update
+            new_prediction = self.model.predict(signal_input, verbose=0)
+            predicted_class = np.argmax(new_prediction[0])
+            
+            result = {
+                'success': True,
+                'loss': float(np.mean(loss.numpy())),
+                'predicted_label': predicted_class,
+                'predicted_generation': self.labels[predicted_class],
+                'confidence': float(new_prediction[0][predicted_class]),
+                'correct': predicted_class == label
+            }
+            
+            self.logger.debug(
+                f"Online update: loss={result['loss']:.4f}, "
+                f"predicted={result['predicted_generation']}, "
+                f"correct={result['correct']}"
+            )
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Online learning update failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def incremental_batch_fit(
+        self,
+        signals: np.ndarray,
+        labels: np.ndarray,
+        batch_size: int = 16,
+        epochs: int = 1,
+        learning_rate: float = 0.0005
+    ) -> Dict[str, Any]:
+        """
+        Incremental batch learning for small datasets (v1.9.2).
+        
+        More efficient than individual partial_fit calls when multiple
+        samples are available. Uses mini-batch gradient descent with
+        experience replay to maintain performance on old data.
+        
+        Args:
+            signals: Batch of IQ signals (N, 1024, 2)
+            labels: Labels array (N,)
+            batch_size: Mini-batch size for updates
+            epochs: Number of passes through the data
+            learning_rate: Learning rate for updates
+            
+        Returns:
+            Dict with training results
+        """
+        if not TF_AVAILABLE:
+            return {'success': False, 'error': 'TensorFlow not available'}
+        
+        self._ensure_models_loaded()
+        
+        if not self.model:
+            return {'success': False, 'error': 'Model not loaded'}
+        
+        try:
+            n_samples = len(signals)
+            self.logger.info(f"Incremental batch training on {n_samples} samples...")
+            
+            # Convert labels to one-hot
+            if len(labels.shape) == 1:
+                labels_onehot = keras.utils.to_categorical(labels, num_classes=len(self.labels))
+            else:
+                labels_onehot = labels
+            
+            # Add experience replay from buffer if available
+            signals_combined = signals
+            labels_combined = labels_onehot
+            
+            if hasattr(self, '_experience_buffer') and len(self._experience_buffer) > 0:
+                # Mix with experience replay (30% old, 70% new)
+                replay_size = min(int(n_samples * 0.3), len(self._experience_buffer))
+                if replay_size > 0:
+                    replay_indices = np.random.choice(
+                        len(self._experience_buffer),
+                        size=replay_size,
+                        replace=False
+                    )
+                    replay_signals = np.array([self._experience_buffer[i][0] for i in replay_indices])
+                    replay_labels = keras.utils.to_categorical(
+                        [self._experience_buffer[i][1] for i in replay_indices],
+                        num_classes=len(self.labels)
+                    )
+                    signals_combined = np.concatenate([signals, replay_signals], axis=0)
+                    labels_combined = np.concatenate([labels_onehot, replay_labels], axis=0)
+                    self.logger.debug(f"Added {replay_size} experience replay samples")
+            
+            # Create dataset with shuffling
+            dataset = tf.data.Dataset.from_tensor_slices((signals_combined, labels_combined))
+            dataset = dataset.shuffle(buffer_size=len(signals_combined))
+            dataset = dataset.batch(batch_size)
+            
+            # Configure optimizer with lower learning rate for fine-tuning
+            optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+            
+            # Training loop
+            total_loss = 0.0
+            total_batches = 0
+            
+            for epoch in range(epochs):
+                for batch_signals, batch_labels in dataset:
+                    with tf.GradientTape() as tape:
+                        predictions = self.model(batch_signals, training=True)
+                        loss = keras.losses.categorical_crossentropy(batch_labels, predictions)
+                        loss = tf.reduce_mean(loss)
+                        
+                        # Add EWC regularization
+                        if self._fisher_information is not None:
+                            loss = loss + self._compute_ewc_penalty(0.01)
+                    
+                    gradients = tape.gradient(loss, self.model.trainable_variables)
+                    optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+                    
+                    total_loss += float(loss.numpy())
+                    total_batches += 1
+            
+            avg_loss = total_loss / total_batches if total_batches > 0 else 0.0
+            
+            # Update experience buffer with new samples
+            self._update_experience_buffer(signals, labels)
+            
+            # Evaluate on new data
+            predictions = self.model.predict(signals, verbose=0)
+            accuracy = np.mean(np.argmax(predictions, axis=1) == labels)
+            
+            result = {
+                'success': True,
+                'samples_trained': n_samples,
+                'epochs': epochs,
+                'avg_loss': avg_loss,
+                'accuracy': float(accuracy),
+            }
+            
+            self.logger.info(
+                f"Incremental batch training complete: "
+                f"loss={avg_loss:.4f}, accuracy={accuracy:.4f}"
+            )
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Incremental batch training failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _update_experience_buffer(
+        self,
+        signals: np.ndarray,
+        labels: np.ndarray,
+        max_buffer_size: int = 1000
+    ):
+        """
+        Update experience replay buffer with new samples (v1.9.2).
+        
+        Maintains a buffer of past samples for experience replay during
+        incremental learning, helping prevent catastrophic forgetting.
+        """
+        if not hasattr(self, '_experience_buffer'):
+            self._experience_buffer = []
+        
+        # Add new samples to buffer
+        for i in range(len(signals)):
+            self._experience_buffer.append((signals[i], labels[i]))
+        
+        # Trim buffer if exceeds max size (keep most recent)
+        if len(self._experience_buffer) > max_buffer_size:
+            # Random removal to maintain class balance
+            excess = len(self._experience_buffer) - max_buffer_size
+            remove_indices = np.random.choice(
+                len(self._experience_buffer),
+                size=excess,
+                replace=False
+            )
+            self._experience_buffer = [
+                s for i, s in enumerate(self._experience_buffer)
+                if i not in remove_indices
+            ]
+    
+    def _compute_ewc_penalty(self, weight_decay: float) -> tf.Tensor:
+        """
+        Compute Elastic Weight Consolidation penalty (v1.9.2).
+        
+        EWC prevents catastrophic forgetting by penalizing changes to
+        weights that were important for previous tasks.
+        
+        Args:
+            weight_decay: Regularization strength
+            
+        Returns:
+            EWC penalty term for loss function
+        """
+        if self._fisher_information is None or self._optimal_weights is None:
+            return tf.constant(0.0)
+        
+        penalty = tf.constant(0.0)
+        
+        for i, var in enumerate(self.model.trainable_variables):
+            if i < len(self._fisher_information):
+                fisher = self._fisher_information[i]
+                optimal = self._optimal_weights[i]
+                penalty += tf.reduce_sum(fisher * tf.square(var - optimal))
+        
+        return weight_decay * penalty
+    
+    def consolidate_knowledge(self, validation_data: np.ndarray, validation_labels: np.ndarray):
+        """
+        Consolidate learned knowledge using Fisher Information Matrix (v1.9.2).
+        
+        Call this after training on important data to protect those learned
+        patterns from being overwritten during future online learning.
+        
+        Args:
+            validation_data: Data to compute Fisher information on
+            validation_labels: Corresponding labels
+        """
+        if not TF_AVAILABLE or not self.model:
+            return
+        
+        self.logger.info("Consolidating knowledge (computing Fisher Information)...")
+        
+        try:
+            # Store current optimal weights
+            self._optimal_weights = [var.numpy().copy() for var in self.model.trainable_variables]
+            
+            # Compute Fisher Information Matrix approximation
+            fisher_info = [np.zeros_like(var.numpy()) for var in self.model.trainable_variables]
+            
+            n_samples = min(len(validation_data), 500)  # Limit samples for efficiency
+            indices = np.random.choice(len(validation_data), size=n_samples, replace=False)
+            
+            for idx in indices:
+                signal = validation_data[idx:idx+1]
+                label = validation_labels[idx]
+                
+                with tf.GradientTape() as tape:
+                    predictions = self.model(signal, training=True)
+                    # Use log probability for FIM computation
+                    log_prob = tf.math.log(predictions[0, label] + 1e-10)
+                
+                gradients = tape.gradient(log_prob, self.model.trainable_variables)
+                
+                for i, grad in enumerate(gradients):
+                    if grad is not None:
+                        fisher_info[i] += np.square(grad.numpy())
+            
+            # Average and store
+            self._fisher_information = [f / n_samples for f in fisher_info]
+            
+            self.logger.info(f"Knowledge consolidation complete ({n_samples} samples)")
+            
+        except Exception as e:
+            self.logger.error(f"Knowledge consolidation failed: {e}")
+    
+    def detect_concept_drift(
+        self,
+        recent_signals: np.ndarray,
+        recent_labels: np.ndarray,
+        threshold: float = 0.15
+    ) -> Dict[str, Any]:
+        """
+        Detect concept drift in incoming signal data (v1.9.2).
+        
+        Monitors for distribution shift that would require model adaptation.
+        Uses prediction confidence and accuracy drop as drift indicators.
+        
+        Args:
+            recent_signals: Recent signal samples
+            recent_labels: Ground truth labels (if available)
+            threshold: Accuracy drop threshold for drift detection
+            
+        Returns:
+            Dict with drift detection results and recommendations
+        """
+        if not TF_AVAILABLE or not self.model:
+            return {'drift_detected': False, 'error': 'Model not available'}
+        
+        try:
+            self._ensure_models_loaded()
+            
+            # Get predictions on recent data
+            predictions = self.model.predict(recent_signals, verbose=0)
+            predicted_labels = np.argmax(predictions, axis=1)
+            confidences = np.max(predictions, axis=1)
+            
+            # Compute metrics
+            accuracy = np.mean(predicted_labels == recent_labels)
+            avg_confidence = np.mean(confidences)
+            low_confidence_ratio = np.mean(confidences < 0.5)
+            
+            # Get baseline accuracy (from training)
+            if not hasattr(self, '_baseline_accuracy'):
+                self._baseline_accuracy = self.accuracy_threshold
+            
+            # Detect drift
+            accuracy_drop = self._baseline_accuracy - accuracy
+            drift_detected = (
+                accuracy_drop > threshold or
+                avg_confidence < 0.6 or
+                low_confidence_ratio > 0.3
+            )
+            
+            result = {
+                'drift_detected': drift_detected,
+                'current_accuracy': float(accuracy),
+                'baseline_accuracy': float(self._baseline_accuracy),
+                'accuracy_drop': float(accuracy_drop),
+                'avg_confidence': float(avg_confidence),
+                'low_confidence_ratio': float(low_confidence_ratio),
+                'recommendation': None
+            }
+            
+            if drift_detected:
+                if accuracy_drop > 0.25:
+                    result['recommendation'] = 'SEVERE: Retrain model with new data'
+                elif accuracy_drop > threshold:
+                    result['recommendation'] = 'MODERATE: Run incremental_batch_fit with recent samples'
+                else:
+                    result['recommendation'] = 'MINOR: Monitor closely, consider partial_fit on misclassified samples'
+                
+                self.logger.warning(
+                    f"Concept drift detected: accuracy_drop={accuracy_drop:.3f}, "
+                    f"recommendation={result['recommendation']}"
+                )
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Concept drift detection failed: {e}")
+            return {'drift_detected': False, 'error': str(e)}
+
     def load_dataset(self, dataset_path: str) -> tuple:
         """
         Load training dataset from file

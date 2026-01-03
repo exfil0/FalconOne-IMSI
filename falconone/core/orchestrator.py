@@ -2,6 +2,7 @@
 FalconOne Core Orchestrator
 Main coordination layer for all operations with safety interlocks
 Version 1.4.1: Complete integration with all modules + Signal Bus
+Version 1.9.2: Added HealthMonitor for periodic component health checks and automatic restarts
 """
 
 import logging
@@ -9,13 +10,391 @@ import signal
 import sys
 import os
 import time
-from typing import Dict, Any, Optional
+import threading
+from typing import Dict, Any, Optional, Callable
 from pathlib import Path
+from dataclasses import dataclass, field
+from enum import Enum
+from datetime import datetime
 
 from ..utils.config import Config
 from ..utils.logger import setup_logger, ModuleLogger, AuditLogger
 from ..utils.exceptions import SafetyViolation, ConfigurationError, IntegrationError
 from .signal_bus import SignalBus
+
+
+class ComponentStatus(Enum):
+    """Health status of a component"""
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    RESTARTING = "restarting"
+    STOPPED = "stopped"
+
+
+@dataclass
+class ComponentHealth:
+    """Health information for a single component"""
+    name: str
+    status: ComponentStatus = ComponentStatus.STOPPED
+    last_check: Optional[datetime] = None
+    last_healthy: Optional[datetime] = None
+    consecutive_failures: int = 0
+    restart_count: int = 0
+    error_message: Optional[str] = None
+    response_time_ms: float = 0.0
+
+
+class HealthMonitor:
+    """
+    Monitors component health and performs automatic restarts on failure.
+    
+    Features:
+    - Periodic health checks for all registered components
+    - Automatic restart with exponential backoff
+    - Circuit breaker pattern to prevent restart storms
+    - Health metrics for monitoring/alerting integration
+    
+    Version: 1.9.2
+    """
+    
+    def __init__(
+        self,
+        check_interval: float = 30.0,
+        max_restart_attempts: int = 3,
+        restart_backoff_base: float = 5.0,
+        logger: Optional[logging.Logger] = None
+    ):
+        """
+        Initialize HealthMonitor.
+        
+        Args:
+            check_interval: Seconds between health checks (default: 30)
+            max_restart_attempts: Maximum restart attempts before giving up (default: 3)
+            restart_backoff_base: Base seconds for exponential backoff (default: 5)
+            logger: Logger instance for health monitor events
+        """
+        self.check_interval = check_interval
+        self.max_restart_attempts = max_restart_attempts
+        self.restart_backoff_base = restart_backoff_base
+        self.logger = logger or logging.getLogger(__name__)
+        
+        self._running = False
+        self._monitor_thread: Optional[threading.Thread] = None
+        self._lock = threading.RLock()
+        
+        # Component registry: name -> (component, health_check_fn, restart_fn)
+        self._components: Dict[str, tuple] = {}
+        self._health_status: Dict[str, ComponentHealth] = {}
+        
+        # Callbacks for external monitoring integration
+        self._on_health_change: Optional[Callable[[str, ComponentHealth], None]] = None
+        self._on_restart: Optional[Callable[[str, bool], None]] = None
+    
+    def register_component(
+        self,
+        name: str,
+        component: Any,
+        health_check_fn: Optional[Callable[[], bool]] = None,
+        restart_fn: Optional[Callable[[], Any]] = None
+    ):
+        """
+        Register a component for health monitoring.
+        
+        Args:
+            name: Component identifier
+            component: The component instance
+            health_check_fn: Custom health check function (returns True if healthy)
+            restart_fn: Function to restart the component
+        """
+        with self._lock:
+            # Default health check: verify component has expected attributes
+            if health_check_fn is None:
+                health_check_fn = lambda c=component: self._default_health_check(c)
+            
+            self._components[name] = (component, health_check_fn, restart_fn)
+            self._health_status[name] = ComponentHealth(
+                name=name,
+                status=ComponentStatus.HEALTHY,
+                last_check=datetime.now(),
+                last_healthy=datetime.now()
+            )
+            self.logger.debug(f"Registered component for health monitoring: {name}")
+    
+    def unregister_component(self, name: str):
+        """Remove a component from health monitoring."""
+        with self._lock:
+            self._components.pop(name, None)
+            self._health_status.pop(name, None)
+            self.logger.debug(f"Unregistered component: {name}")
+    
+    def _default_health_check(self, component: Any) -> bool:
+        """
+        Default health check implementation.
+        
+        Checks:
+        1. Component is not None
+        2. If component has 'running' attribute, it should be True
+        3. If component has 'is_healthy()' method, call it
+        4. If component has 'get_status()' method, verify no errors
+        """
+        try:
+            if component is None:
+                return False
+            
+            # Check 'running' attribute
+            if hasattr(component, 'running'):
+                if not getattr(component, 'running', True):
+                    return False
+            
+            # Check 'is_healthy()' method
+            if hasattr(component, 'is_healthy') and callable(getattr(component, 'is_healthy')):
+                return component.is_healthy()
+            
+            # Check 'get_status()' method
+            if hasattr(component, 'get_status') and callable(getattr(component, 'get_status')):
+                status = component.get_status()
+                if isinstance(status, dict):
+                    return not status.get('error', False)
+            
+            # Component exists and has no obvious issues
+            return True
+            
+        except Exception as e:
+            self.logger.debug(f"Health check exception: {e}")
+            return False
+    
+    def check_component_health(self, name: str) -> ComponentHealth:
+        """
+        Perform immediate health check on a specific component.
+        
+        Args:
+            name: Component name to check
+            
+        Returns:
+            ComponentHealth with current status
+        """
+        with self._lock:
+            if name not in self._components:
+                return ComponentHealth(name=name, status=ComponentStatus.STOPPED)
+            
+            component, health_check_fn, _ = self._components[name]
+            health = self._health_status[name]
+            
+            start_time = time.time()
+            try:
+                is_healthy = health_check_fn()
+                response_time = (time.time() - start_time) * 1000
+                
+                health.last_check = datetime.now()
+                health.response_time_ms = response_time
+                
+                if is_healthy:
+                    health.status = ComponentStatus.HEALTHY
+                    health.last_healthy = datetime.now()
+                    health.consecutive_failures = 0
+                    health.error_message = None
+                else:
+                    health.consecutive_failures += 1
+                    health.status = ComponentStatus.DEGRADED if health.consecutive_failures < 2 else ComponentStatus.UNHEALTHY
+                    health.error_message = "Health check returned False"
+                    
+            except Exception as e:
+                health.consecutive_failures += 1
+                health.status = ComponentStatus.UNHEALTHY
+                health.error_message = str(e)
+                health.response_time_ms = (time.time() - start_time) * 1000
+                health.last_check = datetime.now()
+                self.logger.warning(f"Health check failed for {name}: {e}")
+            
+            # Notify listeners
+            if self._on_health_change:
+                try:
+                    self._on_health_change(name, health)
+                except Exception as e:
+                    self.logger.error(f"Health change callback error: {e}")
+            
+            return health
+    
+    def restart_component(self, name: str, force: bool = False) -> bool:
+        """
+        Attempt to restart a component.
+        
+        Args:
+            name: Component name to restart
+            force: Force restart even if within backoff period
+            
+        Returns:
+            True if restart was successful
+        """
+        with self._lock:
+            if name not in self._components:
+                self.logger.warning(f"Cannot restart unknown component: {name}")
+                return False
+            
+            component, health_check_fn, restart_fn = self._components[name]
+            health = self._health_status[name]
+            
+            # Check if restart function is available
+            if restart_fn is None:
+                self.logger.warning(f"No restart function registered for {name}")
+                return False
+            
+            # Check restart limits
+            if not force and health.restart_count >= self.max_restart_attempts:
+                self.logger.error(f"Component {name} exceeded max restart attempts ({self.max_restart_attempts})")
+                return False
+            
+            # Apply backoff if not forced
+            if not force and health.restart_count > 0:
+                backoff = self.restart_backoff_base * (2 ** (health.restart_count - 1))
+                self.logger.info(f"Waiting {backoff:.1f}s before restarting {name}...")
+                time.sleep(backoff)
+            
+            health.status = ComponentStatus.RESTARTING
+            self.logger.info(f"Restarting component: {name} (attempt {health.restart_count + 1})")
+            
+            try:
+                # Stop component if it has a stop method
+                if hasattr(component, 'stop') and callable(getattr(component, 'stop')):
+                    try:
+                        component.stop()
+                    except Exception as e:
+                        self.logger.debug(f"Error stopping {name}: {e}")
+                
+                # Execute restart function
+                new_component = restart_fn()
+                
+                # Update component reference if restart returned a new instance
+                if new_component is not None:
+                    self._components[name] = (new_component, health_check_fn, restart_fn)
+                
+                health.restart_count += 1
+                
+                # Verify health after restart
+                time.sleep(1)  # Brief pause for component startup
+                post_health = self.check_component_health(name)
+                
+                success = post_health.status == ComponentStatus.HEALTHY
+                
+                if success:
+                    self.logger.info(f"✓ Successfully restarted {name}")
+                    health.consecutive_failures = 0
+                else:
+                    self.logger.warning(f"Component {name} still unhealthy after restart")
+                
+                # Notify listeners
+                if self._on_restart:
+                    try:
+                        self._on_restart(name, success)
+                    except Exception as e:
+                        self.logger.error(f"Restart callback error: {e}")
+                
+                return success
+                
+            except Exception as e:
+                health.status = ComponentStatus.UNHEALTHY
+                health.error_message = f"Restart failed: {e}"
+                health.restart_count += 1
+                self.logger.error(f"Failed to restart {name}: {e}")
+                return False
+    
+    def _monitor_loop(self):
+        """Background thread that periodically checks all component health."""
+        self.logger.info(f"Health monitor started (interval: {self.check_interval}s)")
+        
+        while self._running:
+            try:
+                # Check all registered components
+                with self._lock:
+                    component_names = list(self._components.keys())
+                
+                for name in component_names:
+                    if not self._running:
+                        break
+                    
+                    health = self.check_component_health(name)
+                    
+                    # Auto-restart unhealthy components
+                    if health.status == ComponentStatus.UNHEALTHY:
+                        if health.restart_count < self.max_restart_attempts:
+                            self.logger.warning(f"Component {name} unhealthy, attempting restart...")
+                            self.restart_component(name)
+                        else:
+                            self.logger.error(f"Component {name} remains unhealthy (max restarts exceeded)")
+                
+                # Wait for next check interval
+                for _ in range(int(self.check_interval)):
+                    if not self._running:
+                        break
+                    time.sleep(1)
+                    
+            except Exception as e:
+                self.logger.error(f"Health monitor error: {e}")
+                time.sleep(5)
+        
+        self.logger.info("Health monitor stopped")
+    
+    def start(self):
+        """Start the health monitoring background thread."""
+        if self._running:
+            return
+        
+        self._running = True
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_loop,
+            name="HealthMonitor",
+            daemon=True
+        )
+        self._monitor_thread.start()
+        self.logger.info("✓ Health monitor started")
+    
+    def stop(self):
+        """Stop the health monitoring thread."""
+        self._running = False
+        if self._monitor_thread and self._monitor_thread.is_alive():
+            self._monitor_thread.join(timeout=5)
+        self.logger.info("Health monitor stopped")
+    
+    def get_all_health(self) -> Dict[str, ComponentHealth]:
+        """Get health status for all registered components."""
+        with self._lock:
+            return dict(self._health_status)
+    
+    def get_health_summary(self) -> Dict[str, Any]:
+        """Get summary of system health for dashboard/API."""
+        with self._lock:
+            total = len(self._health_status)
+            healthy = sum(1 for h in self._health_status.values() if h.status == ComponentStatus.HEALTHY)
+            degraded = sum(1 for h in self._health_status.values() if h.status == ComponentStatus.DEGRADED)
+            unhealthy = sum(1 for h in self._health_status.values() if h.status == ComponentStatus.UNHEALTHY)
+            
+            return {
+                'total_components': total,
+                'healthy': healthy,
+                'degraded': degraded,
+                'unhealthy': unhealthy,
+                'health_percentage': (healthy / total * 100) if total > 0 else 100,
+                'components': {
+                    name: {
+                        'status': h.status.value,
+                        'last_check': h.last_check.isoformat() if h.last_check else None,
+                        'consecutive_failures': h.consecutive_failures,
+                        'restart_count': h.restart_count,
+                        'response_time_ms': h.response_time_ms
+                    }
+                    for name, h in self._health_status.items()
+                }
+            }
+    
+    def set_callbacks(
+        self,
+        on_health_change: Optional[Callable[[str, ComponentHealth], None]] = None,
+        on_restart: Optional[Callable[[str, bool], None]] = None
+    ):
+        """Set callback functions for health events."""
+        self._on_health_change = on_health_change
+        self._on_restart = on_restart
 
 
 class FalconOneOrchestrator:
@@ -86,6 +465,23 @@ class FalconOneOrchestrator:
         self.intercept_enhancer = None
         self._initialize_le_mode()
         
+        # Health Monitor (v1.9.2) - Periodic component health checks and auto-restart
+        health_check_interval = self.config.get('orchestrator.health_check_interval', 30.0)
+        max_restart_attempts = self.config.get('orchestrator.max_restart_attempts', 3)
+        self.health_monitor = HealthMonitor(
+            check_interval=health_check_interval,
+            max_restart_attempts=max_restart_attempts,
+            restart_backoff_base=self.config.get('orchestrator.restart_backoff_base', 5.0),
+            logger=self.root_logger
+        )
+        
+        # Set health monitor callbacks for audit logging
+        self.health_monitor.set_callbacks(
+            on_health_change=self._on_component_health_change,
+            on_restart=self._on_component_restart
+        )
+        self.logger.info("Health Monitor initialized")
+        
         # Safety checks
         self._perform_safety_checks()
         
@@ -120,6 +516,161 @@ class FalconOneOrchestrator:
         
         self.logger.info("✓ Safety checks passed")
     
+    def _on_component_health_change(self, name: str, health: ComponentHealth):
+        """
+        Callback when component health status changes.
+        Logs health changes to audit trail for compliance.
+        
+        Args:
+            name: Component name
+            health: Updated health status
+        """
+        if health.status in (ComponentStatus.DEGRADED, ComponentStatus.UNHEALTHY):
+            self.logger.warning(f"Component health degraded: {name} → {health.status.value}")
+            self.audit_logger.log_event(
+                'COMPONENT_HEALTH_DEGRADED',
+                f'{name} is {health.status.value}',
+                consecutive_failures=health.consecutive_failures,
+                error=health.error_message
+            )
+        elif health.status == ComponentStatus.HEALTHY and health.consecutive_failures > 0:
+            self.logger.info(f"Component recovered: {name} → healthy")
+            self.audit_logger.log_event('COMPONENT_RECOVERED', f'{name} is now healthy')
+    
+    def _on_component_restart(self, name: str, success: bool):
+        """
+        Callback when a component restart is attempted.
+        
+        Args:
+            name: Component name
+            success: Whether restart was successful
+        """
+        if success:
+            self.logger.info(f"✓ Component restart successful: {name}")
+            self.audit_logger.log_event('COMPONENT_RESTART_SUCCESS', name)
+        else:
+            self.logger.error(f"✗ Component restart failed: {name}")
+            self.audit_logger.log_event('COMPONENT_RESTART_FAILED', name)
+    
+    def _create_component_restart_fn(self, component_name: str) -> Callable:
+        """
+        Create a restart function for a specific component.
+        
+        Args:
+            component_name: Name of the component to create restart function for
+            
+        Returns:
+            Callable that restarts the component
+        """
+        def restart_fn():
+            self.logger.info(f"Executing restart for {component_name}...")
+            try:
+                # Attempt to reinitialize the component
+                return self._reinitialize_component(component_name)
+            except Exception as e:
+                self.logger.error(f"Restart function failed for {component_name}: {e}")
+                return None
+        return restart_fn
+    
+    def _reinitialize_component(self, component_name: str) -> Any:
+        """
+        Reinitialize a specific component.
+        
+        Args:
+            component_name: Name of the component to reinitialize
+            
+        Returns:
+            New component instance or None if failed
+        """
+        # Component initialization mapping
+        init_map = {
+            'gsm_monitor': self._init_gsm_monitor,
+            'lte_monitor': self._init_lte_monitor,
+            'fiveg_monitor': self._init_fiveg_monitor,
+            'sixg_monitor': self._init_sixg_monitor,
+            'signal_classifier': self._init_signal_classifier,
+            'exploit_engine': self._init_exploit_engine,
+            'ric_optimizer': self._init_ric_optimizer,
+            'detector_scanner': self._init_detector_scanner,
+            'sustainability_monitor': self._init_sustainability_monitor,
+        }
+        
+        if component_name in init_map:
+            try:
+                new_component = init_map[component_name]()
+                if new_component:
+                    setattr(self, component_name, new_component)
+                    self.components[component_name] = new_component
+                    return new_component
+            except Exception as e:
+                self.logger.error(f"Failed to reinitialize {component_name}: {e}")
+        
+        return None
+    
+    # Component initialization helpers for restart functionality
+    def _init_gsm_monitor(self):
+        """Initialize GSM monitor component."""
+        from ..monitoring.gsm_monitor import GSMMonitor
+        if self.config.get('monitoring.gsm.enabled', True) and self.sdr_manager:
+            return GSMMonitor(self.sdr_manager, self.config, self.root_logger)
+        return None
+    
+    def _init_lte_monitor(self):
+        """Initialize LTE monitor component."""
+        from ..monitoring.lte_monitor import LTEMonitor
+        if self.config.get('monitoring.lte.enabled', True) and self.sdr_manager:
+            return LTEMonitor(self.sdr_manager, self.config, self.root_logger)
+        return None
+    
+    def _init_fiveg_monitor(self):
+        """Initialize 5G monitor component."""
+        from ..monitoring.fiveg_monitor import FiveGMonitor
+        if self.config.get('monitoring.5g.enabled', True) and self.sdr_manager:
+            return FiveGMonitor(self.sdr_manager, self.config, self.root_logger)
+        return None
+    
+    def _init_sixg_monitor(self):
+        """Initialize 6G monitor component."""
+        from ..monitoring.sixg_monitor import SixGMonitor
+        if self.config.get('monitoring.6g.enabled', False) and self.sdr_manager:
+            return SixGMonitor(self.sdr_manager, self.config, self.root_logger)
+        return None
+    
+    def _init_signal_classifier(self):
+        """Initialize signal classifier component."""
+        from ..ai.signal_classifier import SignalClassifier
+        if self.config.get('ai.enabled', True):
+            return SignalClassifier(self.config, self.root_logger)
+        return None
+    
+    def _init_exploit_engine(self):
+        """Initialize exploit engine component."""
+        from ..exploit.exploit_engine import ExploitationEngine
+        if self.config.get('exploitation.enabled', True):
+            return ExploitationEngine(self.config, self.root_logger)
+        return None
+    
+    def _init_ric_optimizer(self):
+        """Initialize RIC optimizer component."""
+        from ..ai.ric_optimizer import RICOptimizer
+        if self.config.get('ai.ric_enabled', True):
+            return RICOptimizer(self.config, self.root_logger)
+        return None
+    
+    def _init_detector_scanner(self):
+        """Initialize detector scanner component."""
+        from ..core.detector_scanner import DetectorScanner
+        if self.config.get('detection.enabled', True):
+            return DetectorScanner(self.config, self.root_logger)
+        return None
+    
+    def _init_sustainability_monitor(self):
+        """Initialize sustainability monitor component."""
+        from ..utils.sustainability import SustainabilityMonitor
+        if self.config.get('sustainability.enabled', False):
+            return SustainabilityMonitor(self.config, self.root_logger)
+        return None
+
     def _detect_faraday_cage(self) -> bool:
         """
         Detect Faraday cage presence
@@ -481,6 +1032,9 @@ class FalconOneOrchestrator:
             # 14. Setup cross-module integrations
             self._setup_integrations()
             
+            # 15. Register components with Health Monitor (v1.9.2)
+            self._register_components_for_health_monitoring()
+            
             self.components_initialized = True
             self.logger.info(f"✓ Initialized {len(self.components)} components successfully")
             self.audit_logger.log_event('COMPONENTS_INIT', f'{len(self.components)} components loaded')
@@ -573,6 +1127,89 @@ class FalconOneOrchestrator:
         self.logger.info(f"✓ Cross-module integrations complete ({len(self.components)} components)")
         self.audit_logger.log_event('INTEGRATIONS_SETUP', 'Cross-module data flow established')
     
+    def _register_components_for_health_monitoring(self):
+        """
+        Register all initialized components with the Health Monitor (v1.9.2).
+        
+        Creates custom health check and restart functions for each component
+        based on their specific interfaces.
+        """
+        self.logger.info("Registering components for health monitoring...")
+        
+        registered_count = 0
+        
+        for component_name, component in self.components.items():
+            try:
+                # Create custom health check based on component type
+                health_check_fn = self._create_health_check_fn(component_name, component)
+                
+                # Create restart function
+                restart_fn = self._create_component_restart_fn(component_name)
+                
+                # Register with health monitor
+                self.health_monitor.register_component(
+                    name=component_name,
+                    component=component,
+                    health_check_fn=health_check_fn,
+                    restart_fn=restart_fn
+                )
+                registered_count += 1
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to register {component_name} for health monitoring: {e}")
+        
+        self.logger.info(f"✓ Registered {registered_count}/{len(self.components)} components for health monitoring")
+    
+    def _create_health_check_fn(self, component_name: str, component: Any) -> Callable[[], bool]:
+        """
+        Create a customized health check function for a specific component.
+        
+        Args:
+            component_name: Name of the component
+            component: The component instance
+            
+        Returns:
+            A callable that returns True if the component is healthy
+        """
+        def health_check() -> bool:
+            try:
+                # Check if component has a dedicated is_healthy method
+                if hasattr(component, 'is_healthy') and callable(getattr(component, 'is_healthy')):
+                    return component.is_healthy()
+                
+                # Check running state for monitors
+                if 'monitor' in component_name:
+                    if hasattr(component, 'running'):
+                        return getattr(component, 'running', True)
+                
+                # Check get_status for components with status reporting
+                if hasattr(component, 'get_status') and callable(getattr(component, 'get_status')):
+                    status = component.get_status()
+                    if isinstance(status, dict):
+                        # Check for explicit error flags
+                        if status.get('error') or status.get('failed'):
+                            return False
+                        # Check for running state
+                        if 'running' in status:
+                            return status['running']
+                        return True
+                
+                # For AI components, verify model availability
+                if component_name in ('signal_classifier', 'ric_optimizer'):
+                    if hasattr(component, 'models_loaded'):
+                        return getattr(component, 'models_loaded', False)
+                    if hasattr(component, 'model') and component.model is not None:
+                        return True
+                
+                # Default: component exists and is not None
+                return component is not None
+                
+            except Exception as e:
+                self.logger.debug(f"Health check exception for {component_name}: {e}")
+                return False
+        
+        return health_check
+
     def start(self):
         """Start orchestrator and all enabled services"""
         self.logger.info("🚀 Starting FalconOne v1.4.1...")
@@ -613,13 +1250,20 @@ class FalconOneOrchestrator:
             except Exception as e:
                 self.logger.error(f"Sustainability Monitor failed to start: {e}")
         
-        self.logger.info("✓ FalconOne v1.4.1 operational")
-        self.audit_logger.log_event('SYSTEM_START', 'All services operational', version='1.4.1')
+        # Start Health Monitor (v1.9.2) - Periodic component health checks
+        if self.health_monitor:
+            self.health_monitor.start()
+            health_interval = self.config.get('orchestrator.health_check_interval', 30.0)
+            self.logger.info(f"✓ Health Monitor started (interval: {health_interval}s)")
         
-        print("\n✅ FalconOne v1.4.1 is now running")
+        self.logger.info("✓ FalconOne v1.9.2 operational")
+        self.audit_logger.log_event('SYSTEM_START', 'All services operational', version='1.9.2')
+        
+        print("\n✅ FalconOne v1.9.2 is now running")
         print(f"📊 Active components: {len(self.components)}")
         print(f"📡 Active monitors: {len(self.active_monitors)}")
         print(f"🔄 Signal Bus: {self.signal_bus.get_stats()['subscribers']} subscribers")
+        print(f"💓 Health Monitor: Active")
         print("🔒 Audit logging: Enabled")
         print("\nPress Ctrl+C to stop\n")
     
@@ -627,6 +1271,11 @@ class FalconOneOrchestrator:
         """Stop all operations gracefully"""
         self.logger.info("⏹ Stopping FalconOne...")
         self.running = False
+        
+        # Stop Health Monitor first (v1.9.2)
+        if self.health_monitor:
+            self.health_monitor.stop()
+            self.logger.info("Health Monitor stopped")
         
         # Stop all components
         for component_name, component in self.components.items():
@@ -807,7 +1456,7 @@ class FalconOneOrchestrator:
         """Get comprehensive system status with all component details"""
         status = {
             'running': self.running,
-            'version': '1.4.1',
+            'version': '1.9.2',
             'components_initialized': self.components_initialized,
             'active_monitors': list(self.active_monitors.keys()),
             'total_components': len(self.components),
@@ -819,6 +1468,13 @@ class FalconOneOrchestrator:
                 'faraday_cage_detected': self._detect_faraday_cage()
             }
         }
+        
+        # Health Monitor status (v1.9.2)
+        if self.health_monitor:
+            try:
+                status['health'] = self.health_monitor.get_health_summary()
+            except Exception as e:
+                status['health'] = {'error': str(e)}
         
         # SDR status
         if self.sdr_manager:
