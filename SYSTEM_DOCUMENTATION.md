@@ -45,10 +45,21 @@
    - 6.4 [Utility Modules](#64-utility-modules)
 
 ### 7. [API Documentation](#7-api-documentation)
-   - 7.1 [REST API Endpoints](#71-rest-api-endpoints)
-   - 7.2 [WebSocket Events](#72-websocket-events)
-   - 7.3 [Authentication](#73-authentication)
-   - 7.4 [Rate Limiting](#74-rate-limiting)
+   - 7.1 [API Overview](#71-api-overview)
+   - 7.2 [Authentication API](#72-authentication-api)
+   - 7.3 [System Status API](#73-system-status-api)
+   - 7.4 [Monitoring API](#74-monitoring-api)
+   - 7.5 [Exploitation API](#75-exploitation-api)
+   - 7.6 [RANSacked API](#76-ransacked-api-v180)
+   - 7.7 [AI/ML API](#77-aiml-api)
+   - 7.8 [SDR Device API](#78-sdr-device-api)
+   - 7.9 [Analytics API](#79-analytics-api)
+   - 7.10 [WebSocket Events](#710-websocket-events)
+   - 7.11 [Error Codes](#711-error-codes)
+   - 7.12 [API Client Examples](#712-api-client-examples)
+   - 7.13 [API Best Practices](#713-api-best-practices)
+   - 7.14 [LE Mode API](#714-le-mode-api-v181)
+   - 7.15 [6G NTN & ISAC API](#715-6g-ntn--isac-api-v190)
 
 ### 8. [Exploit Database](#8-exploit-database)
    - 8.1 [RANSacked CVEs Overview](#81-ransacked-cves-overview)
@@ -3452,7 +3463,182 @@ utils/
 
 ---
 
-### 6.12 Other Notable Modules
+### 6.12 Additional Core Modules
+
+#### Analysis (`falconone/analysis/`)
+```
+analysis/
+├── __init__.py
+└── cyber_rf_fuser.py        # Cyber-RF fusion engine (791 lines)
+```
+
+**cyber_rf_fuser.py**
+- `CyberRFFuser`: Correlate RF signals with cyber intelligence
+- `FusionEvent`: Unified cyber-RF event structure
+- `CorrelationResult`: Correlation between cyber and RF events
+- Event domains: RF_CELLULAR, RF_AIOT, RF_V2X, CYBER_DNS, CYBER_HTTP, CYBER_APP, CYBER_TLS
+- ML-based event correlation (>0.9 threshold)
+- Behavioral inference (e.g., A-IoT sensor → smartphone linkage)
+- Cross-domain attack orchestration
+- Unified SIGINT timeline
+
+---
+
+#### Audit (`falconone/audit/`)
+```
+audit/
+├── __init__.py
+└── ransacked.py             # RANSacked vulnerability auditor (1707 lines)
+```
+
+**ransacked.py**
+- `RANSackedAuditor`: Cellular core vulnerability scanner
+- `CVESignature`: CVE vulnerability signature dataclass
+- Database of **97 CVEs** across 7 implementations:
+  - Open5GS, OpenAirInterface, Magma, srsRAN, NextEPC, SD-Core, Athonet
+- Severity levels: CRITICAL, HIGH, MEDIUM, LOW, INFO
+- Version-specific vulnerability matching
+- Attack vector and impact analysis
+- Mitigation recommendations
+
+---
+
+#### Notifications (`falconone/notifications/`)
+```
+notifications/
+├── __init__.py
+├── alert_rules.py           # Alert rules engine
+└── email_alerts.py          # Email notification system
+```
+
+**alert_rules.py**
+- `AlertRule`: Rule configuration with condition, severity, recipients
+- `AlertRulesEngine`: Manages rules and triggers notifications
+- Features:
+  - Rule-based alert triggering
+  - Cooldown periods (configurable, default 30 min)
+  - Rate limiting (max triggers per hour)
+  - Severity levels: CRITICAL, WARNING, INFO
+
+**email_alerts.py**
+- `EmailAlertManager`: SMTP-based notification delivery
+- HTML and plain-text email templates
+- Alert batching and throttling
+
+---
+
+#### O-RAN Integration (`falconone/oran/`)
+```
+oran/
+├── __init__.py
+├── e2_interface.py          # E2AP protocol implementation (619 lines)
+├── near_rt_ric.py           # Near-RT RIC implementation
+└── ric_xapp.py              # xApp development framework
+```
+
+**e2_interface.py**
+- `E2Interface`: E2AP protocol for Near-RT RIC communication
+- `E2Node`: RAN node information structure
+- `RICSubscription`: Subscription management
+- E2 Service Models: KPM (KPI Monitoring), RC (RAN Control), NI (Network Inventory), MHO (Mobility Handover)
+- Standards: O-RAN.WG3.E2AP-v02.03, O-RAN.WG3.E2SM-KPM-v02.03
+
+**near_rt_ric.py**
+- Near-RT RIC implementation for O-RAN deployments
+- xApp/rApp lifecycle management
+
+**ric_xapp.py**
+- xApp development framework
+- SDL (Shared Data Layer) integration
+- Message routing
+
+---
+
+#### Security (`falconone/security/`)
+```
+security/
+├── __init__.py
+├── auditor.py               # Security auditor (497 lines)
+└── blockchain_audit.py      # Blockchain-based audit trail
+```
+
+**auditor.py**
+- `SecurityAuditor`: Automated security and compliance auditor
+- `ComplianceStatus`: COMPLIANT, WARNING, NON_COMPLIANT, CRITICAL
+- `Jurisdiction`: USA, EU, GLOBAL, CHINA, JAPAN
+- `AuditResult`: Audit result with findings and recommendations
+- Capabilities:
+  - Configuration compliance auditing (FCC/ETSI, GDPR/CCPA)
+  - Vulnerability scanning (CVE checks, Trivy container scans)
+  - Unencrypted data detection
+  - Active TX flag verification
+  - Safety interlock checks
+
+**blockchain_audit.py**
+- Immutable audit trail using blockchain-style hashing
+- Tamper-proof event logging
+- Chain verification
+
+---
+
+#### Tasks (`falconone/tasks/`)
+```
+tasks/
+├── __init__.py
+├── celery_app.py            # Celery configuration
+├── exploit_tasks.py         # Async exploit execution
+├── monitoring_tasks.py      # Background monitoring
+├── scan_tasks.py            # Frequency scanning tasks
+└── schedules.py             # Periodic task schedules
+```
+
+**celery_app.py**
+- Celery application with Redis broker
+- Task queues: `scans`, `exploits`, `monitoring`
+- Priority-based queue routing
+- Rate limiting per task type:
+  - `scan_frequency_range`: 10/min
+  - `execute_dos_attack`: 5/min
+  - `execute_mitm_attack`: 3/min
+- Retry policies (3 retries, 60s delay)
+
+**exploit_tasks.py**
+- Async exploit execution tasks
+- Background DoS attacks
+- MITM attack orchestration
+
+**monitoring_tasks.py**
+- Continuous signal monitoring
+- Periodic cell scanning
+- Health checks
+
+**scan_tasks.py**
+- Frequency range scanning
+- Band sweeping
+- Cell discovery
+
+**schedules.py**
+- Beat scheduler for periodic tasks
+- Cron-based scheduling
+
+---
+
+#### Simulator (`falconone/simulator/`)
+```
+simulator/
+├── __init__.py
+└── sim_engine.py            # Network simulation engine
+```
+
+**sim_engine.py**
+- `SimulationEngine`: Cellular network simulation
+- Virtual UE and cell simulation
+- Protocol message generation
+- Testing without hardware
+
+---
+
+### 6.13 Peripheral Modules
 
 #### CLI (`falconone/cli/`)
 ```
@@ -3466,61 +3652,38 @@ cli/
 #### Cloud Integration (`falconone/cloud/`)
 ```
 cloud/
+├── __init__.py
 └── storage.py               # S3/GCS/Azure Blob integration
 ```
 - Cloud storage upload (captures, models)
 - AWS/GCP/Azure SDK wrappers
 
-#### O-RAN (`falconone/oran/`)
-```
-oran/
-└── (xApp/rApp development files)
-```
-- O-RAN RIC integration
-- xApp/rApp development support
-
-#### Security (`falconone/security/`)
-```
-security/
-└── (Authentication, authorization, encryption)
-```
-- JWT token management
-- RBAC implementation
-- Encryption utilities
-
 #### SIM Tools (`falconone/sim/`)
 ```
 sim/
-└── (SIM card utilities)
+├── __init__.py
+└── sim_manager.py           # SIM card management
 ```
 - SIM card reader integration
 - ICCID/IMSI extraction
 - Ki (authentication key) testing
+- SIM cloning research
 
 #### Voice Interception (`falconone/voice/`)
 ```
 voice/
+├── __init__.py
 └── interceptor.py           # Voice call capture
 ```
-- GSM voice decoding
+- GSM voice decoding (A5/x decryption)
 - VoLTE RTP capture
+- VoNR capture (5G voice)
 - Codec support (AMR, AMR-WB, EVS)
-
-#### Testing (`falconone/tests/`)
-```
-tests/
-├── unit/                    # Unit tests
-├── integration/             # Integration tests
-├── exploit_chain/           # Exploit chain tests
-└── benchmark/               # Performance benchmarks
-```
-- Pytest framework
-- 200+ tests
-- Coverage: 85%
+- Call recording and playback
 
 ---
 
-### 6.13 Configuration Files
+### 6.14 Configuration Files
 
 #### `config/config.yaml`
 Main configuration file with sections:
@@ -3540,7 +3703,7 @@ Advanced configuration:
 
 ---
 
-### 6.14 Entry Points
+### 6.15 Entry Points
 
 **main.py**
 - Main entry point: `python main.py`
@@ -3562,7 +3725,7 @@ Advanced configuration:
 
 ---
 
-### 6.14 Module Dependencies
+### 6.16 Module Dependencies
 
 ```
 Core Dependencies Flow:
@@ -4939,6 +5102,407 @@ else:
 - POPIA (South Africa - Personal information violations)
 
 Penalties include criminal prosecution, civil liability, and evidence inadmissibility.
+
+---
+
+### 7.15 6G NTN & ISAC API (v1.9.0)
+
+The 6G Non-Terrestrial Networks (NTN) and Integrated Sensing and Communications (ISAC) API provides endpoints for satellite monitoring, exploitation, and radar-based sensing operations.
+
+---
+
+#### 7.15.1 NTN API Endpoints
+
+##### GET /api/ntn
+
+**Description**: Get basic NTN satellite tracking data.
+
+**Authentication**: Required
+
+**Response**:
+```json
+{
+  "satellites": [
+    {
+      "id": "STARLINK-1234",
+      "type": "LEO",
+      "altitude_km": 550,
+      "signal_strength_dbm": -95.5,
+      "doppler_hz": 15234.5,
+      "visible": true
+    }
+  ]
+}
+```
+
+---
+
+##### POST /api/ntn_6g/monitor
+
+**Description**: Start 6G NTN monitoring session with ISAC sensing.
+
+**Rate Limit**: 10 requests/minute
+
+**Request**:
+```json
+{
+  "sat_type": "LEO",
+  "duration_sec": 60,
+  "use_isac": true,
+  "frequency_ghz": 150,
+  "le_mode": false,
+  "warrant_id": "optional-warrant-id"
+}
+```
+
+**Parameters**:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| sat_type | string | No | Satellite type: LEO, MEO, GEO, HAPS, UAV (default: LEO) |
+| duration_sec | int | No | Monitoring duration 1-300 seconds (default: 60) |
+| use_isac | bool | No | Enable ISAC sensing (default: true) |
+| frequency_ghz | float | No | Operating frequency (default: 150) |
+| le_mode | bool | No | Enable LE Mode evidence collection |
+| warrant_id | string | Conditional | Required if le_mode=true |
+
+**Response**:
+```json
+{
+  "success": true,
+  "timestamp": "2026-01-02T10:00:00Z",
+  "satellite_type": "LEO",
+  "technology": "6G_NTN",
+  "signal_detected": true,
+  "signal_strength_dbm": -95.5,
+  "doppler_shift_hz": 15234.5,
+  "isac_data": {
+    "range_m": 550000,
+    "velocity_mps": 7500,
+    "angle_deg": 45.0,
+    "snr_db": 18.5
+  },
+  "evidence_hash": "abc123..."
+}
+```
+
+---
+
+##### POST /api/ntn_6g/exploit
+
+**Description**: Execute 6G NTN exploit operation. Requires warrant in LE Mode.
+
+**Rate Limit**: 5 requests/minute
+
+**Request**:
+```json
+{
+  "exploit_type": "beam_hijack",
+  "target_sat_id": "LEO-1234",
+  "parameters": {
+    "use_quantum": false,
+    "redirect_to": "ground_station_coords",
+    "chain_type": "dos_intercept"
+  },
+  "warrant_id": "required-in-le-mode"
+}
+```
+
+**Exploit Types**:
+| Type | Description |
+|------|-------------|
+| beam_hijack | Redirect satellite beam to unauthorized receiver |
+| handover_poison | Poison inter-satellite handover process |
+| ris_manipulate | Manipulate Reconfigurable Intelligent Surfaces |
+| dos_intercept_chain | Combined DoS and intercept chain attack |
+| cve_payload | Execute CVE-based vulnerability payload |
+
+**Response**:
+```json
+{
+  "success": true,
+  "exploit_type": "beam_hijack",
+  "target_satellite": "LEO-1234",
+  "timestamp": "2026-01-02T10:00:00Z",
+  "beam_redirected": true,
+  "listening_active": true,
+  "evidence_hash": "def456..."
+}
+```
+
+---
+
+##### GET /api/ntn_6g/satellites
+
+**Description**: List all tracked satellites.
+
+**Rate Limit**: 20 requests/minute
+
+**Query Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| type | string | Filter by satellite type (LEO, MEO, GEO, HAPS, UAV) |
+
+**Response**:
+```json
+{
+  "satellites": [
+    {
+      "id": "STARLINK-1234",
+      "name": "Starlink-1234",
+      "type": "LEO",
+      "altitude_km": 550,
+      "inclination_deg": 53.0,
+      "visible_now": true,
+      "next_pass": "2026-01-02T12:00:00Z"
+    }
+  ],
+  "count": 150,
+  "visible_count": 12
+}
+```
+
+---
+
+##### GET /api/ntn_6g/ephemeris/{sat_id}
+
+**Description**: Get satellite ephemeris (orbital predictions).
+
+**Rate Limit**: 10 requests/minute
+
+**Path Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| sat_id | string | Satellite identifier |
+
+**Query Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| hours | int | Prediction time range 1-168 hours (default: 24) |
+
+**Response**:
+```json
+{
+  "satellite_id": "STARLINK-1234",
+  "time_range_hours": 24,
+  "ephemeris": [
+    {
+      "time": "2026-01-02T10:00:00Z",
+      "altitude_km": 550,
+      "latitude_deg": 45.0,
+      "longitude_deg": -122.0,
+      "elevation_deg": 45.0,
+      "azimuth_deg": 180.0,
+      "doppler_hz": 15000
+    }
+  ]
+}
+```
+
+---
+
+##### GET /api/ntn_6g/statistics
+
+**Description**: Get 6G NTN monitoring statistics.
+
+**Rate Limit**: 20 requests/minute
+
+**Response**:
+```json
+{
+  "total_sessions": 10,
+  "satellites_tracked": 5,
+  "doppler_measurements": 100,
+  "isac_measurements": 100,
+  "doppler_stats": {
+    "mean_hz": 12000.5,
+    "max_hz": 35000.0
+  },
+  "isac_stats": {
+    "mean_range_km": 550.0,
+    "mean_snr_db": 18.5
+  }
+}
+```
+
+---
+
+#### 7.15.2 ISAC API Endpoints
+
+##### POST /api/isac/monitor
+
+**Description**: Start ISAC (Integrated Sensing and Communications) monitoring session.
+
+**Rate Limit**: 10 requests/minute
+
+**Request**:
+```json
+{
+  "mode": "monostatic",
+  "frequency_ghz": 150,
+  "duration_sec": 60,
+  "sensing_type": "range_velocity",
+  "le_mode": false,
+  "warrant_id": null
+}
+```
+
+**Sensing Modes**:
+| Mode | Description |
+|------|-------------|
+| monostatic | Single transceiver for transmit and receive |
+| bistatic | Separate transmitter and receiver |
+| cooperative | Multiple coordinated sensing nodes |
+
+**Response**:
+```json
+{
+  "success": true,
+  "mode": "monostatic",
+  "frequency_ghz": 150.0,
+  "sensing_result": {
+    "range_m": 250.5,
+    "velocity_mps": 15.2,
+    "angle_deg": 45.0,
+    "snr_db": 22.5,
+    "accuracy": 0.95
+  },
+  "timestamp": "2026-01-02T10:00:00Z",
+  "evidence_hash": "ghi789..."
+}
+```
+
+---
+
+##### POST /api/isac/exploit
+
+**Description**: Execute ISAC exploitation attack.
+
+**Rate Limit**: 5 requests/minute
+
+**Request**:
+```json
+{
+  "exploit_type": "waveform_manipulation",
+  "parameters": {
+    "target_freq": 150e9,
+    "mode": "monostatic",
+    "waveform_type": "OFDM",
+    "cve_id": "CVE-2026-ISAC-001"
+  },
+  "warrant_id": "required-in-le-mode"
+}
+```
+
+**Exploit Types**:
+| Type | CVE | Description |
+|------|-----|-------------|
+| waveform_manipulation | CVE-2026-ISAC-001 | Manipulate ISAC waveforms for sensing disruption |
+| ai_poisoning | CVE-2026-ISAC-003 | Poison ML models in O-RAN rApps |
+| control_plane_hijack | CVE-2026-ISAC-004 | Hijack ISAC control plane |
+| quantum_attack | CVE-2026-ISAC-005 | Attack quantum key distribution links |
+| ntn_isac_exploit | CVE-2026-ISAC-006 | Combined NTN+ISAC exploitation |
+
+**Response**:
+```json
+{
+  "success": true,
+  "exploit_type": "waveform_manipulation",
+  "cve_id": "CVE-2026-ISAC-001",
+  "impact": "Sensing disruption achieved",
+  "listening_enhanced": true,
+  "evidence_hash": "jkl012..."
+}
+```
+
+---
+
+##### GET /api/isac/sensing_data
+
+**Description**: Get recent ISAC sensing data.
+
+**Rate Limit**: 20 requests/minute
+
+**Query Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| limit | int | Number of entries 1-100 (default: 10) |
+| mode | string | Filter by sensing mode |
+
+**Response**:
+```json
+{
+  "data": [
+    {
+      "mode": "monostatic",
+      "range_m": 250.5,
+      "velocity_mps": 15.2,
+      "angle_deg": 30.5,
+      "snr_db": 22.5,
+      "timestamp": 1704240000.0
+    }
+  ],
+  "count": 10
+}
+```
+
+---
+
+##### GET /api/isac/statistics
+
+**Description**: Get ISAC monitoring and exploitation statistics.
+
+**Rate Limit**: 20 requests/minute
+
+**Response**:
+```json
+{
+  "monitoring": {
+    "total_sessions": 100,
+    "monostatic_count": 50,
+    "bistatic_count": 30,
+    "cooperative_count": 20,
+    "avg_range_m": 350.5,
+    "avg_velocity_mps": 12.3,
+    "avg_accuracy": 0.92,
+    "privacy_breaches_detected": 5
+  },
+  "exploitation": {
+    "total_exploits": 50,
+    "waveform_attacks": 20,
+    "ai_poisoning_attacks": 10,
+    "privacy_breaches": 8,
+    "quantum_attacks": 5,
+    "ntn_exploits": 7,
+    "success_count": 35,
+    "success_rate": 0.70,
+    "listening_enhancements": 25
+  }
+}
+```
+
+---
+
+#### 7.15.3 Error Responses
+
+All 6G NTN and ISAC endpoints return standard error responses:
+
+| Status Code | Error | Description |
+|-------------|-------|-------------|
+| 400 | Validation Error | Invalid parameters or input |
+| 401 | Unauthorized | Authentication required |
+| 403 | Forbidden | Invalid or expired warrant |
+| 500 | Server Error | Internal processing error |
+| 501 | Not Implemented | Module not available |
+
+---
+
+#### 7.15.4 Legal Requirements
+
+**CRITICAL**: All NTN exploitation operations require proper legal authorization:
+- Valid warrant with NTN authorization scope
+- Warrant validation through `/api/le/warrant/validate`
+- LE Mode must be enabled for exploitation endpoints
+- All operations are logged with tamper-proof evidence hashes
 
 ---
 
