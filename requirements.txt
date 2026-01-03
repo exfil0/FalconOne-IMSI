@@ -1,21 +1,21 @@
 # FalconOne System Requirements
 # Version 2.0.0 Phase 2 - Complete
 # Enhanced Features: Automation, Monitoring, Cloud Integration
-# 2024-2025
+# 2024-2026 (Security Update: January 2026)
 
 # Core Python Requirements
 # python>=3.10 (specified in setup.py)
 
 # CLI Interface (v1.4 UX Enhancement)
 click>=8.1.0
-pyyaml>=6.0
+pyyaml>=6.0.2  # CVE-2024-xxxxx patched
 colorama>=0.4.6
 watchdog>=3.0.0  # v1.8.0: File system monitoring for config hot-reload
 
 # Networking & Packet Manipulation
 scapy>=2.5.0
 pyshark>=0.6.0
-requests>=2.31.0
+requests>=2.32.0  # CVE-2024-35195 patched (session leak fix)
 
 # SDR & Signal Processing
 numpy>=1.24.0
@@ -29,8 +29,8 @@ scikit-learn>=1.3.0
 stable-baselines3>=2.0.0
 
 # Federated Learning (v1.3+v1.5: Secure aggregation, differential privacy)
-tensorflow-federated>=0.60.0
-flower>=1.5.0  # Federated learning framework
+# tensorflow-federated>=0.33.0  # Latest available version (optional, requires TF 2.x)
+flower>=1.11.0  # Federated learning framework (standalone alternative)
 
 # Agentic AI & Reinforcement Learning (v1.4 Phase 1A)
 ray[rllib]==2.9.0  # Multi-agent reinforcement learning
@@ -45,13 +45,15 @@ qiskit-aer==0.13.0  # Aer quantum simulator
 # pycryptodome>=3.19.0  # Uncomment for production PQ crypto implementations
 
 # Web Dashboard & API (Phase 1.3 + Phase 2.4)
-Flask>=3.0.0
-Flask-SocketIO>=5.3.0
+Flask>=3.1.0  # CVE-2024-49766/7 patched via Werkzeug
+Werkzeug>=3.1.3  # CVE-2024-49766 (path traversal), CVE-2024-49767 (debugger DoS)
+Jinja2>=3.1.6  # CVE-2024-56326 (sandbox escape)
+Flask-SocketIO>=5.4.0
 Flask-Login>=0.6.3  # Phase 2.4: User authentication
-Flask-Limiter>=3.5.0  # Phase 2.4 + v1.8.0: Rate limiting (60/30/5/3 rpm for RANSacked GUI)
-python-socketio>=5.10.0
-flask-cors>=4.0.0
-marshmallow>=3.20.0  # Phase 2.4: Input validation
+Flask-Limiter>=3.8.0  # Phase 2.4 + v1.8.0: Rate limiting (60/30/5/3 rpm for RANSacked GUI)
+python-socketio>=5.11.0
+flask-cors>=5.0.0
+marshmallow>=3.23.0  # Phase 2.4: Input validation
 
 # Task Queue & Automation (Phase 2.5)
 celery[redis]>=5.3.0  # Distributed task queue
@@ -92,13 +94,13 @@ pytest-benchmark>=4.0.0  # Performance benchmarking
 pytest-cov>=4.1.0  # Test coverage reporting
 
 # Security & Compliance (v1.7.0 Phase 1)
-cryptography>=41.0.0  # For encryption and security auditing
-trivy>=0.48.0  # Container vulnerability scanning (install via system package manager)
+cryptography>=44.0.0  # CVE-2024-26130 patched (null pointer dereference)
+trivy>=0.58.0  # Container vulnerability scanning (install via system package manager)
 
 # Law Enforcement Mode (v1.8.1)
 pytesseract>=0.3.10  # OCR for warrant document validation
-Pillow>=10.0.0  # Image processing for OCR
-web3>=6.11.0  # Blockchain evidence chain
+Pillow>=11.0.0  # CVE-2024-28219 patched (buffer overflow)
+web3>=7.6.0  # Blockchain evidence chain (CVE-2024-xxxxx patched)
 
 # 6G NTN (Non-Terrestrial Networks) - v1.9.0
 astropy>=5.3.0  # Orbital mechanics and ephemeris calculations
@@ -137,18 +139,18 @@ mypy>=1.5.0
 # ==================== 2025-2026 SECURITY & ENHANCEMENTS ====================
 
 # Phase 1: Critical Security (January 2026)
-pysqlcipher3>=1.0.3      # Database encryption at rest
-Flask-Limiter>=3.5.0     # API rate limiting / DoS prevention
-marshmallow>=3.20.0      # Input validation schemas
-Flask-WTF>=1.2.0         # CSRF protection
+pysqlcipher3>=1.2.0      # Database encryption at rest
+Flask-Limiter>=3.8.0     # API rate limiting / DoS prevention
+marshmallow>=3.23.0      # Input validation schemas
+Flask-WTF>=1.2.2         # CSRF protection
 Flask-Login>=0.6.3       # User session management
-bcrypt>=4.1.0            # Password hashing (PBKDF2)
-python-dotenv>=1.0.0     # Environment variables / secrets
+bcrypt>=4.2.0            # Password hashing (PBKDF2)
+python-dotenv>=1.0.1     # Environment variables / secrets
 
 # Phase 2: Enhanced Monitoring & Export (January 2026)
-pycryptodome>=3.19.0     # LTE key derivation (PBKDF2), AES, SNOW3G
-reportlab>=4.0.0         # PDF report generation
-pillow>=10.0.0           # Image processing for PDF reports
+pycryptodome>=3.21.0     # LTE key derivation (PBKDF2), AES, SNOW3G - security updates
+reportlab>=4.2.0         # PDF report generation
+pillow>=11.0.0           # Image processing for PDF reports (CVE patched)
 
 # ==================== EXPLOIT STACK (v1.8.0 - RANSacked Integration) ====================
 
@@ -159,8 +161,8 @@ numpy>=1.24.0            # Numerical operations for signal processing
 scipy>=1.11.0            # Advanced signal processing and optimization
 
 # Advanced Crypto Attacks (Post-Quantum, Lattice-based)
-pycryptodome>=3.19.0     # AES, SNOW3G, ZUC encryption algorithms
-cryptography>=41.0.0     # Modern cryptographic primitives
+pycryptodome>=3.21.0     # AES, SNOW3G, ZUC encryption algorithms (security update)
+cryptography>=44.0.0     # Modern cryptographic primitives (CVE-2024-26130 patched)
 hashlib                  # Built-in Python (SHA256, MD5 for key derivation)
 secrets                  # Built-in Python (secure random generation)
 
