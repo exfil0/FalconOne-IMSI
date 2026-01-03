@@ -1,7 +1,7 @@
 """
 FalconOne GSM (2G) Monitoring Module
 Implements IMSI/TMSI capture and SMS interception for GSM networks
-Version 1.9.2: Added ThreadPoolExecutor for parallel ARFCN capture (multi-SDR support)
+Version 1.9.3: Extended circuit breakers, retry logic, and resilience patterns
 """
 
 import subprocess
@@ -12,11 +12,12 @@ import os
 from typing import Dict, List, Optional, Any, Callable
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import logging
 
 from ..utils.logger import ModuleLogger
+from ..core.circuit_breaker import CircuitBreaker, CircuitOpenError, RetryConfig
 
 
 class CaptureMode(Enum):
@@ -96,12 +97,34 @@ class GSMMonitor:
         # ARFCN (Absolute Radio Frequency Channel Number) list
         self.arfcns = []
         
+        # Circuit breaker for resilience (v1.9.3)
+        self._circuit_breaker = CircuitBreaker(
+            name="gsm_capture",
+            failure_threshold=config.get('monitoring.gsm.circuit_breaker.failure_threshold', 5),
+            success_threshold=config.get('monitoring.gsm.circuit_breaker.success_threshold', 2),
+            timeout_seconds=config.get('monitoring.gsm.circuit_breaker.timeout_seconds', 30.0),
+            retry_config=RetryConfig(
+                max_retries=config.get('monitoring.gsm.retry.max_retries', 3),
+                base_delay_ms=config.get('monitoring.gsm.retry.base_delay_ms', 100.0),
+                max_delay_ms=config.get('monitoring.gsm.retry.max_delay_ms', 5000.0),
+                exponential_base=2.0,
+                jitter=True
+            ),
+            adaptive=config.get('monitoring.gsm.circuit_breaker.adaptive', True),
+            logger=self.logger.logger if hasattr(self.logger, 'logger') else logging.getLogger(__name__)
+        )
+        
+        # Per-ARFCN circuit breakers for fine-grained control
+        self._arfcn_circuits: Dict[int, CircuitBreaker] = {}
+        
         # Performance metrics
         self._capture_stats = {
             'total_captures': 0,
             'successful_captures': 0,
             'failed_captures': 0,
             'avg_capture_time_ms': 0.0,
+            'circuit_breaker_rejections': 0,
+            'retries': 0,
         }
         
         self.logger.info(
@@ -342,6 +365,9 @@ class GSMMonitor:
                     else:
                         self.logger.warning(f"Capture failed for ARFCN {arfcn}: {result.error}")
                         
+                except CircuitOpenError as e:
+                    self.logger.warning(f"Circuit open for ARFCN {arfcn}, skipping: {e}")
+                    self._capture_stats['circuit_breaker_rejections'] += 1
                 except Exception as e:
                     self.logger.error(f"Error processing capture result for ARFCN {arfcn}: {e}")
                     self._capture_stats['failed_captures'] += 1
@@ -353,12 +379,26 @@ class GSMMonitor:
             # Brief pause between batches
             time.sleep(0.5)
     
+    def _get_arfcn_circuit(self, arfcn: int) -> CircuitBreaker:
+        """Get or create circuit breaker for specific ARFCN (v1.9.3)"""
+        if arfcn not in self._arfcn_circuits:
+            self._arfcn_circuits[arfcn] = CircuitBreaker(
+                name=f"arfcn_{arfcn}",
+                failure_threshold=3,
+                success_threshold=1,
+                timeout_seconds=60.0,
+                retry_config=RetryConfig(max_retries=2, base_delay_ms=200),
+                adaptive=True
+            )
+        return self._arfcn_circuits[arfcn]
+    
     def _capture_arfcn_with_result(self, arfcn: int) -> ARFCNCaptureResult:
         """
-        Capture data from specific ARFCN and return structured result (v1.9.2).
+        Capture data from specific ARFCN with circuit breaker protection (v1.9.3).
         
         This is the thread-safe version of capture that returns a result object
-        instead of directly modifying shared state.
+        instead of directly modifying shared state. Now includes circuit breaker
+        pattern for resilience.
         
         Args:
             arfcn: ARFCN number to monitor
@@ -369,14 +409,26 @@ class GSMMonitor:
         start_time = time.time()
         result = ARFCNCaptureResult(arfcn=arfcn, success=False)
         
+        # Get per-ARFCN circuit breaker
+        circuit = self._get_arfcn_circuit(arfcn)
+        
+        # Check if circuit is open
+        if circuit.is_open:
+            result.error = "Circuit breaker open"
+            self._capture_stats['circuit_breaker_rejections'] += 1
+            return result
+        
         try:
-            # Use grgsm_livemon or grgsm_scanner
-            if 'gr-gsm' in self.tools:
-                captured_data = self._capture_with_grgsm_safe(arfcn)
-            elif 'OsmocomBB' in self.tools:
-                captured_data = self._capture_with_osmocombb_safe(arfcn)
-            else:
-                captured_data = {'imsi': set(), 'tmsi': set(), 'sms': []}
+            # Execute capture through circuit breaker with retries
+            def do_capture():
+                if 'gr-gsm' in self.tools:
+                    return self._capture_with_grgsm_safe(arfcn)
+                elif 'OsmocomBB' in self.tools:
+                    return self._capture_with_osmocombb_safe(arfcn)
+                else:
+                    return {'imsi': set(), 'tmsi': set(), 'sms': []}
+            
+            captured_data = circuit.call(do_capture)
             
             # Thread-safe update of captured data
             with self._capture_lock:

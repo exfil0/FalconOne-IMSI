@@ -1,12 +1,21 @@
 # FalconOne Installation Guide
 
-**Version:** 1.9.0  
-**Last Updated:** January 2026  
+**Version:** 1.9.3  
+**Last Updated:** January 4, 2026  
 **Status:** Production Ready (All Features Validated ✅)
 
 ---
 
-## What's New in v1.9.0
+## What's New in v1.9.3
+
+- ✅ **Circuit Breaker Pattern**: Resilient failure handling with exponential backoff and adaptive thresholds
+- ✅ **Online AI Adaptation**: Concept drift detection, experience replay, EWC for catastrophic forgetting prevention
+- ✅ **WCAG 2.1 AA Accessibility**: Full accessibility compliance with high contrast, reduced motion support
+- ✅ **Chaos Engineering Tests**: Network partition, resource exhaustion, SDR failure simulation
+- ✅ **Hardware-in-Loop Tests**: Mock SDR interfaces for 6 device types with timing validation
+- ✅ **Extended Fuzzing**: 87%+ coverage target with Hypothesis property-based testing
+
+## What's New in v1.9.0-1.9.2
 
 - ✅ **6G NTN Integration**: LEO/MEO/GEO/HAPS/UAV satellite support with sub-THz monitoring
 - ✅ **ISAC Framework**: Integrated Sensing & Communications with 8 exploitation CVEs

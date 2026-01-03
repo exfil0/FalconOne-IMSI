@@ -1,7 +1,7 @@
 # FalconOne User Manual
 
-**Version:** 3.5.0  
-**Last Updated:** January 3, 2026  
+**Version:** 3.6.0  
+**Last Updated:** January 4, 2026  
 **Audience:** Security Researchers, Network Engineers, Operators
 
 ---

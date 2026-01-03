@@ -1,6 +1,6 @@
 # FalconOne Quick Start Guide
 
-**Version:** 1.9.0 | **Updated:** January 2026
+**Version:** 1.9.3 | **Updated:** January 4, 2026
 
 ## 🚀 Getting Started (5 Minutes)
 

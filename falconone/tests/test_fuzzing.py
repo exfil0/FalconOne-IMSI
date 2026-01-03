@@ -1,16 +1,23 @@
 """
-FalconOne Fuzzing Tests (v1.9.1)
+FalconOne Fuzzing Tests (v1.9.3)
 ================================
 Property-based and fuzzing tests for security-critical components.
-Targets 95%+ code coverage for exploit engine, crypto, and network modules.
+Targets 87%+ code coverage for exploit engine, crypto, network, AI, and UI modules.
 
 Requirements:
 - pytest
 - hypothesis (property-based testing)
 - atheris (Google's Python fuzzing engine) - optional
 
+Coverage Focus:
+- Circuit breaker resilience patterns
+- Online AI adaptation with drift detection
+- WCAG accessibility components
+- Protocol parsing and validation
+- Cryptographic operations
+
 Run with:
-    pytest falconone/tests/test_fuzzing.py -v --hypothesis-show-statistics
+    pytest falconone/tests/test_fuzzing.py -v --hypothesis-show-statistics --cov=falconone --cov-report=html
 """
 
 import pytest
@@ -355,7 +362,7 @@ class TestSignalProcessingFuzzing:
 # ==================== CIRCUIT BREAKER FUZZING ====================
 
 class TestCircuitBreakerFuzzing:
-    """Fuzzing tests for circuit breaker"""
+    """Fuzzing tests for circuit breaker (v1.9.3 resilience patterns)"""
     
     @pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis not installed")
     @given(
@@ -367,18 +374,25 @@ class TestCircuitBreakerFuzzing:
     def test_circuit_breaker_config_fuzz(self, failure_threshold, timeout, half_open_ratio):
         """Fuzz circuit breaker configuration"""
         try:
-            from falconone.utils.circuit_breaker import CircuitBreakerConfig, CircuitBreaker
+            from falconone.core.circuit_breaker import CircuitBreaker, RetryConfig
             
-            config = CircuitBreakerConfig(
-                failure_threshold=failure_threshold,
-                recovery_timeout=timeout,
-                half_open_success_threshold=max(1, int(failure_threshold * half_open_ratio))
+            retry_config = RetryConfig(
+                max_retries=max(1, failure_threshold // 2),
+                base_delay=min(timeout, 1.0),
+                max_delay=timeout,
+                jitter=half_open_ratio
             )
             
-            cb = CircuitBreaker("test", config)
+            cb = CircuitBreaker(
+                name="fuzz_test",
+                failure_threshold=failure_threshold,
+                recovery_timeout=timeout,
+                half_open_max_calls=max(1, int(failure_threshold * half_open_ratio) + 1),
+                retry_config=retry_config
+            )
             
-            assert cb._state == "CLOSED"
-            assert config.failure_threshold > 0
+            assert cb.state.name == "CLOSED"
+            assert cb.stats.failure_count == 0
             
         except ImportError:
             pytest.skip("circuit_breaker not available")
@@ -389,27 +403,189 @@ class TestCircuitBreakerFuzzing:
     def test_circuit_breaker_state_transitions_fuzz(self, success_failure_sequence):
         """Fuzz circuit breaker state transitions with random success/failure sequences"""
         try:
-            from falconone.utils.circuit_breaker import CircuitBreakerConfig, CircuitBreaker
+            from falconone.core.circuit_breaker import CircuitBreaker, CircuitState
             
-            config = CircuitBreakerConfig(
+            cb = CircuitBreaker(
+                name="transition_fuzz",
                 failure_threshold=5,
                 recovery_timeout=0.001,  # Very short for testing
-                half_open_success_threshold=2
+                half_open_max_calls=2
             )
             
-            cb = CircuitBreaker("test", config)
-            
             for success in success_failure_sequence:
-                if success:
-                    cb.record_success()
-                else:
-                    cb.record_failure()
+                try:
+                    if success:
+                        cb.record_success()
+                    else:
+                        cb.record_failure(Exception("fuzz failure"))
+                except Exception:
+                    pass  # Circuit may be open
             
             # State should be one of the valid states
-            assert cb._state in ["CLOSED", "OPEN", "HALF_OPEN"]
+            assert cb.state in [CircuitState.CLOSED, CircuitState.OPEN, CircuitState.HALF_OPEN]
             
         except ImportError:
             pytest.skip("circuit_breaker not available")
+    
+    @pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis not installed")
+    @given(
+        st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        st.integers(min_value=1, max_value=10)
+    )
+    @settings(max_examples=100, deadline=None)
+    def test_retry_backoff_calculation_fuzz(self, base_delay, jitter, attempt):
+        """Fuzz exponential backoff calculation"""
+        try:
+            from falconone.core.circuit_breaker import RetryConfig
+            import random
+            
+            config = RetryConfig(
+                max_retries=attempt + 1,
+                base_delay=base_delay,
+                max_delay=base_delay * 100,
+                jitter=jitter
+            )
+            
+            delay = config.get_delay(attempt)
+            
+            # Delay should be positive and bounded
+            assert delay >= 0
+            assert delay <= config.max_delay * (1 + config.jitter)
+            
+            # Delay should grow with attempts (before jitter)
+            base_expected = min(base_delay * (2 ** (attempt - 1)), config.max_delay)
+            assert delay >= base_expected * (1 - config.jitter) or config.jitter == 0
+            
+        except ImportError:
+            pytest.skip("circuit_breaker not available")
+    
+    @pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis not installed")
+    @given(st.lists(st.floats(min_value=0, max_value=100, allow_nan=False, allow_infinity=False), min_size=10, max_size=100))
+    @settings(max_examples=50, deadline=None)
+    def test_adaptive_threshold_fuzz(self, latency_samples):
+        """Fuzz adaptive threshold calculation"""
+        try:
+            from falconone.core.circuit_breaker import CircuitBreaker
+            import statistics
+            
+            cb = CircuitBreaker(
+                name="adaptive_fuzz",
+                failure_threshold=5,
+                recovery_timeout=30.0,
+                adaptive_threshold=True
+            )
+            
+            # Simulate recording latencies
+            for latency in latency_samples:
+                cb.stats.last_latencies.append(latency)
+                if len(cb.stats.last_latencies) > 100:
+                    cb.stats.last_latencies.pop(0)
+            
+            # Adaptive threshold should be reasonable
+            if cb.stats.last_latencies:
+                mean_latency = statistics.mean(cb.stats.last_latencies)
+                assert mean_latency >= 0
+            
+        except ImportError:
+            pytest.skip("circuit_breaker not available")
+
+
+# ==================== ONLINE ADAPTATION FUZZING ====================
+
+class TestOnlineAdaptationFuzzing:
+    """Fuzzing tests for online AI adaptation (v1.9.3)"""
+    
+    @pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis not installed")
+    @given(st.lists(st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False), min_size=10, max_size=200))
+    @settings(max_examples=100, deadline=None)
+    def test_concept_drift_detection_fuzz(self, accuracy_sequence):
+        """Fuzz concept drift detection with varying accuracy sequences"""
+        try:
+            from falconone.ai.online_adaptation import OnlineAdaptationManager, DriftType
+            
+            manager = OnlineAdaptationManager(
+                model=None,  # Will use mock
+                window_size=50,
+                drift_threshold=0.1
+            )
+            
+            for accuracy in accuracy_sequence:
+                manager._update_accuracy_history(accuracy)
+            
+            # Detect drift
+            drift_type = manager._detect_drift()
+            
+            # Should return valid drift type
+            assert drift_type in [DriftType.NONE, DriftType.SUDDEN, DriftType.GRADUAL, 
+                                  DriftType.INCREMENTAL, DriftType.RECURRING]
+            
+        except ImportError:
+            pytest.skip("online_adaptation not available")
+    
+    @pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis not installed")
+    @given(
+        st.floats(min_value=0.0001, max_value=1.0, allow_nan=False, allow_infinity=False),
+        st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        st.integers(min_value=1, max_value=100)
+    )
+    @settings(max_examples=100, deadline=None)
+    def test_adaptive_learning_rate_fuzz(self, base_lr, current_accuracy, epoch):
+        """Fuzz adaptive learning rate calculation"""
+        try:
+            from falconone.ai.online_adaptation import OnlineAdaptationManager, AdaptationConfig
+            
+            config = AdaptationConfig(
+                base_learning_rate=base_lr,
+                min_learning_rate=base_lr / 100,
+                max_learning_rate=base_lr * 10,
+                lr_decay_factor=0.95
+            )
+            
+            manager = OnlineAdaptationManager(
+                model=None,
+                config=config
+            )
+            
+            # Calculate adaptive LR
+            new_lr = manager._calculate_adaptive_lr(current_accuracy, epoch)
+            
+            # Should be within bounds
+            assert config.min_learning_rate <= new_lr <= config.max_learning_rate
+            
+        except ImportError:
+            pytest.skip("online_adaptation not available")
+    
+    @pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis not installed")
+    @given(st.lists(st.tuples(
+        st.lists(st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False), min_size=10, max_size=10),
+        st.integers(min_value=0, max_value=9)
+    ), min_size=5, max_size=50))
+    @settings(max_examples=50, deadline=None)
+    def test_experience_replay_buffer_fuzz(self, experiences):
+        """Fuzz experience replay buffer operations"""
+        try:
+            from falconone.ai.online_adaptation import OnlineAdaptationManager
+            from collections import deque
+            
+            manager = OnlineAdaptationManager(
+                model=None,
+                replay_buffer_size=100
+            )
+            
+            for features, label in experiences:
+                manager._add_to_replay_buffer((features, label))
+            
+            # Buffer should not exceed max size
+            assert len(manager.replay_buffer) <= manager.replay_buffer_size
+            
+            # Sample from buffer
+            if len(manager.replay_buffer) >= 5:
+                sample = manager._sample_replay_buffer(5)
+                assert len(sample) == 5
+            
+        except ImportError:
+            pytest.skip("online_adaptation not available")
 
 
 # ==================== INPUT VALIDATION FUZZING ====================

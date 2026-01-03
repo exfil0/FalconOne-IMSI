@@ -1,7 +1,7 @@
 # FalconOne Documentation Index
 
-**Version:** 1.9.0  
-**Last Updated:** January 2026  
+**Version:** 1.9.3  
+**Last Updated:** January 4, 2026  
 **Status:** Production Ready ✅
 
 ---
