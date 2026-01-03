@@ -23,8 +23,8 @@ scipy>=1.11.0  # v1.4 Phase 3: ISAC/JCAS signal processing, v1.9.0: ISAC wavefor
 
 # AI/ML Frameworks (v1.5: Transformer support)
 tensorflow>=2.14.0  # v1.5: Multi-head attention, transformer layers
-torch>=2.0.0
-transformers>=4.30.0
+torch>=2.2.0  # Security updates
+transformers>=4.36.0  # CVE-2024-3568 patched
 scikit-learn>=1.3.0
 stable-baselines3>=2.0.0
 
@@ -33,12 +33,12 @@ stable-baselines3>=2.0.0
 flower>=1.11.0  # Federated learning framework (standalone alternative)
 
 # Agentic AI & Reinforcement Learning (v1.4 Phase 1A)
-ray[rllib]==2.9.0  # Multi-agent reinforcement learning
+ray[rllib]>=2.9.0  # Multi-agent reinforcement learning (optional, Python 3.9-3.12)
 gym==0.26.2  # RL environment interface
 
 # Quantum Cryptanalysis (v1.4 Phase 1B + v1.5 Post-Quantum)
-qiskit==0.45.0  # Quantum computing simulation
-qiskit-aer==0.13.0  # Aer quantum simulator
+qiskit>=1.0.0  # Quantum computing simulation
+qiskit-aer>=0.14.0  # Aer quantum simulator
 
 # Optional: Production lattice reduction for PQC attacks (v1.5 Kyber/Dilithium)
 # fpylll==0.5.9  # Uncomment for real lattice-based cryptanalysis (LLL algorithm)
