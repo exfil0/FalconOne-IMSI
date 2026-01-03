@@ -2,7 +2,7 @@
 FalconOne Online AI Adaptation Module
 Real-time model adaptation and concept drift detection
 
-Version 1.9.3: Extended online learning with adaptive rates and recovery
+Version 1.9.4: Enhanced with ADWIN, Page-Hinkley, DDM, KSWIN drift detection
 """
 
 import time
@@ -22,6 +22,23 @@ try:
     TF_AVAILABLE = True
 except ImportError:
     TF_AVAILABLE = False
+
+# Import advanced drift detection
+try:
+    from .drift_detection import (
+        ADWINDetector,
+        PageHinkleyDetector,
+        DDMDetector,
+        KSWINDetector,
+        EnsembleDriftDetector,
+        AdaptiveDriftManager,
+        DriftSeverity,
+        DriftResult,
+        create_drift_detector,
+    )
+    ADVANCED_DRIFT_AVAILABLE = True
+except ImportError:
+    ADVANCED_DRIFT_AVAILABLE = False
 
 
 class DriftType(Enum):
@@ -58,6 +75,16 @@ class AdaptationConfig:
     drift_detection_window: int = 100
     drift_threshold: float = 0.15
     severe_drift_threshold: float = 0.30
+    
+    # Advanced drift detection (ADWIN, Page-Hinkley, DDM, KSWIN)
+    use_advanced_drift_detection: bool = True
+    drift_detection_algorithm: str = 'ensemble'  # 'adwin', 'page_hinkley', 'ddm', 'kswin', 'ensemble'
+    drift_sensitivity: str = 'medium'  # 'low', 'medium', 'high'
+    adwin_delta: float = 0.002
+    page_hinkley_threshold: float = 50.0
+    ddm_warning_level: float = 2.0
+    ddm_out_control_level: float = 3.0
+    kswin_alpha: float = 0.005
     
     # Model checkpointing
     checkpoint_interval: int = 1000
@@ -114,6 +141,10 @@ class OnlineAdaptationManager:
         self._drift_metrics = DriftMetrics()
         self._drift_history: List[Dict] = []
         
+        # Advanced drift detection (ADWIN, Page-Hinkley, DDM, KSWIN)
+        self._advanced_drift_manager: Optional[Any] = None
+        self._init_advanced_drift_detection()
+        
         # Checkpointing
         self._checkpoint_count = 0
         self._last_checkpoint_time = 0.0
@@ -137,6 +168,61 @@ class OnlineAdaptationManager:
         
         # Initialize checkpoint directory
         os.makedirs(self.config.checkpoint_dir, exist_ok=True)
+    
+    def _init_advanced_drift_detection(self):
+        """Initialize advanced drift detection algorithms"""
+        if not ADVANCED_DRIFT_AVAILABLE:
+            self.logger.info("Advanced drift detection not available, using basic detection")
+            return
+        
+        if not self.config.use_advanced_drift_detection:
+            self.logger.info("Advanced drift detection disabled in config")
+            return
+        
+        try:
+            # Create adaptive drift manager with configured sensitivity
+            self._advanced_drift_manager = AdaptiveDriftManager(
+                sensitivity=self.config.drift_sensitivity,
+                callbacks=[self._on_advanced_drift_detected],
+            )
+            
+            self.logger.info(
+                f"Initialized advanced drift detection: "
+                f"algorithm={self.config.drift_detection_algorithm}, "
+                f"sensitivity={self.config.drift_sensitivity}"
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to initialize advanced drift detection: {e}")
+            self._advanced_drift_manager = None
+    
+    def _on_advanced_drift_detected(self, event: Dict[str, Any]):
+        """Callback for advanced drift detection events"""
+        self.logger.warning(f"Advanced drift detector event: {event}")
+        
+        # Update internal drift metrics
+        self._drift_metrics.drift_type = DriftType.SUDDEN
+        self._drift_metrics.drift_detected_at = event.get('timestamp', time.time())
+        self._drift_metrics.samples_since_drift = 0
+        
+        # Store in history
+        drift_info = {
+            'type': 'advanced_detection',
+            'confidence': event.get('confidence', 0.0),
+            'timestamp': event.get('timestamp', time.time()),
+            'sample_count': event.get('sample_count', 0),
+        }
+        self._drift_history.append(drift_info)
+        
+        # Consider rollback for severe drift
+        if event.get('confidence', 0) > 0.8:
+            self._consider_rollback()
+        
+        # Trigger registered callbacks
+        for callback in self._on_drift_detected:
+            try:
+                callback(drift_info)
+            except Exception as e:
+                self.logger.error(f"Drift callback error: {e}")
     
     def update(
         self,
@@ -296,9 +382,36 @@ class OnlineAdaptationManager:
             )
     
     def _update_drift_detection(self, accuracy: float):
-        """Update drift detection using accuracy-based method"""
+        """Update drift detection using accuracy-based method and advanced detectors"""
         self._accuracy_window.append(accuracy)
         
+        # Use advanced drift detection if available
+        if self._advanced_drift_manager is not None:
+            advanced_result = self._advanced_drift_manager.observe(
+                prediction_correct=accuracy > 0.5,
+                accuracy=accuracy
+            )
+            
+            # Update drift metrics from advanced detection
+            if advanced_result.get('detected', False):
+                self._drift_metrics.drift_score = advanced_result.get('confidence', 0.0)
+                self._drift_metrics.window_accuracy = accuracy
+                
+                # Map advanced severity to drift type
+                severity = advanced_result.get('severity', 'none')
+                if severity == 'drift' or severity == 'severe':
+                    self._drift_metrics.drift_type = DriftType.SUDDEN
+                elif severity == 'warning':
+                    self._drift_metrics.drift_type = DriftType.GRADUAL
+                
+                # Log recommendations from advanced detector
+                recommendations = advanced_result.get('recommendations', [])
+                if recommendations:
+                    self.logger.info(f"Drift recommendations: {recommendations[:3]}")
+                
+                return
+        
+        # Fallback to basic detection if advanced not available
         if len(self._accuracy_window) < self.config.drift_detection_window // 2:
             return
         
@@ -519,7 +632,7 @@ class OnlineAdaptationManager:
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get current adaptation metrics"""
-        return {
+        metrics = {
             'learning_rate': self.current_lr,
             'samples_processed': self._update_count,
             'drift_metrics': {
@@ -533,3 +646,32 @@ class OnlineAdaptationManager:
             'checkpoint_count': self._checkpoint_count,
             'drift_events': len(self._drift_history),
         }
+        
+        # Add advanced drift detection metrics if available
+        if self._advanced_drift_manager is not None:
+            try:
+                advanced_summary = self._advanced_drift_manager.get_drift_summary()
+                metrics['advanced_drift'] = {
+                    'current_state': advanced_summary.get('current_state', 'unknown'),
+                    'total_drifts': advanced_summary.get('total_drifts', 0),
+                    'consecutive_warnings': advanced_summary.get('consecutive_warnings', 0),
+                    'recent_performance': advanced_summary.get('recent_performance', 0.0),
+                }
+                metrics['drift_detection_algorithms'] = [
+                    stat.get('name', 'unknown')
+                    for stat in advanced_summary.get('detector_stats', {}).get('detectors', [])
+                ]
+            except Exception as e:
+                self.logger.debug(f"Could not get advanced drift metrics: {e}")
+        
+        return metrics
+    
+    def get_drift_history(self) -> List[Dict[str, Any]]:
+        """Get history of drift events"""
+        return list(self._drift_history)
+    
+    def get_advanced_drift_summary(self) -> Optional[Dict[str, Any]]:
+        """Get detailed summary from advanced drift detectors"""
+        if self._advanced_drift_manager is None:
+            return None
+        return self._advanced_drift_manager.get_drift_summary()

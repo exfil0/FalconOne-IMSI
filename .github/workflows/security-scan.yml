@@ -1,0 +1,415 @@
+name: Security Scanning Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scan daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      full_scan:
+        description: 'Run full comprehensive scan'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  
+jobs:
+  # ========================================
+  # Static Application Security Testing (SAST)
+  # ========================================
+  sast-bandit:
+    name: Bandit Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Bandit
+      run: pip install bandit[toml]
+    
+    - name: Run Bandit scan
+      run: |
+        bandit -r falconone/ \
+          -f json \
+          -o bandit-results.json \
+          --severity-level medium \
+          --confidence-level medium \
+          || true
+    
+    - name: Run Bandit (Human readable)
+      run: |
+        bandit -r falconone/ \
+          -ll \
+          -ii \
+          --format txt
+      continue-on-error: true
+    
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v4
+      with:
+        name: bandit-results
+        path: bandit-results.json
+    
+    - name: Check for high severity issues
+      run: |
+        HIGH_ISSUES=$(cat bandit-results.json | python3 -c "import json,sys; data=json.load(sys.stdin); print(len([r for r in data.get('results',[]) if r.get('issue_severity')=='HIGH']))")
+        if [ "$HIGH_ISSUES" -gt 0 ]; then
+          echo "::error::Found $HIGH_ISSUES high severity security issues"
+          exit 1
+        fi
+
+  # ========================================
+  # Dependency Vulnerability Scanning
+  # ========================================
+  sca-safety:
+    name: Safety Dependency Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install safety pip-audit
+    
+    - name: Run Safety check
+      run: |
+        safety check -r requirements.txt --json --output safety-results.json || true
+        safety check -r requirements.txt
+      continue-on-error: true
+    
+    - name: Run pip-audit
+      run: |
+        pip-audit -r requirements.txt --format json --output pip-audit-results.json || true
+        pip-audit -r requirements.txt
+      continue-on-error: true
+    
+    - name: Upload dependency scan results
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-scan-results
+        path: |
+          safety-results.json
+          pip-audit-results.json
+
+  # ========================================
+  # Container Image Scanning with Trivy
+  # ========================================
+  container-trivy:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Build Docker image for scanning
+      run: |
+        docker build -t falconone:scan .
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'falconone:scan'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        vuln-type: 'os,library'
+    
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+        severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: 'trivy-container'
+      if: always()
+    
+    - name: Upload Trivy FS results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+        category: 'trivy-filesystem'
+      if: always()
+    
+    - name: Upload Trivy artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-results
+        path: |
+          trivy-results.sarif
+          trivy-fs-results.sarif
+
+  # ========================================
+  # CodeQL Analysis (Deep Code Scanning)
+  # ========================================
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: +security-extended,security-and-quality
+    
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
+  # ========================================
+  # Secret Scanning
+  # ========================================
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Install Gitleaks
+      run: |
+        wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz
+        tar -xzf gitleaks_8.18.0_linux_x64.tar.gz
+        chmod +x gitleaks
+    
+    - name: Run Gitleaks
+      run: |
+        ./gitleaks detect --source . --report-format sarif --report-path gitleaks-results.sarif || true
+    
+    - name: Upload Gitleaks results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: gitleaks-results.sarif
+        category: 'gitleaks'
+      if: always()
+    
+    - name: Run TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        extra_args: --json --max-depth=50
+      continue-on-error: true
+
+  # ========================================
+  # Security Headers & Configuration
+  # ========================================
+  security-config:
+    name: Security Configuration Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install pyyaml
+    
+    - name: Check for hardcoded credentials
+      run: |
+        echo "Checking for potential hardcoded credentials..."
+        ! grep -rn --include="*.py" --include="*.yaml" --include="*.yml" \
+          -E "(password|secret|api_key|token)\s*[=:]\s*['\"][^'\"]+['\"]" \
+          falconone/ config/ || echo "::warning::Potential hardcoded credentials found"
+    
+    - name: Check for insecure configurations
+      run: |
+        echo "Checking for insecure configurations..."
+        # Check for debug mode in production configs
+        if grep -rn "debug.*true" config/*.yaml; then
+          echo "::warning::Debug mode enabled in configuration"
+        fi
+        # Check for insecure SSL settings
+        if grep -rn "verify_ssl.*false" config/*.yaml falconone/; then
+          echo "::warning::SSL verification disabled"
+        fi
+    
+    - name: Check Dockerfile security
+      run: |
+        echo "Checking Dockerfile security..."
+        # Check for root user
+        if grep -q "USER root" Dockerfile; then
+          echo "::warning::Container runs as root"
+        fi
+        # Check for latest tag
+        if grep -q ":latest" Dockerfile; then
+          echo "::warning::Using :latest tag in Dockerfile"
+        fi
+
+  # ========================================
+  # License Compliance
+  # ========================================
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install pip-licenses
+      run: pip install pip-licenses
+    
+    - name: Install project dependencies
+      run: pip install -r requirements.txt
+      continue-on-error: true
+    
+    - name: Check licenses
+      run: |
+        pip-licenses --format=json --output-file=licenses.json
+        pip-licenses --format=markdown --output-file=licenses.md
+        pip-licenses
+    
+    - name: Check for problematic licenses
+      run: |
+        # Check for GPL licenses which may be problematic for proprietary use
+        if pip-licenses | grep -i "GPL"; then
+          echo "::warning::GPL licensed dependencies found - review for compatibility"
+        fi
+    
+    - name: Upload license report
+      uses: actions/upload-artifact@v4
+      with:
+        name: license-report
+        path: |
+          licenses.json
+          licenses.md
+
+  # ========================================
+  # SBOM Generation
+  # ========================================
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Generate SBOM with Syft
+      uses: anchore/sbom-action@v0
+      with:
+        format: spdx-json
+        output-file: sbom.spdx.json
+    
+    - name: Generate CycloneDX SBOM
+      uses: anchore/sbom-action@v0
+      with:
+        format: cyclonedx-json
+        output-file: sbom.cyclonedx.json
+    
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: |
+          sbom.spdx.json
+          sbom.cyclonedx.json
+
+  # ========================================
+  # Security Summary Report
+  # ========================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [sast-bandit, sca-safety, container-trivy, codeql-analysis, secret-scan, security-config, license-check]
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
+    
+    - name: Generate security summary
+      run: |
+        echo "# Security Scan Summary" > security-summary.md
+        echo "" >> security-summary.md
+        echo "**Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> security-summary.md
+        echo "**Branch:** ${{ github.ref_name }}" >> security-summary.md
+        echo "**Commit:** ${{ github.sha }}" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        echo "## Scan Results" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        echo "| Scanner | Status |" >> security-summary.md
+        echo "|---------|--------|" >> security-summary.md
+        echo "| Bandit (SAST) | ${{ needs.sast-bandit.result }} |" >> security-summary.md
+        echo "| Safety (Dependencies) | ${{ needs.sca-safety.result }} |" >> security-summary.md
+        echo "| Trivy (Container) | ${{ needs.container-trivy.result }} |" >> security-summary.md
+        echo "| CodeQL (Deep Analysis) | ${{ needs.codeql-analysis.result }} |" >> security-summary.md
+        echo "| Secret Detection | ${{ needs.secret-scan.result }} |" >> security-summary.md
+        echo "| Config Check | ${{ needs.security-config.result }} |" >> security-summary.md
+        echo "| License Check | ${{ needs.license-check.result }} |" >> security-summary.md
+        
+        cat security-summary.md
+    
+    - name: Upload security summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-summary
+        path: security-summary.md
+    
+    - name: Fail if critical issues found
+      if: needs.sast-bandit.result == 'failure' || needs.container-trivy.result == 'failure'
+      run: |
+        echo "::error::Critical security issues found. Please review the scan results."
+        exit 1

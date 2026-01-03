@@ -5,6 +5,178 @@ All notable changes to the FalconOne Intelligence Platform will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.4] - 2026-01-04
+
+### Added - Gap Analysis Remediation & Production Hardening
+
+#### SDR Device Failover ([sdr_failover.py](falconone/sdr/sdr_failover.py))
+- **SDRDeviceProbe Class** (~200 lines)
+  - Hardware-specific probing: uhd_usrp_probe, hackrf_info, bladeRF-cli, rtl_test, LimeUtil
+  - Health scoring (0.0-1.0) based on probe results and timing
+  - Temperature monitoring where supported
+  - Async probe execution with configurable timeouts
+  - Error count tracking and degradation detection
+
+- **SDRFailoverManager Class** (~350 lines)
+  - `SDRDeviceStatus` enum: ONLINE, DEGRADED, OFFLINE, PROBING, RECOVERING, FAILED
+  - `SDRHealthMetrics` dataclass with timing, errors, temperature
+  - `SDRFailoverEvent` dataclass for failover history
+  - Active/standby device management
+  - Health monitoring background thread
+  - Automatic failover with <10s target (configurable)
+  - Prometheus metrics integration (device_status, health_score, failovers_total)
+  - Graceful degradation before full failover
+  - Recovery monitoring and promotion
+
+- **MultiSDRPool Class** (~150 lines)
+  - ARFCN allocation across multiple SDR devices
+  - Load balancing by device health and load
+  - Frequency range validation per device type
+  - Pool-wide status reporting
+  - Dynamic device addition/removal
+
+#### Voice Codec Support ([codecs.py](falconone/voice/codecs.py))
+- **AudioCodec Enum**
+  - AMR_NB, AMR_WB (3GPP voice)
+  - EVS (Enhanced Voice Services for VoLTE/VoNR)
+  - OPUS (WebRTC standard)
+  - SILK (Skype/WeChat legacy)
+  - G711_ALAW, G711_ULAW (legacy telephony)
+  - UNKNOWN, RAW for passthrough
+
+- **Codec Decoders** (~500 lines)
+  - `AMRDecoder`: Native pyamr with ffmpeg fallback
+  - `EVSDecoder`: 3GPP reference decoder integration
+  - `OpusDecoder`: Native opuslib support
+  - `SILKDecoder`: Python SILK library with ffmpeg fallback
+  - `G711Decoder`: A-law/μ-law lookup table decoding
+
+- **VoiceCodecManager Class** (~200 lines)
+  - Auto codec detection from headers
+  - Unified decode/encode interface
+  - Transcoding between codecs
+  - Batch processing support
+  - Statistics tracking
+
+#### Resource Management ([resource_manager.py](falconone/monitoring/resource_manager.py))
+- **ResourceMonitor Class** (~250 lines)
+  - `ResourceLevel` enum: LOW, NORMAL, HIGH, CRITICAL
+  - `ResourceMetrics` dataclass: CPU, memory, disk, network, GC stats
+  - psutil-based real-time monitoring
+  - Configurable thresholds per resource type
+  - History tracking with sliding window
+  - Prometheus metrics integration
+  - Process-specific and system-wide metrics
+
+- **ResourceThrottler Class** (~150 lines)
+  - `ThrottleAction` enum: NONE, REDUCE_WORKERS, PAUSE_PROCESSING, FORCE_GC, SHED_LOAD
+  - Automatic GC triggering on memory pressure
+  - Load shedding by priority
+  - Worker reduction for CPU pressure
+  - Backpressure signaling
+
+- **ResourceScaler Class** (~150 lines)
+  - Thread pool auto-scaling
+  - Scale-up on sustained high load
+  - Scale-down on idle periods
+  - Configurable min/max bounds
+  - Cooldown between scaling operations
+
+- **ResourceManager Facade** (~50 lines)
+  - Unified interface for monitoring, throttling, scaling
+  - Automatic remediation on threshold breach
+  - Health summary reporting
+
+#### Concept Drift Detection ([drift_detection.py](falconone/ai/drift_detection.py))
+- **Statistical Drift Detectors** (~800 lines)
+  - `ADWINDetector`: Adaptive windowing with bucket compression
+  - `PageHinkleyDetector`: Cumulative sum test for gradual drift
+  - `DDMDetector`: Error-rate based detection for classifiers
+  - `KSWINDetector`: Kolmogorov-Smirnov windowing test
+
+- **EnsembleDriftDetector Class**
+  - Multiple algorithm voting
+  - Configurable voting threshold
+  - Aggregation methods: voting, max, mean
+  - Individual detector statistics
+
+- **AdaptiveDriftManager Class**
+  - Sensitivity presets: low, medium, high
+  - Automatic recommendation generation
+  - Drift event callbacks
+  - Performance window tracking
+  - State machine for drift lifecycle
+
+- **Integration with OnlineAdaptationManager**
+  - Enhanced `_update_drift_detection()` with statistical tests
+  - `use_advanced_drift_detection` config option
+  - Drift algorithm selection
+  - Advanced metrics exposure
+
+#### Security Scanning CI/CD ([security-scan.yml](.github/workflows/security-scan.yml))
+- **SAST - Static Analysis** (~50 lines)
+  - Bandit security linter with SARIF output
+  - Severity filtering (medium+)
+  - Configurable exclusions
+
+- **SCA - Dependency Scanning** (~60 lines)
+  - Safety vulnerability scanner
+  - pip-audit NIST NVD integration
+  - SBOM-aware scanning
+
+- **Container Security** (~50 lines)
+  - Trivy filesystem and image scanning
+  - Secret detection in images
+  - Misconfig detection
+
+- **CodeQL Analysis** (~40 lines)
+  - Deep semantic analysis
+  - Python-specific queries
+  - Custom query support
+
+- **Secret Scanning** (~50 lines)
+  - Gitleaks pattern matching
+  - TruffleHog entropy analysis
+  - Custom regex patterns
+
+- **SBOM Generation** (~40 lines)
+  - SPDX format via syft
+  - CycloneDX via cyclonedx-py
+  - License manifest
+
+- **Security Summary Job** (~80 lines)
+  - Consolidated report generation
+  - Failure aggregation
+  - Artifact collection
+
+#### Integration Tests ([test_integration.py](falconone/tests/test_integration.py))
+- **TestLEModeIntegration Class** (~100 lines)
+  - Warrant workflow validation
+  - Authorization chain testing
+  - Scope enforcement tests
+  - Audit trail verification
+
+- **TestISACIntegration Class** (~100 lines)
+  - Beam management testing
+  - Simultaneous sensing/communication
+  - Beam tracking tests
+  - Sweep pattern validation
+
+- **TestMultiComponentWorkflow Class** (~100 lines)
+  - SDR-to-analysis pipeline tests
+  - Failover during capture scenarios
+  - High volume processing tests
+
+### Changed
+- Enhanced `online_adaptation.py` with advanced drift detection integration
+- Version bump to 1.9.4
+
+### Fixed
+- Resource exhaustion handling with automatic throttling
+- SDR device failure recovery timing
+
+---
+
 ## [1.9.3] - 2026-01-04
 
 ### Added - Resilience, Accessibility & Testing Enhancements
