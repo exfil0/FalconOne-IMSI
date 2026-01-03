@@ -1,16 +1,20 @@
 """
-FalconOne 3D Geolocation Engine (v1.9.1)
+FalconOne 3D Geolocation Engine (v1.9.2)
 Full 3D positioning with altitude support and enhanced MUSIC algorithm
+NTN (Non-Terrestrial Network) altitude modeling for LEO/MEO/GEO satellites
 
 Features:
 - Full 3D TDOA/AoA with altitude estimation
 - MUSIC algorithm with configurable num_sources
 - Enhanced WGS-84 coordinate transformations
 - Real dataset integration support
+- NTN altitude modeling for satellite scenarios
+- Doppler compensation for moving satellites
 - Target accuracy: <10m horizontal, <15m vertical
 
 References:
 - 3GPP TS 38.305 (NR Positioning)
+- 3GPP TR 38.821 (NTN Study)
 - IEEE 802.11az (Wi-Fi RTT)
 - MUSIC algorithm: Schmidt, R.O. (1986)
 """
@@ -628,3 +632,534 @@ class Geolocation3D:
         except Exception as e:
             self.logger.error(f"Failed to load dataset: {e}")
             return False
+
+
+# =============================================================================
+# NTN (Non-Terrestrial Network) Altitude Modeling (v1.9.2)
+# =============================================================================
+
+@dataclass
+class SatelliteOrbit:
+    """Satellite orbital parameters"""
+    name: str
+    orbit_type: str  # 'LEO', 'MEO', 'GEO', 'HEO'
+    altitude_km: float
+    inclination_deg: float
+    eccentricity: float = 0.0
+    raan_deg: float = 0.0  # Right Ascension of Ascending Node
+    argument_perigee_deg: float = 0.0
+    mean_anomaly_deg: float = 0.0
+    epoch: Optional[datetime] = None
+    
+    # Computed properties
+    period_minutes: float = field(init=False)
+    velocity_km_s: float = field(init=False)
+    
+    def __post_init__(self):
+        # Earth parameters
+        MU_EARTH = 398600.4418  # km^3/s^2
+        R_EARTH = 6371.0  # km
+        
+        # Semi-major axis
+        a = R_EARTH + self.altitude_km
+        
+        # Orbital period (Kepler's 3rd law)
+        self.period_minutes = 2 * np.pi * np.sqrt(a**3 / MU_EARTH) / 60
+        
+        # Orbital velocity (vis-viva equation for circular orbit)
+        self.velocity_km_s = np.sqrt(MU_EARTH / a)
+
+
+@dataclass
+class NTNMeasurement:
+    """NTN-specific positioning measurement"""
+    satellite_id: str
+    timestamp: datetime
+    elevation_deg: float
+    azimuth_deg: float
+    range_m: Optional[float] = None
+    doppler_hz: Optional[float] = None
+    snr_db: float = 20.0
+    propagation_delay_ns: Optional[float] = None
+
+
+class NTNAltitudeModeler:
+    """
+    NTN (Non-Terrestrial Network) Altitude Modeling for 6G
+    
+    Supports positioning with:
+    - LEO constellations (400-2000 km): Starlink, OneWeb, Kuiper
+    - MEO constellations (8000-20000 km): O3b
+    - GEO satellites (35786 km): Traditional satcom
+    - HEO satellites: Molniya, Tundra orbits
+    
+    Features:
+    - Satellite position prediction from orbital elements
+    - Doppler shift compensation for velocity
+    - Ionospheric delay correction
+    - Multi-satellite positioning with altitude constraint
+    """
+    
+    # Physical constants
+    C = 299792458.0  # Speed of light (m/s)
+    MU_EARTH = 3.986004418e14  # Gravitational parameter (m^3/s^2)
+    R_EARTH = 6371000.0  # Earth radius (m)
+    OMEGA_EARTH = 7.2921159e-5  # Earth rotation rate (rad/s)
+    
+    # Typical satellite orbit altitudes
+    ORBIT_ALTITUDES = {
+        'LEO_LOW': 400e3,     # 400 km (ISS-like)
+        'LEO_MID': 550e3,     # 550 km (Starlink)
+        'LEO_HIGH': 1200e3,   # 1200 km (OneWeb)
+        'MEO': 8000e3,        # 8000 km (O3b)
+        'GEO': 35786e3,       # 35786 km (Geostationary)
+    }
+    
+    def __init__(self, config: Dict = None, logger: logging.Logger = None):
+        """
+        Initialize NTN altitude modeler
+        
+        Args:
+            config: Configuration dictionary
+            logger: Logger instance
+        """
+        self.config = config or {}
+        self.logger = ModuleLogger('NTNAltitudeModeler', logger)
+        
+        # Registered satellites
+        self.satellites: Dict[str, SatelliteOrbit] = {}
+        
+        # Constellation configurations
+        self.constellations: Dict[str, List[str]] = {}
+        
+        # Ionospheric model parameters
+        self.ionospheric_model = self.config.get('ntn.ionospheric_model', 'klobuchar')
+        
+        # Tropospheric model
+        self.tropospheric_model = self.config.get('ntn.tropospheric_model', 'saastamoinen')
+        
+        self.logger.info("NTN Altitude Modeler initialized",
+                        ionospheric_model=self.ionospheric_model,
+                        tropospheric_model=self.tropospheric_model)
+    
+    def register_satellite(self, sat_id: str, orbit: SatelliteOrbit):
+        """Register a satellite with its orbital parameters"""
+        self.satellites[sat_id] = orbit
+        self.logger.info(f"Satellite registered: {sat_id} ({orbit.orbit_type}, {orbit.altitude_km} km)")
+    
+    def register_constellation(self, name: str, satellites: List[Tuple[str, SatelliteOrbit]]):
+        """Register a satellite constellation"""
+        sat_ids = []
+        for sat_id, orbit in satellites:
+            self.register_satellite(sat_id, orbit)
+            sat_ids.append(sat_id)
+        self.constellations[name] = sat_ids
+        self.logger.info(f"Constellation registered: {name} ({len(sat_ids)} satellites)")
+    
+    def predict_satellite_position(self, sat_id: str, 
+                                   time_utc: datetime) -> Optional[Tuple[float, float, float]]:
+        """
+        Predict satellite position at given time
+        
+        Uses simplified SGP4-like propagation for LEO/MEO
+        Uses fixed position for GEO
+        
+        Args:
+            sat_id: Satellite identifier
+            time_utc: UTC timestamp
+            
+        Returns:
+            (latitude, longitude, altitude_m) or None
+        """
+        if sat_id not in self.satellites:
+            return None
+        
+        orbit = self.satellites[sat_id]
+        
+        if orbit.orbit_type == 'GEO':
+            # GEO satellites are (approximately) fixed above equator
+            # Longitude determined by epoch position + small drift
+            return (0.0, orbit.raan_deg, orbit.altitude_km * 1000)
+        
+        # Simplified Keplerian propagation
+        a = (self.R_EARTH + orbit.altitude_km * 1000)  # Semi-major axis (m)
+        
+        # Mean motion (rad/s)
+        n = np.sqrt(self.MU_EARTH / a**3)
+        
+        # Time since epoch
+        if orbit.epoch:
+            dt = (time_utc - orbit.epoch).total_seconds()
+        else:
+            dt = 0
+        
+        # Mean anomaly at time
+        M = np.radians(orbit.mean_anomaly_deg) + n * dt
+        M = M % (2 * np.pi)
+        
+        # Eccentric anomaly (Newton-Raphson for e > 0)
+        E = M
+        for _ in range(10):
+            E_new = M + orbit.eccentricity * np.sin(E)
+            if abs(E_new - E) < 1e-10:
+                break
+            E = E_new
+        
+        # True anomaly
+        nu = 2 * np.arctan2(
+            np.sqrt(1 + orbit.eccentricity) * np.sin(E/2),
+            np.sqrt(1 - orbit.eccentricity) * np.cos(E/2)
+        )
+        
+        # Radius at current position
+        r = a * (1 - orbit.eccentricity * np.cos(E))
+        
+        # Position in orbital plane
+        x_orbital = r * np.cos(nu)
+        y_orbital = r * np.sin(nu)
+        
+        # Transform to ECI (simplified, ignoring precession/nutation)
+        i = np.radians(orbit.inclination_deg)
+        omega = np.radians(orbit.argument_perigee_deg)
+        Omega = np.radians(orbit.raan_deg)
+        
+        # Rotation matrices
+        x_eci = (
+            x_orbital * (np.cos(Omega) * np.cos(omega) - np.sin(Omega) * np.sin(omega) * np.cos(i)) -
+            y_orbital * (np.cos(Omega) * np.sin(omega) + np.sin(Omega) * np.cos(omega) * np.cos(i))
+        )
+        y_eci = (
+            x_orbital * (np.sin(Omega) * np.cos(omega) + np.cos(Omega) * np.sin(omega) * np.cos(i)) -
+            y_orbital * (np.sin(Omega) * np.sin(omega) - np.cos(Omega) * np.cos(omega) * np.cos(i))
+        )
+        z_eci = (
+            x_orbital * np.sin(omega) * np.sin(i) +
+            y_orbital * np.cos(omega) * np.sin(i)
+        )
+        
+        # ECI to ECEF (simplified rotation by Earth rotation)
+        theta = self.OMEGA_EARTH * dt
+        x_ecef = x_eci * np.cos(theta) + y_eci * np.sin(theta)
+        y_ecef = -x_eci * np.sin(theta) + y_eci * np.cos(theta)
+        z_ecef = z_eci
+        
+        # ECEF to LLA
+        lon = np.degrees(np.arctan2(y_ecef, x_ecef))
+        lat = np.degrees(np.arctan2(z_ecef, np.sqrt(x_ecef**2 + y_ecef**2)))
+        alt = r - self.R_EARTH
+        
+        return (lat, lon, alt)
+    
+    def compute_doppler_shift(self, sat_id: str, 
+                             observer_lat: float, observer_lon: float, observer_alt: float,
+                             carrier_freq_hz: float,
+                             time_utc: datetime) -> Optional[float]:
+        """
+        Compute Doppler shift for satellite signal
+        
+        Args:
+            sat_id: Satellite identifier
+            observer_lat/lon/alt: Observer position (degrees, meters)
+            carrier_freq_hz: Carrier frequency
+            time_utc: Current time
+            
+        Returns:
+            Doppler shift in Hz (positive = approaching)
+        """
+        # Get satellite position at t and t+dt
+        dt = 1.0  # 1 second interval
+        
+        pos_t0 = self.predict_satellite_position(sat_id, time_utc)
+        pos_t1 = self.predict_satellite_position(
+            sat_id, 
+            time_utc + timedelta(seconds=dt)
+        )
+        
+        if pos_t0 is None or pos_t1 is None:
+            return None
+        
+        # Convert to ECEF
+        geo3d = Geolocation3D({})
+        
+        obs_x, obs_y, obs_z = geo3d.lla_to_ecef(observer_lat, observer_lon, observer_alt)
+        
+        sat_x0, sat_y0, sat_z0 = geo3d.lla_to_ecef(*pos_t0)
+        sat_x1, sat_y1, sat_z1 = geo3d.lla_to_ecef(*pos_t1)
+        
+        # Range at t0 and t1
+        range_t0 = np.sqrt((sat_x0 - obs_x)**2 + (sat_y0 - obs_y)**2 + (sat_z0 - obs_z)**2)
+        range_t1 = np.sqrt((sat_x1 - obs_x)**2 + (sat_y1 - obs_y)**2 + (sat_z1 - obs_z)**2)
+        
+        # Range rate
+        range_rate = (range_t1 - range_t0) / dt  # m/s
+        
+        # Doppler shift
+        doppler_hz = -carrier_freq_hz * range_rate / self.C
+        
+        return doppler_hz
+    
+    def compute_ionospheric_delay(self, elevation_deg: float, 
+                                  frequency_hz: float,
+                                  tec: float = 10e16) -> float:
+        """
+        Compute ionospheric delay using thin-shell model
+        
+        Args:
+            elevation_deg: Satellite elevation angle
+            frequency_hz: Carrier frequency
+            tec: Total Electron Content (electrons/m^2)
+            
+        Returns:
+            Delay in meters
+        """
+        # Ionospheric delay constant
+        K = 40.3  # m^3/s^2
+        
+        # Obliquity factor (mapping function)
+        RE = 6371e3
+        h_iono = 350e3  # Ionospheric shell height
+        
+        sin_el = np.sin(np.radians(elevation_deg))
+        obliquity = 1.0 / np.sqrt(1 - (RE * np.cos(np.radians(elevation_deg)) / (RE + h_iono))**2)
+        
+        # Delay (first-order approximation)
+        delay_m = K * tec * obliquity / frequency_hz**2
+        
+        return delay_m
+    
+    def compute_tropospheric_delay(self, elevation_deg: float,
+                                   height_m: float = 0,
+                                   pressure_hpa: float = 1013.25,
+                                   temperature_k: float = 288.15,
+                                   humidity_percent: float = 50) -> float:
+        """
+        Compute tropospheric delay using Saastamoinen model
+        
+        Args:
+            elevation_deg: Satellite elevation angle
+            height_m: Observer height above sea level
+            pressure_hpa: Surface pressure
+            temperature_k: Surface temperature
+            humidity_percent: Relative humidity
+            
+        Returns:
+            Delay in meters
+        """
+        if elevation_deg < 5:
+            elevation_deg = 5  # Avoid singularity
+        
+        # Zenith delays
+        # Hydrostatic (dry) component
+        z_hd = 0.0022768 * pressure_hpa / (1 - 0.00266 * np.cos(2 * np.radians(45)) - 0.28e-6 * height_m)
+        
+        # Wet component
+        e_s = 6.11 * 10**(7.5 * (temperature_k - 273.15) / (temperature_k - 35.85))  # Saturation vapor pressure
+        e = humidity_percent / 100 * e_s
+        z_wd = 0.0022768 * (1255 / temperature_k + 0.05) * e
+        
+        # Mapping function (Niell simplified)
+        el_rad = np.radians(elevation_deg)
+        mf_h = 1 / (np.sin(el_rad) + 0.00143 / (np.tan(el_rad) + 0.0445))
+        mf_w = 1 / (np.sin(el_rad) + 0.00035 / (np.tan(el_rad) + 0.017))
+        
+        # Total delay
+        delay_m = z_hd * mf_h + z_wd * mf_w
+        
+        return delay_m
+    
+    def position_from_ntn_measurements(self, 
+                                       measurements: List[NTNMeasurement],
+                                       initial_guess: Optional[Tuple[float, float, float]] = None
+                                       ) -> Optional[Location3D]:
+        """
+        Compute 3D position from NTN satellite measurements
+        
+        Uses weighted least squares with:
+        - Doppler for velocity estimation
+        - Multi-satellite geometry (GDOP)
+        - Atmospheric corrections
+        
+        Args:
+            measurements: List of NTN measurements from visible satellites
+            initial_guess: Optional (lat, lon, alt) initial position
+            
+        Returns:
+            3D location estimate with accuracy metrics
+        """
+        if len(measurements) < 4:
+            self.logger.warning("NTN positioning requires at least 4 satellites")
+            return None
+        
+        geo3d = Geolocation3D({})
+        
+        # Collect satellite positions and measurements
+        sat_positions = []
+        observed_ranges = []
+        weights = []
+        
+        for meas in measurements:
+            if meas.satellite_id not in self.satellites:
+                continue
+            
+            # Get satellite position at measurement time
+            sat_pos = self.predict_satellite_position(meas.satellite_id, meas.timestamp)
+            if sat_pos is None:
+                continue
+            
+            sat_x, sat_y, sat_z = geo3d.lla_to_ecef(*sat_pos)
+            sat_positions.append([sat_x, sat_y, sat_z])
+            
+            # Use range if available, otherwise compute from propagation delay
+            if meas.range_m:
+                observed_ranges.append(meas.range_m)
+            elif meas.propagation_delay_ns:
+                observed_ranges.append(meas.propagation_delay_ns * 1e-9 * self.C)
+            else:
+                continue
+            
+            # Weight by SNR and elevation
+            elevation_weight = np.sin(np.radians(max(meas.elevation_deg, 5)))
+            snr_weight = 1.0 / (1.0 + np.exp(-(meas.snr_db - 15) / 5))
+            weights.append(elevation_weight * snr_weight)
+        
+        if len(sat_positions) < 4:
+            return None
+        
+        sat_positions = np.array(sat_positions)
+        observed_ranges = np.array(observed_ranges)
+        weights = np.array(weights)
+        
+        # Initial position guess
+        if initial_guess:
+            x0 = np.array(geo3d.lla_to_ecef(*initial_guess))
+        else:
+            # Use Earth center as initial guess
+            x0 = np.array([geo3d.R_EARTH, 0, 0])
+        
+        # Add clock bias as 4th unknown
+        x0 = np.append(x0, [0])  # [x, y, z, clock_bias]
+        
+        def residuals(state):
+            pos = state[:3]
+            clock_bias = state[3]
+            
+            resid = []
+            for i in range(len(sat_positions)):
+                geometric_range = np.linalg.norm(pos - sat_positions[i])
+                computed_range = geometric_range + clock_bias
+                resid.append((computed_range - observed_ranges[i]) * weights[i])
+            return resid
+        
+        # Solve
+        result = least_squares(residuals, x0, method='lm', max_nfev=100)
+        
+        if result.success:
+            est_x, est_y, est_z = result.x[:3]
+            est_lat, est_lon, est_alt = geo3d.ecef_to_lla(est_x, est_y, est_z)
+            
+            # Compute GDOP for accuracy estimate
+            gdop = self._compute_gdop(sat_positions, result.x[:3])
+            
+            # Pseudorange residual RMS
+            rms_residual = np.sqrt(np.mean(np.array(result.fun)**2))
+            
+            horiz_accuracy = gdop * rms_residual * 1.5
+            vert_accuracy = gdop * rms_residual * 2.5
+            
+            self.logger.info(f"NTN position: ({est_lat:.6f}, {est_lon:.6f}, {est_alt:.1f}m), "
+                           f"GDOP={gdop:.2f}")
+            
+            return Location3D(
+                latitude=est_lat,
+                longitude=est_lon,
+                altitude=est_alt,
+                horizontal_accuracy=horiz_accuracy,
+                vertical_accuracy=vert_accuracy,
+                timestamp=measurements[0].timestamp,
+                method='NTN_MULTISAT',
+                confidence=min(1.0, 1.0 / gdop)
+            )
+        
+        return None
+    
+    def _compute_gdop(self, sat_positions: np.ndarray, receiver_pos: np.ndarray) -> float:
+        """Compute Geometric Dilution of Precision"""
+        n_sats = len(sat_positions)
+        
+        # Design matrix
+        H = np.zeros((n_sats, 4))
+        
+        for i in range(n_sats):
+            diff = sat_positions[i] - receiver_pos
+            range_val = np.linalg.norm(diff)
+            
+            H[i, 0] = -diff[0] / range_val
+            H[i, 1] = -diff[1] / range_val
+            H[i, 2] = -diff[2] / range_val
+            H[i, 3] = 1.0  # Clock bias
+        
+        try:
+            G = np.linalg.inv(H.T @ H)
+            gdop = np.sqrt(np.trace(G))
+        except np.linalg.LinAlgError:
+            gdop = 99.9
+        
+        return gdop
+    
+    def get_visible_satellites(self, observer_lat: float, observer_lon: float, 
+                               observer_alt: float,
+                               time_utc: datetime,
+                               min_elevation_deg: float = 10.0) -> List[Dict[str, Any]]:
+        """
+        Get list of visible satellites above minimum elevation
+        
+        Args:
+            observer_lat/lon/alt: Observer position
+            time_utc: Current time
+            min_elevation_deg: Minimum elevation angle
+            
+        Returns:
+            List of visible satellite info dicts
+        """
+        visible = []
+        geo3d = Geolocation3D({})
+        
+        obs_x, obs_y, obs_z = geo3d.lla_to_ecef(observer_lat, observer_lon, observer_alt)
+        
+        for sat_id, orbit in self.satellites.items():
+            pos = self.predict_satellite_position(sat_id, time_utc)
+            if pos is None:
+                continue
+            
+            sat_x, sat_y, sat_z = geo3d.lla_to_ecef(*pos)
+            
+            # Vector from observer to satellite
+            dx = sat_x - obs_x
+            dy = sat_y - obs_y
+            dz = sat_z - obs_z
+            
+            range_m = np.sqrt(dx**2 + dy**2 + dz**2)
+            
+            # Local up vector (simplified)
+            up_x, up_y, up_z = obs_x, obs_y, obs_z
+            up_mag = np.sqrt(up_x**2 + up_y**2 + up_z**2)
+            up_x, up_y, up_z = up_x/up_mag, up_y/up_mag, up_z/up_mag
+            
+            # Elevation angle
+            cos_el = (dx*up_x + dy*up_y + dz*up_z) / range_m
+            elevation_deg = np.degrees(np.arcsin(cos_el))
+            
+            if elevation_deg >= min_elevation_deg:
+                visible.append({
+                    'satellite_id': sat_id,
+                    'orbit_type': orbit.orbit_type,
+                    'altitude_km': orbit.altitude_km,
+                    'elevation_deg': elevation_deg,
+                    'range_km': range_m / 1000,
+                    'position': pos
+                })
+        
+        # Sort by elevation (highest first)
+        visible.sort(key=lambda x: x['elevation_deg'], reverse=True)
+        
+        return visible

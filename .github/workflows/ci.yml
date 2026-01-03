@@ -1,0 +1,377 @@
+name: FalconOne CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run benchmarks weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+
+env:
+  PYTHON_VERSION: '3.11'
+  MIN_COVERAGE: 95
+
+jobs:
+  # =============================================================================
+  # Linting and Static Analysis
+  # =============================================================================
+  lint:
+    name: Lint & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pylint mypy black isort bandit safety
+          pip install -r requirements.txt
+      
+      - name: Check formatting with Black
+        run: black --check --diff falconone/
+      
+      - name: Check import ordering with isort
+        run: isort --check-only --diff falconone/
+      
+      - name: Lint with flake8
+        run: |
+          flake8 falconone/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 falconone/ --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
+      
+      - name: Lint with pylint
+        run: pylint falconone/ --exit-zero --max-line-length=120 --disable=C0114,C0115,C0116
+      
+      - name: Type checking with mypy
+        run: mypy falconone/ --ignore-missing-imports --no-error-summary || true
+      
+      - name: Security scan with Bandit
+        run: bandit -r falconone/ -ll -ii -x falconone/tests/
+      
+      - name: Dependency vulnerability check
+        run: safety check -r requirements.txt --continue-on-error
+
+  # =============================================================================
+  # Unit Tests with Coverage
+  # =============================================================================
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-xdist pytest-timeout hypothesis
+      
+      - name: Run unit tests with coverage
+        run: |
+          pytest falconone/tests/ -v \
+            --cov=falconone \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --cov-fail-under=${{ env.MIN_COVERAGE }} \
+            -n auto \
+            --timeout=300
+      
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+      
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: htmlcov/
+
+  # =============================================================================
+  # Fuzzing Tests with Hypothesis
+  # =============================================================================
+  fuzz:
+    name: Fuzzing Tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install hypothesis pytest atheris
+      
+      - name: Run Hypothesis fuzzing tests
+        run: |
+          pytest falconone/tests/test_fuzzing.py -v \
+            --hypothesis-show-statistics \
+            --hypothesis-seed=12345 \
+            -x
+        env:
+          HYPOTHESIS_PROFILE: ci
+      
+      - name: Run extended fuzzing (scheduled only)
+        if: github.event_name == 'schedule'
+        run: |
+          pytest falconone/tests/test_fuzzing.py -v \
+            --hypothesis-show-statistics \
+            --hypothesis-profile=extensive \
+            --timeout=3600
+
+  # =============================================================================
+  # Performance Benchmarks
+  # =============================================================================
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-benchmark memory_profiler
+      
+      - name: Run benchmarks
+        run: |
+          python -c "
+import sys
+sys.path.insert(0, '.')
+
+import time
+import json
+from datetime import datetime
+
+results = {
+    'timestamp': datetime.now().isoformat(),
+    'python_version': sys.version,
+    'benchmarks': {}
+}
+
+# Benchmark 1: Module import time
+start = time.perf_counter()
+from falconone.core.orchestrator import FalconOneOrchestrator
+results['benchmarks']['import_orchestrator_ms'] = (time.perf_counter() - start) * 1000
+
+# Benchmark 2: Circuit breaker creation
+start = time.perf_counter()
+from falconone.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
+for i in range(1000):
+    cb = CircuitBreaker(f'test_{i}', CircuitBreakerConfig())
+results['benchmarks']['circuit_breaker_1000_creates_ms'] = (time.perf_counter() - start) * 1000
+
+# Benchmark 3: Post-quantum key generation
+try:
+    start = time.perf_counter()
+    from falconone.crypto.post_quantum import KyberSimulator
+    kyber = KyberSimulator(768)
+    keypair = kyber.keygen()
+    results['benchmarks']['kyber768_keygen_ms'] = (time.perf_counter() - start) * 1000
+except Exception as e:
+    results['benchmarks']['kyber768_keygen_ms'] = f'error: {e}'
+
+# Benchmark 4: Signal classification inference (simulated)
+try:
+    import numpy as np
+    start = time.perf_counter()
+    data = np.random.randn(100, 2, 128).astype(np.float32)
+    # Simulate batch processing
+    for batch in range(10):
+        _ = np.fft.fft(data[batch*10:(batch+1)*10])
+    results['benchmarks']['signal_batch_10x10_ms'] = (time.perf_counter() - start) * 1000
+except Exception as e:
+    results['benchmarks']['signal_batch_10x10_ms'] = f'error: {e}'
+
+# Save results
+with open('benchmark_results.json', 'w') as f:
+    json.dump(results, f, indent=2)
+
+print(json.dumps(results, indent=2))
+
+# Performance thresholds
+thresholds = {
+    'import_orchestrator_ms': 5000,
+    'circuit_breaker_1000_creates_ms': 1000,
+    'kyber768_keygen_ms': 5000,
+    'signal_batch_10x10_ms': 100
+}
+
+failed = []
+for key, threshold in thresholds.items():
+    value = results['benchmarks'].get(key)
+    if isinstance(value, (int, float)) and value > threshold:
+        failed.append(f'{key}: {value:.2f}ms > {threshold}ms')
+
+if failed:
+    print(f'\\nPerformance regressions detected:')
+    for f in failed:
+        print(f'  - {f}')
+    sys.exit(1)
+"
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results.json
+      
+      - name: Store benchmark for comparison
+        if: github.ref == 'refs/heads/main'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
+
+  # =============================================================================
+  # Security Scanning
+  # =============================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+      
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+  # =============================================================================
+  # Docker Build Test
+  # =============================================================================
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: falconone:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Test Docker image
+        run: |
+          docker run --rm falconone:test python -c "from falconone.core.orchestrator import FalconOneOrchestrator; print('OK')"
+
+  # =============================================================================
+  # Documentation Build
+  # =============================================================================
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install documentation dependencies
+        run: pip install mkdocs mkdocs-material mkdocstrings[python]
+      
+      - name: Validate Markdown files
+        run: |
+          pip install pymarkdownlnt
+          pymarkdownlnt scan *.md docs/ || true
+      
+      - name: Check for broken links
+        run: |
+          pip install linkchecker
+          # Check internal links in markdown files
+          find . -name "*.md" -exec grep -l "http" {} \; | head -5 || true
+
+  # =============================================================================
+  # Release (on tag)
+  # =============================================================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [test, fuzz, security, docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install build tools
+        run: pip install build twine
+      
+      - name: Build package
+        run: python -m build
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

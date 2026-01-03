@@ -1,7 +1,7 @@
 # FalconOne SIGINT Platform - Complete System Documentation
 
-**Version:** 1.9.1 with Enhanced Reliability & 3D Geolocation  
-**Last Updated:** January 4, 2026  
+**Version:** 1.9.2 with Post-Quantum Crypto & NTN Satellite Positioning  
+**Last Updated:** January 5, 2026  
 **Status:** Production Ready  
 **License:** Research & Authorized Testing Only
 
@@ -19,6 +19,7 @@
    - 2.1 [Core Technologies](#21-core-technologies)
    - 2.2 [Dependencies](#22-dependencies)
    - 2.3 [Optional Enhancements](#23-optional-enhancements)
+   - 2.4 [Post-Quantum Cryptography (v1.9.2)](#24-post-quantum-cryptography-v192)
 
 ### 3. [Supported Hardware & Devices](#3-supported-hardware--devices)
    - 3.1 [SDR Devices](#31-sdr-devices)
@@ -30,6 +31,7 @@
    - 4.2 [Component Diagram](#42-component-diagram)
    - 4.3 [Data Flow](#43-data-flow)
    - 4.4 [Module Interactions](#44-module-interactions)
+   - 4.5 [Architecture Diagrams (v1.9.2)](#45-architecture-diagrams-v192)
 
 ### 5. [Core Features & Capabilities](#5-core-features--capabilities)
    - 5.1 [Cellular Protocol Monitoring](#51-cellular-protocol-monitoring)
@@ -37,6 +39,8 @@
    - 5.3 [RANSacked Integration](#53-ransacked-integration)
    - 5.4 [Advanced Attack Modules](#54-advanced-attack-modules)
    - 5.5 [AI/ML Analytics](#55-aiml-analytics)
+   - 5.6 [NTN Satellite Positioning (v1.9.2)](#56-ntn-satellite-positioning-v192)
+   - 5.7 [Post-Quantum Defense (v1.9.2)](#57-post-quantum-defense-v192)
 
 ### 6. [Module Structure & Organization](#6-module-structure--organization)
    - 6.1 [Directory Layout](#61-directory-layout)
@@ -60,6 +64,7 @@
    - 7.13 [API Best Practices](#713-api-best-practices)
    - 7.14 [LE Mode API](#714-le-mode-api-v181)
    - 7.15 [6G NTN & ISAC API](#715-6g-ntn--isac-api-v190)
+   - 7.16 [Post-Quantum Crypto API (v1.9.2)](#716-post-quantum-crypto-api-v192)
 
 ### 8. [Exploit Database](#8-exploit-database)
    - 8.1 [RANSacked CVEs Overview](#81-ransacked-cves-overview)
@@ -88,12 +93,14 @@
    - 11.2 [Legal Warnings](#112-legal-warnings)
    - 11.3 [Authorized Use Policy](#113-authorized-use-policy)
    - 11.4 [Compliance Requirements](#114-compliance-requirements)
+   - 11.5 [Post-Quantum Security (v1.9.2)](#115-post-quantum-security-v192)
 
 ### 12. [Testing & Validation](#12-testing--validation)
    - 12.1 [Test Suite Overview](#121-test-suite-overview)
    - 12.2 [Integration Tests](#122-integration-tests)
    - 12.3 [System Audit](#123-system-audit)
    - 12.4 [Performance Benchmarks](#124-performance-benchmarks)
+   - 12.5 [CI/CD Pipeline (v1.9.2)](#125-cicd-pipeline-v192)
 
 ### 13. [Troubleshooting](#13-troubleshooting)
    - 13.1 [Common Issues](#131-common-issues)
@@ -166,6 +173,56 @@ The platform follows these core principles:
 ---
 
 ### 1.3 Version History
+
+#### v1.9.2 (January 2026) - Post-Quantum & NTN Enhancements
+- ✅ **Post-Quantum Cryptography** (`crypto/post_quantum.py`):
+  - NIST FIPS 203 compliant Kyber-512/768/1024 KEM simulation
+  - NIST FIPS 204 compliant Dilithium-2/3/5 digital signatures
+  - NIST FIPS 205 compliant SPHINCS+-128s/192s/256s hash-based signatures
+  - QuantumThreatAnalyzer for Shor/Grover vulnerability assessment
+  - PostQuantumCryptoManager unified interface
+  - Security levels: 128/192/256-bit post-quantum security
+- ✅ **NTN Satellite Altitude Modeling** (`geolocation/geolocation_3d.py`):
+  - NTNAltitudeModeler for LEO/MEO/GEO positioning
+  - SatelliteOrbit dataclass with Keplerian orbital parameters
+  - NTNMeasurement dataclass for satellite range observations
+  - Doppler shift compensation (up to 40 kHz for LEO)
+  - Ionospheric delay modeling (40m for sub-6 GHz)
+  - Tropospheric delay modeling (2.3m zenith)
+  - Multi-constellation support (Starlink, OneWeb, Iridium)
+- ✅ **Protected Subprocess Framework** (`utils/circuit_breaker.py`):
+  - LongRunningTaskMonitor singleton with timeout escalation
+  - ProtectedSubprocess with circuit breaker integration
+  - TaskMetrics dataclass for runtime tracking
+  - Warning/critical/timeout thresholds with auto-termination
+  - `run_protected()` convenience function
+- ✅ **Real AI Dataset Loader** (`ai/dataset_loader.py`):
+  - RealDatasetLoader for RadioML 2016.10a/2018.01a
+  - GSM/LTE capture dataset support
+  - Data augmentation: AWGN, frequency offset, Rayleigh fading
+  - Memory-efficient streaming with `stream_dataset()`
+  - Cross-dataset training for >95% accuracy
+- ✅ **CI/CD Pipeline** (`.github/workflows/ci.yml`):
+  - Multi-platform testing (Ubuntu, macOS, Windows)
+  - 95% code coverage target with pytest
+  - Hypothesis fuzzing integration
+  - Security scanning (Bandit, Safety, Trivy, Snyk)
+  - Docker build with layer caching
+  - Automated release on tags
+- ✅ **Architecture Documentation** (`docs/ARCHITECTURE.md`):
+  - ASCII module dependency graph
+  - IMSI capture data flow diagram
+  - Geolocation processing flow diagram
+  - AI/ML pipeline visualization
+  - Post-quantum crypto data flow
+  - Security boundaries mapping
+- ✅ **NTN Energy Estimation** (`monitoring/async_monitor.py`):
+  - NTNEnergyEstimator for simulation power profiling
+  - Hardware-aware power consumption models
+  - Regional carbon intensity (15+ countries)
+  - Sustainability metrics (EV km, smartphone charges, tree offsets)
+  - `track_ntn_simulation()` async context manager
+  - Comprehensive sustainability reporting
 
 #### v1.9.1 (January 2026) - Reliability & Security Hardening
 - ✅ **Circuit Breaker Framework** (`utils/circuit_breaker.py`):
