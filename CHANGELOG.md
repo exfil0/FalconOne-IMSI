@@ -5,6 +5,54 @@ All notable changes to the FalconOne Intelligence Platform will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.7] - 2026-01-05
+
+### Added - Comprehensive Test Suites & Documentation Reorganization
+
+#### Test Coverage Expansion
+
+**Post-Quantum Crypto Tests** ([test_post_quantum.py](falconone/tests/test_post_quantum.py)) ~450 lines
+- `TestOQSWrapper`: OQS library wrapper tests (8 tests)
+- `TestHybridKEMScheme`: Hybrid KEM roundtrip tests (10 tests)
+- `TestHybridSignatureScheme`: Hybrid signature tests (9 tests)
+- `TestQuantumAttackSimulator`: Grover/Shor simulation tests (7 tests)
+- `TestPQCDataclasses`: Dataclass validation (3 tests)
+- `TestPQCIntegration`: End-to-end integration (3 tests)
+
+**Voice Processing Tests** ([test_voice_interceptor.py](falconone/tests/test_voice_interceptor.py)) ~450 lines
+- `TestVoiceInterceptorInit`: Initialization tests (3 tests)
+- `TestOpusDecoding`: Opus codec tests (7 tests)
+- `TestSpeakerDiarization`: Diarization tests (5 tests)
+- `TestVoiceActivityDetection`: VAD tests (4 tests)
+- `TestCallAnalysis`: Call pipeline tests (5 tests)
+- `TestVoiceErrorHandling`: Error handling (4 tests)
+- `TestVoiceIntegration`: End-to-end integration (2 tests)
+
+**Multi-Agent RL Tests** ([test_marl.py](falconone/tests/test_marl.py)) ~450 lines
+- `TestGymAvailability`: gym import handling (3 tests)
+- `TestSIGINTMultiAgentEnvInit`: Environment init (7 tests)
+- `TestSIGINTMultiAgentEnvReset`: Reset behavior (5 tests)
+- `TestSIGINTMultiAgentEnvStep`: Step dynamics (7 tests)
+- `TestEpisodeTermination`: Termination logic (3 tests)
+- `TestActionEffects`: Action reward effects (3 tests)
+- `TestMultiAgentCoordination`: Multi-agent tests (3 tests)
+- `TestMARLIntegration`: Integration tests (2 tests)
+
+#### Documentation Reorganization
+
+**New Documentation Guides**
+- [INSTALL.md](INSTALL.md) - Quick installation guide with platform-specific notes (~100 lines)
+- [USAGE.md](USAGE.md) - Common workflows and Python API examples (~200 lines)
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development setup and contribution guidelines (~250 lines)
+
+**README Streamlining**
+- Condensed README.md from 2226 lines to ~150 lines
+- Added documentation index with links to specialized guides
+- Preserved full README as README_FULL.md for reference
+- Clear project structure and quick start sections
+
+---
+
 ## [1.9.6] - 2026-01-04
 
 ### Fixed - Code Quality & Bug Fixes
