@@ -76,10 +76,18 @@ pandas>=2.0.0
 matplotlib>=3.7.0
 networkx>=3.1
 
-# Audio Processing (for VoLTE/VoNR)
+# Audio Processing (for VoLTE/VoNR/VoWiFi)
 pydub>=0.25.0
 pesq>=0.0.4
 wave>=0.0.2
+opuslib>=3.0.1  # v1.9.4: Opus codec for VoWiFi (WebRTC standard)
+pyogg>=0.7.0  # v1.9.4: Ogg/Opus container support
+
+# Speaker Diarization & Voice Analysis (v1.9.4)
+pyannote.audio>=3.1.0  # Speaker diarization and voice activity detection
+speechbrain>=1.0.0  # Alternative speaker embedding and diarization
+resemblyzer>=0.1.3  # Speaker embedding for voice fingerprinting
+webrtcvad>=2.0.10  # Voice activity detection for segmentation
 
 # Optimization & Quantization
 onnxruntime>=1.15.0
@@ -106,6 +114,12 @@ web3>=7.6.0  # Blockchain evidence chain (CVE-2024-xxxxx patched)
 astropy>=5.3.0  # Orbital mechanics and ephemeris calculations
 qutip>=4.7.0  # Quantum simulation for QKD attacks
 web3>=6.11.0  # Optional blockchain evidence chain integration
+
+# Post-Quantum Cryptography Interoperability (v1.9.4)
+liboqs-python>=0.9.0  # OQS (Open Quantum Safe) library bindings
+pqcrypto>=0.1.3  # Post-quantum cryptographic primitives
+dilithium-py>=0.1.0  # Pure Python Dilithium implementation for testing
+kyber-py>=0.1.0  # Pure Python Kyber implementation for testing
 
 # Sustainability & Monitoring
 codecarbon>=2.2.0

@@ -1,13 +1,19 @@
 """
 FalconOne IMSI/TMSI and SMS Catcher System
-Version 1.9.4 - Multi-Generation Cellular Monitoring Platform
+Version 1.9.5 - Multi-Generation Cellular Monitoring Platform
 Real-World Resilience: Error Recovery, Data Validation, Security Auditing
 LE Mode: Exploit-Enhanced Interception with Warrant Compliance
+
+v1.9.5 Additions:
+- Voice Interceptor Opus Support with Speaker Diarization
+- Post-Quantum Crypto Hybrid Schemes (X25519+Kyber, Ed25519+Dilithium)
+- OQS (Open Quantum Safe) Library Integration
+- Quantum Attack Simulation with Qiskit
 
 TOP CONFIDENTIAL - Research and Development Use Only
 """
 
-__version__ = "1.9.4"
+__version__ = "1.9.5"
 __author__ = "FalconOne Research Team"
 
 # Package-level imports for easy access

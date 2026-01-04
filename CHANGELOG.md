@@ -5,6 +5,86 @@ All notable changes to the FalconOne Intelligence Platform will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.5] - 2026-01-04
+
+### Added - Voice Interceptor Opus & Post-Quantum Crypto Hybrids
+
+#### Voice Interceptor Opus Support ([interceptor.py](falconone/voice/interceptor.py))
+- **Opus Codec Integration** (~200 lines)
+  - Native `opuslib` decoding with per-SSRC decoder state
+  - `_decode_opus()`: Main dispatcher with availability check
+  - `_decode_opus_native()`: Native decoding with 48kHz stereo output
+  - `_decode_opus_ffmpeg()`: ffmpeg fallback for missing native library
+  - `decode_opus_stream()`: Complete RTP stream decoding with PLC (packet loss concealment)
+  - Automatic codec reinit on sample rate changes
+  - VoWiFi call support with Opus transparency
+
+- **Speaker Diarization** (~300 lines)
+  - `_init_diarization()`: Initialize pyannote.audio pipeline + resemblyzer encoder
+  - `diarize_audio()`: Full pyannote speaker diarization with min_speakers/max_speakers
+  - `_diarize_fallback()`: Resemblyzer + AgglomerativeClustering fallback
+  - `extract_speaker_embeddings()`: Voice fingerprint extraction per speaker
+  - Overlap handling and speaker identification
+  - Timeline-based speaker segments
+
+- **Voice Activity Detection** (~100 lines)
+  - `detect_voice_activity()`: WebRTC VAD with 3 aggressiveness modes
+  - 10ms/20ms/30ms frame support
+  - Segment merging with configurable gap tolerance
+  - Binary speech/non-speech classification
+
+- **Call Analysis** (~100 lines)
+  - `analyze_call()`: Comprehensive voice call analysis
+  - Speaker-labeled transcription segments
+  - Per-speaker voice embeddings for identification
+  - Speaking time calculation per participant
+  - Dominant speaker detection
+
+#### Post-Quantum Crypto Hybrids ([post_quantum.py](falconone/crypto/post_quantum.py))
+- **OQS Library Integration** (~200 lines)
+  - `OQSWrapper`: liboqs library wrapper with native algorithm support
+  - Supported KEMs: Kyber, NTRU, BIKE, HQC variants
+  - Supported Signatures: Dilithium, Falcon, SPHINCS+ variants
+  - `OQSKEMInstance`: Native KEM wrapper with keygen/encap/decap
+  - `OQSSigInstance`: Native signature wrapper with keygen/sign/verify
+  - Automatic fallback to simulators when OQS unavailable
+
+- **Hybrid KEM Schemes** (~400 lines)
+  - `HybridKEMScheme`: IETF draft-ietf-tls-hybrid-design compliant
+  - X25519 + Kyber768 (default, recommended)
+  - X25519 + Kyber1024 (higher security)
+  - ECDH-P256/P384/P521 + Kyber combinations
+  - `HybridKeyPair`, `HybridCiphertext` dataclasses
+  - HKDF key derivation from combined secrets
+  - Defense in depth: secure if EITHER component is secure
+
+- **Hybrid Signature Schemes** (~350 lines)
+  - `HybridSignatureScheme`: Dual classical + PQ signatures
+  - Ed25519 + Dilithium3 (default, recommended)
+  - ECDSA-P256/P384 + Dilithium combinations
+  - `HybridSignature` dataclass with combined signatures
+  - Both signatures required for verification
+  - Message hash binding for integrity
+
+- **Quantum Attack Simulation** (~250 lines)
+  - `QuantumAttackSimulator`: Qiskit-based attack simulation
+  - `simulate_grovers_speedup()`: AES/symmetric key search analysis
+  - `simulate_shors_attack()`: RSA/ECDH/ECDSA vulnerability analysis
+  - `run_qkd_simulation()`: BB84 QKD demonstration
+  - `validate_hybrid_scheme()`: Hybrid scheme security analysis
+  - Qubit requirement estimation for attacks
+  - NIST compliance checking
+
+### Dependencies Added
+- `opuslib>=3.0.1`: Native Opus codec support
+- `pyannote.audio>=3.1.0`: Speaker diarization
+- `resemblyzer>=0.1.3`: Voice embedding fallback
+- `webrtcvad>=2.0.10`: Voice activity detection
+- `liboqs-python>=0.9.0`: OQS library bindings
+- `pqcrypto>=0.1.3`: PQC algorithm wrappers
+
+---
+
 ## [1.9.4] - 2026-01-04
 
 ### Added - Gap Analysis Remediation & Production Hardening
