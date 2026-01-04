@@ -1,8 +1,13 @@
 """
 FalconOne IMSI/TMSI and SMS Catcher System
-Version 1.9.5 - Multi-Generation Cellular Monitoring Platform
+Version 1.9.6 - Multi-Generation Cellular Monitoring Platform
 Real-World Resilience: Error Recovery, Data Validation, Security Auditing
 LE Mode: Exploit-Enhanced Interception with Warrant Compliance
+
+v1.9.6 Fixes:
+- DataValidator: Fixed undefined rejected_count, removed duplicate get_statistics
+- SignalClassifier: Fixed incomplete get_anomaly_report
+- RICOptimizer: Fixed gym import ordering bug in SIGINTMultiAgentEnv
 
 v1.9.5 Additions:
 - Voice Interceptor Opus Support with Speaker Diarization
@@ -13,7 +18,7 @@ v1.9.5 Additions:
 TOP CONFIDENTIAL - Research and Development Use Only
 """
 
-__version__ = "1.9.5"
+__version__ = "1.9.6"
 __author__ = "FalconOne Research Team"
 
 # Package-level imports for easy access

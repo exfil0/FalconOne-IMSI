@@ -1275,17 +1275,14 @@ class SignalClassifier:
     
     def get_anomaly_report(self) -> Dict[str, Any]:
         """
-        Generate anomaly detection report
+        Generate anomaly detection report (alias for generate_anomaly_report)
         For integration with Section 19 (Monitoring and Reporting)
         
         Returns:
             Anomaly statistics and trends
         """
-        if not self.anomaly_history:
-            return {'total_checks': 0, 'anomalies_detected': 0}
-        
-        total = len(self.anomaly_history)
-
+        # Delegate to the full implementation
+        return self.generate_anomaly_report()
     
     # ==================== TRANSFORMER-BASED ENHANCEMENTS (v1.5) ====================
     

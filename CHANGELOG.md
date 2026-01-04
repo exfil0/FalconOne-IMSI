@@ -5,6 +5,35 @@ All notable changes to the FalconOne Intelligence Platform will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.6] - 2026-01-04
+
+### Fixed - Code Quality & Bug Fixes
+
+#### Data Validator ([data_validator.py](falconone/utils/data_validator.py))
+- **Fixed `rejected_count` AttributeError**
+  - Added `self.rejected_count = 0` to `__init__` method
+  - Counter now properly increments in `validate_iq_samples`, `sanitize_protocol_features`
+  - Maintains backward compatibility with `self.stats['rejected']`
+  
+- **Removed Duplicate `get_statistics` Method**
+  - Merged two conflicting implementations (lines 429-456) into single comprehensive version
+  - Returns: total_validated, rejected, cleaned, rejected_count, rejection_rate, cleaning_rate, strict_mode, min_snr_db
+
+#### Signal Classifier ([signal_classifier.py](falconone/ai/signal_classifier.py))
+- **Fixed Incomplete `get_anomaly_report` Method**
+  - Method was truncated after computing `total` (line 1287)
+  - Now delegates to fully-implemented `generate_anomaly_report()` method
+  - Returns complete anomaly statistics including detection_rate, avg_score, recent_anomalies
+
+#### RIC Optimizer ([ric_optimizer.py](falconone/ai/ric_optimizer.py))
+- **Fixed `gym` Import Ordering Bug**
+  - Moved `import gym` to top of file with `GYM_AVAILABLE` flag
+  - `SIGINTMultiAgentEnv` now checks gym availability before using `gym.spaces`
+  - Graceful fallback when gym not installed (observation_space/action_space = None)
+  - Removed redundant import at bottom of file (lines 961-964)
+
+---
+
 ## [1.9.5] - 2026-01-04
 
 ### Added - Voice Interceptor Opus & Post-Quantum Crypto Hybrids

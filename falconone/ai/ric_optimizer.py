@@ -29,6 +29,14 @@ except ImportError:
     TF_AVAILABLE = False
 
 try:
+    import gym
+    GYM_AVAILABLE = True
+except ImportError:
+    GYM_AVAILABLE = False
+    gym = None
+    print("[WARNING] gym not installed. Required for MARL environments.")
+
+try:
     import ray
     from ray import tune
     from ray.rllib.algorithms.ppo import PPO, PPOConfig
@@ -885,10 +893,14 @@ class SIGINTMultiAgentEnv(MultiAgentEnv):
         self._agent_ids = {f"agent_{i}" for i in range(self.num_agents)}
         
         # State space: RIC metrics (throughput, latency, RSRP, SINR, etc.)
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(10,), dtype=np.float32)
-        
-        # Action space: exploit strategies
-        self.action_space = gym.spaces.Discrete(5)  # 0-4: actions from ric_optimizer
+        if GYM_AVAILABLE and gym is not None:
+            self.observation_space = gym.spaces.Box(low=0, high=1, shape=(10,), dtype=np.float32)
+            # Action space: exploit strategies
+            self.action_space = gym.spaces.Discrete(5)  # 0-4: actions from ric_optimizer
+        else:
+            # Fallback: None spaces when gym unavailable
+            self.observation_space = None
+            self.action_space = None
         
         self.reset()
     
@@ -958,8 +970,4 @@ class SIGINTMultiAgentEnv(MultiAgentEnv):
         return observations, rewards, dones, infos
 
 
-# Import gym for MultiAgentEnv
-try:
-    import gym
-except ImportError:
-    print("[WARNING] gym not installed. Required for MARL environments.")
+# Note: gym imported at top of file with GYM_AVAILABLE flag

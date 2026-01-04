@@ -108,6 +108,9 @@ class DataValidator:
             'cleaned': 0
         }
         
+        # Counter for rejected samples (legacy compatibility)
+        self.rejected_count = 0
+        
         self.logger.info("Data Validator initialized",
                        strict_mode=self.strict_mode,
                        min_snr_db=self.min_snr_db)
@@ -431,7 +434,7 @@ class DataValidator:
         Get validation statistics
         
         Returns:
-            Statistics dict with counts and rates
+            Statistics dict with counts, rates and configuration
         """
         total = self.stats['total_validated']
         rejected = self.stats['rejected']
@@ -441,18 +444,9 @@ class DataValidator:
             'total_validated': total,
             'rejected': rejected,
             'cleaned': cleaned,
-            'rejection_rate': rejected / total if total > 0 else 0.0,
-            'cleaning_rate': cleaned / total if total > 0 else 0.0
-        }
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """Get validation statistics"""
-        return {
-            'total_validated': self.stats['total_validated'],
-            'rejected': self.stats['rejected'],
-            'cleaned': self.stats['cleaned'],
-            'rejection_rate': self.stats['rejected'] / max(1, self.stats['total_validated']),
-            'cleaning_rate': self.stats['cleaned'] / max(1, self.stats['total_validated']),
+            'rejected_count': self.rejected_count,  # Legacy counter
+            'rejection_rate': rejected / max(1, total),
+            'cleaning_rate': cleaned / max(1, total),
             'strict_mode': self.strict_mode,
             'min_snr_db': self.min_snr_db,
         }
