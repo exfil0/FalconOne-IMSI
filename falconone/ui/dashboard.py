@@ -8330,6 +8330,327 @@ DASHBOARD_HTML_TEMPLATE = """
             align-items: center;
         }
         
+        /* ==================== COLLAPSIBLE NAVIGATION v1.9.8 ==================== */
+        .nav-category {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .nav-category:last-child {
+            border-bottom: none;
+        }
+        
+        .nav-category-header {
+            padding: 14px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-secondary);
+            background: rgba(0,0,0,0.2);
+            transition: var(--transition);
+            user-select: none;
+        }
+        
+        .nav-category-header:hover {
+            background: rgba(0,229,255,0.1);
+            color: var(--accent-cyan);
+        }
+        
+        .nav-category-header .category-icon {
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .nav-category-header .category-label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-category-header .category-chevron {
+            font-size: 10px;
+            transition: transform 0.3s ease;
+            opacity: 0.6;
+        }
+        
+        .nav-category.collapsed .category-chevron {
+            transform: rotate(-90deg);
+        }
+        
+        .nav-category-content {
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            opacity: 1;
+        }
+        
+        .nav-category.collapsed .nav-category-content {
+            max-height: 0;
+            opacity: 0;
+        }
+        
+        .nav-category-content .nav-item {
+            padding-left: 36px;
+        }
+        
+        /* Category color accents */
+        .nav-category[data-category="monitoring"] .nav-category-header {
+            border-left: 3px solid #00e5ff;
+        }
+        .nav-category[data-category="operations"] .nav-category-header {
+            border-left: 3px solid #00e676;
+        }
+        .nav-category[data-category="exploitation"] .nav-category-header {
+            border-left: 3px solid #ff9100;
+        }
+        .nav-category[data-category="analytics"] .nav-category-header {
+            border-left: 3px solid #7c4dff;
+        }
+        .nav-category[data-category="administration"] .nav-category-header {
+            border-left: 3px solid #78909c;
+        }
+        
+        /* ==================== PERSISTENT STATUS BAR v1.9.8 ==================== */
+        .persistent-status-bar {
+            background: linear-gradient(135deg, rgba(13, 19, 51, 0.98), rgba(10, 14, 39, 0.98));
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            position: sticky;
+            top: 60px;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-kpi-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-kpi {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            font-size: 12px;
+            transition: var(--transition);
+        }
+        
+        .status-kpi:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .status-kpi-icon {
+            font-size: 14px;
+        }
+        
+        .status-kpi-value {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .status-kpi-label {
+            color: var(--text-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-kpi-trend {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .status-kpi-trend.up {
+            background: rgba(0, 230, 118, 0.2);
+            color: #00e676;
+        }
+        
+        .status-kpi-trend.down {
+            background: rgba(255, 23, 68, 0.2);
+            color: #ff1744;
+        }
+        
+        .status-kpi-trend.neutral {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+        }
+        
+        /* Critical KPI styling */
+        .status-kpi.critical {
+            background: rgba(255, 23, 68, 0.15);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            animation: pulse-critical 2s infinite;
+        }
+        
+        .status-kpi.warning {
+            background: rgba(255, 171, 0, 0.15);
+            border: 1px solid rgba(255, 171, 0, 0.3);
+        }
+        
+        .status-kpi.success {
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+        }
+        
+        @keyframes pulse-critical {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(255, 23, 68, 0); }
+        }
+        
+        /* ==================== SPARKLINE CHARTS v1.9.8 ==================== */
+        .sparkline-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .sparkline {
+            width: 60px;
+            height: 20px;
+            position: relative;
+        }
+        
+        .sparkline-svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sparkline-line {
+            fill: none;
+            stroke: var(--accent-cyan);
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        
+        .sparkline-area {
+            fill: url(#sparkline-gradient);
+            opacity: 0.3;
+        }
+        
+        .sparkline-dot {
+            fill: var(--accent-cyan);
+            r: 2;
+        }
+        
+        /* ==================== THEME TOGGLE v1.9.8 ==================== */
+        .theme-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .theme-toggle {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+        
+        .theme-toggle::before {
+            content: '🌙';
+            position: absolute;
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+        
+        .theme-toggle.light::before {
+            content: '☀️';
+            left: calc(100% - 22px);
+            background: #ffa726;
+        }
+        
+        .theme-toggle.light {
+            background: rgba(255, 167, 38, 0.2);
+        }
+        
+        /* Light theme CSS variables */
+        body.light-theme {
+            --bg-dark: #f5f5f5;
+            --bg-darker: #e8e8e8;
+            --bg-primary: #ffffff;
+            --bg-sidebar: #ffffff;
+            --bg-panel: #ffffff;
+            --bg-panel-hover: #f0f4f8;
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a6a;
+            --text-muted: #8888a8;
+            --border-color: #e0e0e0;
+            --border-light: #d0d0d0;
+        }
+        
+        /* High contrast mode */
+        body.high-contrast {
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --border-color: #ffffff;
+            --accent-cyan: #00ffff;
+            --success: #00ff00;
+            --warning: #ffff00;
+            --danger: #ff0000;
+        }
+        
+        /* ==================== ROLE INDICATOR v1.9.8 ==================== */
+        .role-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+        }
+        
+        .role-option {
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+        
+        .role-option:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .role-option.active {
+            background: var(--accent-cyan);
+            color: #000;
+        }
+        
+        .role-option[data-role="operator"] { border-color: #00e5ff; }
+        .role-option[data-role="analyst"] { border-color: #7c4dff; }
+        .role-option[data-role="admin"] { border-color: #78909c; }
+        
         /* ==================== MAIN CONTENT AREA ==================== */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -9491,80 +9812,126 @@ DASHBOARD_HTML_TEMPLATE = """
     <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
         <div class="sidebar-header">
             <h1>🛰️ FalconOne</h1>
-            <p>v1.9.7 SIGINT Platform</p>
+            <p>v1.9.8 SIGINT Platform</p>
         </div>
         
         <nav class="sidebar-nav" role="menubar" aria-label="Dashboard sections">
-            <div class="nav-section-title" role="presentation" aria-hidden="true">MONITORING</div>
-            <div class="nav-item active" onclick="showTab('overview')" data-tab="overview" role="menuitem" tabindex="0" aria-label="Dashboard overview" aria-current="page" onkeypress="if(event.key==='Enter')showTab('overview')">
-                <span aria-hidden="true">📊</span> Dashboard
-            </div>
-            <div class="nav-item" onclick="showTab('devices')" data-tab="devices" role="menuitem" tabindex="0" aria-label="Device Manager" onkeypress="if(event.key==='Enter')showTab('devices')">
-                <span aria-hidden="true">🔌</span> Device Manager
-            </div>
-            <div class="nav-item" onclick="showTab('cellular')" data-tab="cellular" role="menuitem" tabindex="0" aria-label="Cellular Monitor" onkeypress="if(event.key==='Enter')showTab('cellular')">
-                <span aria-hidden="true">📱</span> Cellular Monitor
-            </div>
-            <div class="nav-item" onclick="showTab('captures')" data-tab="captures" role="menuitem" tabindex="0" aria-label="Captures and IMSI tracking" onkeypress="if(event.key==='Enter')showTab('captures')">
-                <span aria-hidden="true">🎯</span> Captures & IMSI
+            
+            <!-- MONITORING Category -->
+            <div class="nav-category" data-category="monitoring" role="group" aria-labelledby="cat-monitoring">
+                <div class="nav-category-header" onclick="toggleCategory(this)" id="cat-monitoring" aria-expanded="true">
+                    <span class="category-label"><span class="category-icon">📊</span> MONITORING</span>
+                    <span class="category-chevron">▼</span>
+                </div>
+                <div class="nav-category-content">
+                    <div class="nav-item active" onclick="showTab('overview')" data-tab="overview" role="menuitem" tabindex="0" aria-label="Dashboard overview" aria-current="page" onkeypress="if(event.key==='Enter')showTab('overview')">
+                        <span aria-hidden="true">📈</span> Dashboard
+                    </div>
+                    <div class="nav-item" onclick="showTab('system')" data-tab="system" role="menuitem" tabindex="0" aria-label="System Health" onkeypress="if(event.key==='Enter')showTab('system')">
+                        <span aria-hidden="true">💓</span> System Health
+                    </div>
+                    <div class="nav-item" onclick="showTab('sustainability')" data-tab="sustainability" role="menuitem" tabindex="0" aria-label="Carbon Emissions" onkeypress="if(event.key==='Enter')showTab('sustainability')">
+                        <span aria-hidden="true">🌱</span> Carbon Emissions
+                    </div>
+                    <div class="nav-item" onclick="showTab('devices')" data-tab="devices" role="menuitem" tabindex="0" aria-label="SDR Devices" onkeypress="if(event.key==='Enter')showTab('devices')">
+                        <span aria-hidden="true">📻</span> SDR Devices
+                    </div>
+                    <div class="nav-item" onclick="showTab('sdr-failover')" data-tab="sdr-failover" role="menuitem" tabindex="0" aria-label="SDR Failover" onkeypress="if(event.key==='Enter')showTab('sdr-failover')">
+                        <span aria-hidden="true">🔄</span> SDR Failover
+                    </div>
+                </div>
             </div>
             
-            <div class="nav-section-title" role="presentation" aria-hidden="true">6G & ADVANCED</div>
-            <div class="nav-item" onclick="showTab('ntn')" data-tab="ntn" role="menuitem" tabindex="0" aria-label="6G NTN Satellite monitoring" onkeypress="if(event.key==='Enter')showTab('ntn')">
-                <span aria-hidden="true">🛰️</span> 6G NTN Satellite
-            </div>
-            <div class="nav-item" onclick="showTab('isac')" data-tab="isac" role="menuitem" tabindex="0" aria-label="ISAC Framework" onkeypress="if(event.key==='Enter')showTab('isac')">
-                <span aria-hidden="true">📡</span> ISAC Framework
-            </div>
-            
-            <div class="nav-section-title" role="presentation" aria-hidden="true">OPERATIONS</div>
-            <div class="nav-item" onclick="showTab('exploits')" data-tab="exploits" role="menuitem" tabindex="0" aria-label="Exploit Engine" onkeypress="if(event.key==='Enter')showTab('exploits')">
-                <span aria-hidden="true">⚡</span> Exploit Engine
-            </div>
-            <div class="nav-item" onclick="showTab('le-mode')" data-tab="le-mode" role="menuitem" tabindex="0" aria-label="Law Enforcement Mode" onkeypress="if(event.key==='Enter')showTab('le-mode')">
-                <span aria-hidden="true">🔒</span> LE Mode
-            </div>
-            <div class="nav-item" onclick="showTab('analytics')" data-tab="analytics" role="menuitem" tabindex="0" aria-label="AI Analytics" onkeypress="if(event.key==='Enter')showTab('analytics')">
-                <span aria-hidden="true">🤖</span> AI Analytics
-            </div>
-            <div class="nav-item" onclick="showTab('voice')" data-tab="voice" role="menuitem" tabindex="0" aria-label="Voice Processing" onkeypress="if(event.key==='Enter')showTab('voice')">
-                <span aria-hidden="true">🎙️</span> Voice Processing
-            </div>
-            
-            <div class="nav-section-title" role="presentation" aria-hidden="true">SECURITY</div>
-            <div class="nav-item" onclick="showTab('pqc')" data-tab="pqc" role="menuitem" tabindex="0" aria-label="Post-Quantum Crypto" onkeypress="if(event.key==='Enter')showTab('pqc')">
-                <span aria-hidden="true">🔐</span> Post-Quantum Crypto
-            </div>
-            <div class="nav-item" onclick="showTab('vuln-audit')" data-tab="vuln-audit" role="menuitem" tabindex="0" aria-label="Vulnerability Audit" onkeypress="if(event.key==='Enter')showTab('vuln-audit')">
-                <span aria-hidden="true">🛡️</span> Vuln Audit
+            <!-- OPERATIONS Category -->
+            <div class="nav-category" data-category="operations" role="group" aria-labelledby="cat-operations">
+                <div class="nav-category-header" onclick="toggleCategory(this)" id="cat-operations" aria-expanded="true">
+                    <span class="category-label"><span class="category-icon">🎯</span> OPERATIONS</span>
+                    <span class="category-chevron">▼</span>
+                </div>
+                <div class="nav-category-content">
+                    <div class="nav-item" onclick="showTab('captures')" data-tab="captures" role="menuitem" tabindex="0" aria-label="Captures & IMSI" onkeypress="if(event.key==='Enter')showTab('captures')">
+                        <span aria-hidden="true">📡</span> Captures & IMSI
+                    </div>
+                    <div class="nav-item" onclick="showTab('cellular')" data-tab="cellular" role="menuitem" tabindex="0" aria-label="Cellular Monitor" onkeypress="if(event.key==='Enter')showTab('cellular')">
+                        <span aria-hidden="true">📱</span> Cellular Monitor
+                    </div>
+                    <div class="nav-item" onclick="showTab('voice')" data-tab="voice" role="menuitem" tabindex="0" aria-label="Voice / VoNR" onkeypress="if(event.key==='Enter')showTab('voice')">
+                        <span aria-hidden="true">🎙️</span> Voice / VoNR
+                    </div>
+                    <div class="nav-item" onclick="showTab('le-mode')" data-tab="le-mode" role="menuitem" tabindex="0" aria-label="Target Management" onkeypress="if(event.key==='Enter')showTab('le-mode')">
+                        <span aria-hidden="true">🎯</span> Target Management
+                    </div>
+                    <div class="nav-item" onclick="showTab('terminal')" data-tab="terminal" role="menuitem" tabindex="0" aria-label="Terminal Console" onkeypress="if(event.key==='Enter')showTab('terminal')">
+                        <span aria-hidden="true">💻</span> Terminal
+                    </div>
+                </div>
             </div>
             
-            <div class="nav-section-title" role="presentation" aria-hidden="true">SYSTEM</div>
-            <div class="nav-item" onclick="showTab('terminal')" data-tab="terminal" role="menuitem" tabindex="0" aria-label="Terminal console" onkeypress="if(event.key==='Enter')showTab('terminal')">
-                <span aria-hidden="true">💻</span> Terminal
+            <!-- EXPLOITATION Category -->
+            <div class="nav-category" data-category="exploitation" role="group" aria-labelledby="cat-exploitation">
+                <div class="nav-category-header" onclick="toggleCategory(this)" id="cat-exploitation" aria-expanded="true">
+                    <span class="category-label"><span class="category-icon">⚡</span> EXPLOITATION</span>
+                    <span class="category-chevron">▼</span>
+                </div>
+                <div class="nav-category-content">
+                    <div class="nav-item" onclick="showTab('exploits')" data-tab="exploits" role="menuitem" tabindex="0" aria-label="Exploit Engine" onkeypress="if(event.key==='Enter')showTab('exploits')">
+                        <span aria-hidden="true">💥</span> Exploit Engine
+                    </div>
+                    <div class="nav-item" onclick="showTab('pqc')" data-tab="pqc" role="menuitem" tabindex="0" aria-label="Post-Quantum Crypto" onkeypress="if(event.key==='Enter')showTab('pqc')">
+                        <span aria-hidden="true">🔐</span> Post-Quantum Crypto
+                    </div>
+                    <div class="nav-item" onclick="showTab('ntn')" data-tab="ntn" role="menuitem" tabindex="0" aria-label="6G NTN Satellite" onkeypress="if(event.key==='Enter')showTab('ntn')">
+                        <span aria-hidden="true">🛰️</span> 6G NTN Satellite
+                    </div>
+                    <div class="nav-item" onclick="showTab('isac')" data-tab="isac" role="menuitem" tabindex="0" aria-label="ISAC Framework" onkeypress="if(event.key==='Enter')showTab('isac')">
+                        <span aria-hidden="true">📡</span> ISAC / V2X / Semantic
+                    </div>
+                </div>
             </div>
-            <div class="nav-item" onclick="showTab('setup')" data-tab="setup" role="menuitem" tabindex="0" aria-label="Setup Wizard" onkeypress="if(event.key==='Enter')showTab('setup')">
-                <span aria-hidden="true">🔧</span> Setup Wizard
+            
+            <!-- ANALYTICS Category -->
+            <div class="nav-category" data-category="analytics" role="group" aria-labelledby="cat-analytics">
+                <div class="nav-category-header" onclick="toggleCategory(this)" id="cat-analytics" aria-expanded="true">
+                    <span class="category-label"><span class="category-icon">🤖</span> ANALYTICS</span>
+                    <span class="category-chevron">▼</span>
+                </div>
+                <div class="nav-category-content">
+                    <div class="nav-item" onclick="showTab('analytics')" data-tab="analytics" role="menuitem" tabindex="0" aria-label="AI Classification" onkeypress="if(event.key==='Enter')showTab('analytics')">
+                        <span aria-hidden="true">🧠</span> AI Classification
+                    </div>
+                    <div class="nav-item" onclick="showTab('tools')" data-tab="tools" role="menuitem" tabindex="0" aria-label="Data Validator" onkeypress="if(event.key==='Enter')showTab('tools')">
+                        <span aria-hidden="true">✅</span> Data Validator
+                    </div>
+                </div>
             </div>
-            <div class="nav-item" onclick="showTab('sdr-failover')" data-tab="sdr-failover" role="menuitem" tabindex="0" aria-label="SDR Failover" onkeypress="if(event.key==='Enter')showTab('sdr-failover')">
-                <span aria-hidden="true">📻</span> SDR Failover
+            
+            <!-- ADMINISTRATION Category -->
+            <div class="nav-category" data-category="administration" role="group" aria-labelledby="cat-administration">
+                <div class="nav-category-header" onclick="toggleCategory(this)" id="cat-administration" aria-expanded="true">
+                    <span class="category-label"><span class="category-icon">⚙️</span> ADMINISTRATION</span>
+                    <span class="category-chevron">▼</span>
+                </div>
+                <div class="nav-category-content">
+                    <div class="nav-item" onclick="showTab('setup')" data-tab="setup" role="menuitem" tabindex="0" aria-label="Setup Wizard" onkeypress="if(event.key==='Enter')showTab('setup')">
+                        <span aria-hidden="true">🔧</span> Setup Wizard
+                    </div>
+                    <div class="nav-item" onclick="showTab('vuln-audit')" data-tab="vuln-audit" role="menuitem" tabindex="0" aria-label="Vulnerability Audit" onkeypress="if(event.key==='Enter')showTab('vuln-audit')">
+                        <span aria-hidden="true">🛡️</span> Vulnerability Audit
+                    </div>
+                    <div class="nav-item" onclick="window.location.href='/documentation'" data-tab="documentation" role="menuitem" tabindex="0" aria-label="Documentation" onkeypress="if(event.key==='Enter')window.location.href='/documentation'">
+                        <span aria-hidden="true">📖</span> Documentation
+                    </div>
+                </div>
             </div>
-            <div class="nav-item" onclick="showTab('tools')" data-tab="tools" role="menuitem" tabindex="0" aria-label="System Tools" onkeypress="if(event.key==='Enter')showTab('tools')">
-                <span aria-hidden="true">🛠️</span> System Tools
-            </div>
-            <div class="nav-item" onclick="showTab('system')" data-tab="system" role="menuitem" tabindex="0" aria-label="System Health" onkeypress="if(event.key==='Enter')showTab('system')">
-                <span aria-hidden="true">🖥️</span> System Health
-            </div>
-            <div class="nav-item" onclick="showTab('sustainability')" data-tab="sustainability" role="menuitem" tabindex="0" aria-label="Sustainability and carbon tracking" onkeypress="if(event.key==='Enter')showTab('sustainability')">
-                <span aria-hidden="true">🌱</span> Sustainability
-            </div>
-            <div class="nav-item" onclick="window.location.href='/documentation'" data-tab="documentation" role="menuitem" tabindex="0" aria-label="Documentation" onkeypress="if(event.key==='Enter')window.location.href='/documentation'">
-                <span aria-hidden="true">📖</span> Documentation
-            </div>
+            
         </nav>
         
         <div class="sidebar-footer">
-            <div class="status-item">
+            <div class="theme-controls">
+                <span style="font-size: 11px; color: var(--text-muted);">Theme:</span>
+                <div class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" role="switch" aria-checked="false" aria-label="Dark mode"></div>
+            </div>
+            <div class="status-item" style="margin-top: 12px;">
                 <span>Connection:</span>
                 <span id="sidebar-connection-status" style="color: var(--success);">● Online</span>
             </div>
@@ -9586,6 +9953,11 @@ DASHBOARD_HTML_TEMPLATE = """
                 <h2 style="font-size: 20px; font-weight: 600;" id="page-title">Dashboard Overview</h2>
             </div>
             <div class="header-right">
+                <div class="role-selector" aria-label="Select user role">
+                    <div class="role-option active" data-role="operator" onclick="setRole('operator')" title="Operator View">👤 Operator</div>
+                    <div class="role-option" data-role="analyst" onclick="setRole('analyst')" title="Analyst View">📊 Analyst</div>
+                    <div class="role-option" data-role="admin" onclick="setRole('admin')" title="Admin View">⚙️ Admin</div>
+                </div>
                 <div class="status-badge">
                     <span style="color: var(--success);">●</span>
                     <span id="connection-status">Connected</span>
@@ -9598,6 +9970,69 @@ DASHBOARD_HTML_TEMPLATE = """
                 </div>
             </div>
         </header>
+        
+        <!-- PERSISTENT STATUS BAR -->
+        <div class="persistent-status-bar" role="status" aria-live="polite" aria-label="System status indicators">
+            <div class="status-kpi-group">
+                <div class="status-kpi success" id="kpi-throughput" title="Data throughput">
+                    <span class="status-kpi-icon">📶</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-throughput-value">0 Mbps</div>
+                        <div class="status-kpi-label">Throughput</div>
+                    </div>
+                    <div class="sparkline" id="sparkline-throughput">
+                        <svg class="sparkline-svg" viewBox="0 0 60 20"></svg>
+                    </div>
+                    <span class="status-kpi-trend neutral" id="kpi-throughput-trend">--</span>
+                </div>
+                <div class="status-kpi" id="kpi-latency" title="System latency">
+                    <span class="status-kpi-icon">⏱️</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-latency-value">0 ms</div>
+                        <div class="status-kpi-label">Latency</div>
+                    </div>
+                    <span class="status-kpi-trend neutral" id="kpi-latency-trend">--</span>
+                </div>
+                <div class="status-kpi success" id="kpi-success-rate" title="Operation success rate">
+                    <span class="status-kpi-icon">✅</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-success-value">100%</div>
+                        <div class="status-kpi-label">Success Rate</div>
+                    </div>
+                    <span class="status-kpi-trend up" id="kpi-success-trend">▲</span>
+                </div>
+                <div class="status-kpi" id="kpi-captures" title="Active captures">
+                    <span class="status-kpi-icon">🎯</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-captures-value">0</div>
+                        <div class="status-kpi-label">Captures</div>
+                    </div>
+                </div>
+                <div class="status-kpi" id="kpi-alerts" title="Active alerts">
+                    <span class="status-kpi-icon">⚠️</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-alerts-value">0</div>
+                        <div class="status-kpi-label">Alerts</div>
+                    </div>
+                </div>
+            </div>
+            <div class="status-kpi-group">
+                <div class="status-kpi" id="kpi-cpu" title="CPU usage">
+                    <span class="status-kpi-icon">🖥️</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-cpu-value">0%</div>
+                        <div class="status-kpi-label">CPU</div>
+                    </div>
+                </div>
+                <div class="status-kpi" id="kpi-memory" title="Memory usage">
+                    <span class="status-kpi-icon">💾</span>
+                    <div>
+                        <div class="status-kpi-value" id="kpi-memory-value">0%</div>
+                        <div class="status-kpi-label">Memory</div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <div class="content-area">
     
@@ -11860,19 +12295,23 @@ Ready>
             // Update page title
             const titles = {
                 'overview': 'Dashboard Overview',
-                'devices': 'Device Manager',
+                'devices': 'SDR Devices',
                 'cellular': 'Cellular Monitor',
                 'captures': 'Captures & IMSI',
                 'exploits': 'Exploit Engine',
-                'analytics': 'AI Analytics',
+                'analytics': 'AI Classification',
                 'terminal': 'System Terminal',
                 'setup': 'Setup Wizard',
-                'tools': 'System Tools',
+                'tools': 'Data Validator',
                 'system': 'System Health',
-                'sustainability': 'Sustainability Dashboard',
+                'sustainability': 'Carbon Emissions',
                 'ntn': '6G NTN Satellite',
-                'isac': 'ISAC Framework',
-                'le-mode': 'Law Enforcement Mode',
+                'isac': 'ISAC / V2X / Semantic',
+                'le-mode': 'Target Management',
+                'pqc': 'Post-Quantum Cryptography',
+                'voice': 'Voice / VoNR Processing',
+                'vuln-audit': 'Vulnerability Audit',
+                'sdr-failover': 'SDR Failover Manager',
                 'v170': 'v1.7.0 Features'
             };
             document.getElementById('page-title').textContent = titles[tabName] || 'Dashboard';
@@ -11899,6 +12338,299 @@ Ready>
                 closeSidebar();
             }
         }
+        
+        // ==================== COLLAPSIBLE NAVIGATION v1.9.8 ====================
+        
+        function toggleCategory(headerElement) {
+            const category = headerElement.parentElement;
+            const isCollapsed = category.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                category.classList.remove('collapsed');
+                headerElement.setAttribute('aria-expanded', 'true');
+            } else {
+                category.classList.add('collapsed');
+                headerElement.setAttribute('aria-expanded', 'false');
+            }
+            
+            // Save state to localStorage
+            const categoryName = category.dataset.category;
+            const collapsedCategories = JSON.parse(localStorage.getItem('collapsedCategories') || '{}');
+            collapsedCategories[categoryName] = !isCollapsed;
+            localStorage.setItem('collapsedCategories', JSON.stringify(collapsedCategories));
+        }
+        
+        // Restore collapsed state on page load
+        function restoreCollapsedState() {
+            const collapsedCategories = JSON.parse(localStorage.getItem('collapsedCategories') || '{}');
+            Object.keys(collapsedCategories).forEach(category => {
+                if (collapsedCategories[category]) {
+                    const categoryEl = document.querySelector(`.nav-category[data-category="${category}"]`);
+                    if (categoryEl) {
+                        categoryEl.classList.add('collapsed');
+                        const header = categoryEl.querySelector('.nav-category-header');
+                        if (header) header.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            });
+        }
+        
+        // ==================== THEME TOGGLE v1.9.8 ====================
+        
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+        
+        function toggleTheme() {
+            const toggle = document.querySelector('.theme-toggle');
+            const body = document.body;
+            
+            if (currentTheme === 'dark') {
+                currentTheme = 'light';
+                body.classList.add('light-theme');
+                toggle.classList.add('light');
+                toggle.setAttribute('aria-checked', 'true');
+            } else {
+                currentTheme = 'dark';
+                body.classList.remove('light-theme');
+                toggle.classList.remove('light');
+                toggle.setAttribute('aria-checked', 'false');
+            }
+            
+            localStorage.setItem('theme', currentTheme);
+        }
+        
+        function restoreTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                const toggle = document.querySelector('.theme-toggle');
+                if (toggle) {
+                    toggle.classList.add('light');
+                    toggle.setAttribute('aria-checked', 'true');
+                }
+            }
+            currentTheme = savedTheme;
+        }
+        
+        // ==================== ROLE-BASED VIEW v1.9.8 ====================
+        
+        let currentRole = localStorage.getItem('userRole') || 'operator';
+        
+        function setRole(role) {
+            currentRole = role;
+            
+            // Update UI
+            document.querySelectorAll('.role-option').forEach(opt => {
+                opt.classList.remove('active');
+                if (opt.dataset.role === role) {
+                    opt.classList.add('active');
+                }
+            });
+            
+            // Save preference
+            localStorage.setItem('userRole', role);
+            
+            // Apply role-specific visibility
+            applyRoleView(role);
+            
+            // Show notification
+            showToast(`Switched to ${role.charAt(0).toUpperCase() + role.slice(1)} view`, 'info');
+        }
+        
+        function applyRoleView(role) {
+            const categories = document.querySelectorAll('.nav-category');
+            
+            categories.forEach(cat => {
+                cat.style.display = 'block';
+            });
+            
+            // Role-specific category visibility
+            if (role === 'operator') {
+                // Operators see: Monitoring, Operations, Exploitation
+                document.querySelector('.nav-category[data-category="analytics"]').style.opacity = '0.6';
+                document.querySelector('.nav-category[data-category="administration"]').style.opacity = '0.6';
+            } else if (role === 'analyst') {
+                // Analysts focus on: Monitoring, Analytics
+                document.querySelector('.nav-category[data-category="exploitation"]').style.opacity = '0.6';
+                document.querySelector('.nav-category[data-category="administration"]').style.opacity = '0.6';
+            } else if (role === 'admin') {
+                // Admins see everything with full opacity
+                categories.forEach(cat => cat.style.opacity = '1');
+            }
+        }
+        
+        function restoreRole() {
+            const savedRole = localStorage.getItem('userRole') || 'operator';
+            setRole(savedRole);
+        }
+        
+        // ==================== PERSISTENT STATUS BAR KPIs v1.9.8 ====================
+        
+        // Sparkline data history
+        const sparklineData = {
+            throughput: [],
+            latency: [],
+            captures: []
+        };
+        const maxSparklinePoints = 20;
+        
+        function updateStatusBarKPIs(data) {
+            // Update throughput
+            if (data.throughput !== undefined) {
+                const value = parseFloat(data.throughput) || 0;
+                document.getElementById('kpi-throughput-value').textContent = value.toFixed(1) + ' Mbps';
+                updateSparkline('throughput', value);
+                updateTrendIndicator('throughput', value);
+            }
+            
+            // Update latency
+            if (data.latency !== undefined) {
+                const value = parseFloat(data.latency) || 0;
+                document.getElementById('kpi-latency-value').textContent = value.toFixed(0) + ' ms';
+                updateKPIStatus('kpi-latency', value > 100 ? 'warning' : value > 200 ? 'critical' : '');
+                updateTrendIndicator('latency', value, true); // Inverted: lower is better
+            }
+            
+            // Update success rate
+            if (data.success_rate !== undefined) {
+                const value = parseFloat(data.success_rate) || 100;
+                document.getElementById('kpi-success-value').textContent = value.toFixed(1) + '%';
+                updateKPIStatus('kpi-success-rate', value < 80 ? 'warning' : value < 60 ? 'critical' : 'success');
+            }
+            
+            // Update captures count
+            if (data.captures_count !== undefined) {
+                document.getElementById('kpi-captures-value').textContent = data.captures_count;
+            }
+            
+            // Update alerts count
+            if (data.alerts_count !== undefined) {
+                const value = data.alerts_count;
+                document.getElementById('kpi-alerts-value').textContent = value;
+                updateKPIStatus('kpi-alerts', value > 5 ? 'critical' : value > 2 ? 'warning' : '');
+            }
+            
+            // Update system resources
+            if (data.cpu !== undefined) {
+                const value = parseFloat(data.cpu) || 0;
+                document.getElementById('kpi-cpu-value').textContent = value.toFixed(0) + '%';
+                updateKPIStatus('kpi-cpu', value > 80 ? 'critical' : value > 60 ? 'warning' : '');
+            }
+            
+            if (data.memory !== undefined) {
+                const value = parseFloat(data.memory) || 0;
+                document.getElementById('kpi-memory-value').textContent = value.toFixed(0) + '%';
+                updateKPIStatus('kpi-memory', value > 85 ? 'critical' : value > 70 ? 'warning' : '');
+            }
+        }
+        
+        function updateKPIStatus(elementId, status) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            
+            el.classList.remove('critical', 'warning', 'success');
+            if (status) el.classList.add(status);
+        }
+        
+        function updateTrendIndicator(metric, value, inverted = false) {
+            const history = sparklineData[metric] || [];
+            if (history.length < 2) return;
+            
+            const prev = history[history.length - 2];
+            const trendEl = document.getElementById(`kpi-${metric}-trend`);
+            if (!trendEl) return;
+            
+            let trend = 'neutral';
+            let symbol = '--';
+            
+            if (value > prev * 1.05) {
+                trend = inverted ? 'down' : 'up';
+                symbol = inverted ? '▼' : '▲';
+            } else if (value < prev * 0.95) {
+                trend = inverted ? 'up' : 'down';
+                symbol = inverted ? '▲' : '▼';
+            }
+            
+            trendEl.className = `status-kpi-trend ${trend}`;
+            trendEl.textContent = symbol;
+        }
+        
+        function updateSparkline(metric, value) {
+            // Store value
+            if (!sparklineData[metric]) sparklineData[metric] = [];
+            sparklineData[metric].push(value);
+            if (sparklineData[metric].length > maxSparklinePoints) {
+                sparklineData[metric].shift();
+            }
+            
+            // Render sparkline SVG
+            const container = document.getElementById(`sparkline-${metric}`);
+            if (!container) return;
+            
+            const data = sparklineData[metric];
+            if (data.length < 2) return;
+            
+            const svg = container.querySelector('svg');
+            const width = 60;
+            const height = 20;
+            const padding = 2;
+            
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = max - min || 1;
+            
+            const points = data.map((v, i) => {
+                const x = padding + (i / (data.length - 1)) * (width - padding * 2);
+                const y = height - padding - ((v - min) / range) * (height - padding * 2);
+                return `${x},${y}`;
+            }).join(' ');
+            
+            svg.innerHTML = `
+                <defs>
+                    <linearGradient id="sparkline-gradient-${metric}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="var(--accent-cyan)" stop-opacity="0.4"/>
+                        <stop offset="100%" stop-color="var(--accent-cyan)" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <polygon class="sparkline-area" points="${padding},${height - padding} ${points} ${width - padding},${height - padding}" fill="url(#sparkline-gradient-${metric})"/>
+                <polyline class="sparkline-line" points="${points}"/>
+                <circle class="sparkline-dot" cx="${points.split(' ').pop().split(',')[0]}" cy="${points.split(' ').pop().split(',')[1]}" r="2"/>
+            `;
+        }
+        
+        // ==================== INITIALIZATION v1.9.8 ====================
+        
+        // Initialize new features on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Restore UI preferences
+            restoreCollapsedState();
+            restoreTheme();
+            restoreRole();
+            
+            // Set up periodic KPI updates
+            setInterval(() => {
+                // Fetch and update KPIs (simulated for now, integrate with real data)
+                updateStatusBarKPIs({
+                    throughput: (Math.random() * 100).toFixed(1),
+                    latency: Math.floor(20 + Math.random() * 80),
+                    success_rate: (95 + Math.random() * 5).toFixed(1),
+                    captures_count: Math.floor(Math.random() * 50),
+                    alerts_count: Math.floor(Math.random() * 5),
+                    cpu: (30 + Math.random() * 40).toFixed(0),
+                    memory: (40 + Math.random() * 30).toFixed(0)
+                });
+            }, 3000);
+            
+            // Initial KPI update
+            updateStatusBarKPIs({
+                throughput: 45.2,
+                latency: 35,
+                success_rate: 98.5,
+                captures_count: 12,
+                alerts_count: 1,
+                cpu: 42,
+                memory: 58
+            });
+        });
         
         // ==================== DEVICE MANAGEMENT FUNCTIONS ====================
         
