@@ -1,6 +1,6 @@
 # FalconOne User Manual
 
-**Version:** 3.6.0  
+**Version:** 1.9.8  
 **Last Updated:** January 4, 2026  
 **Audience:** Security Researchers, Network Engineers, Operators
 
@@ -10,20 +10,21 @@
 1. [Introduction](#introduction)
 2. [Getting Started](#getting-started)
 3. [Dashboard Overview](#dashboard-overview)
-4. [Target Management](#target-management)
-5. [Network Scanning](#network-scanning)
-6. [Signal Monitoring](#signal-monitoring)
-7. [Exploit Operations](#exploit-operations)
-8. [RANSacked Exploit Operations](#ransacked-exploit-operations) **(NEW v1.8.0)**
-9. [6G NTN Operations](#6g-ntn-operations) **(NEW v1.9.0)**
-10. [ISAC Framework](#isac-framework) **(NEW v1.9.0)**
-11. [Law Enforcement Mode](#law-enforcement-mode) **(NEW v1.9.0)**
-12. [System Tools Management](#system-tools-management)
-13. [AI/ML Features](#aiml-features)
-14. [O-RAN Integration](#o-ran-integration)
-15. [Reports & Exports](#reports--exports)
-16. [Security & Compliance](#security--compliance)
-17. [Troubleshooting](#troubleshooting)
+4. [Navigation Architecture (v1.9.8)](#navigation-architecture-v198)
+5. [Target Management](#target-management)
+6. [Network Scanning](#network-scanning)
+7. [Signal Monitoring](#signal-monitoring)
+8. [Exploit Operations](#exploit-operations)
+9. [RANSacked Exploit Operations](#ransacked-exploit-operations) **(NEW v1.8.0)**
+10. [6G NTN Operations](#6g-ntn-operations) **(NEW v1.9.0)**
+11. [ISAC Framework](#isac-framework) **(NEW v1.9.0)**
+12. [Law Enforcement Mode](#law-enforcement-mode) **(NEW v1.9.0)**
+13. [System Tools Management](#system-tools-management)
+14. [AI/ML Features](#aiml-features)
+15. [O-RAN Integration](#o-ran-integration)
+16. [Reports & Exports](#reports--exports)
+17. [Security & Compliance](#security--compliance)
+18. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -41,8 +42,11 @@ FalconOne is a comprehensive 5G/LTE/GSM security testing and analysis platform d
 ✅ **Multi-Network Support**: 5G NR, LTE, GSM, CDMA  
 ✅ **Real-Time Monitoring**: Signal analysis, KPI tracking, anomaly detection  
 ✅ **Advanced Exploits**: DOS attacks, downgrade attacks, MITM  
-✅ **RANSacked Integration**: 96 CVE payloads, 7 exploit chains, visual GUI controls **(NEW v1.8.0)**  
-✅ **Comprehensive Testing**: 100+ integration tests, performance benchmarks **(NEW v1.8.0)**  
+✅ **RANSacked Integration**: 96 CVE payloads, 7 exploit chains, visual GUI controls **(v1.8.0)**  
+✅ **6G NTN & ISAC**: Satellite interception, V2X attacks, semantic 6G **(v1.9.0)**  
+✅ **Post-Quantum Crypto**: Hybrid KEM/signatures, quantum attack simulation **(v1.9.5)**  
+✅ **Voice Processing**: Opus codec, speaker diarization, VoNR interception **(v1.9.5)**  
+✅ **Redesigned UI**: Collapsible navigation, persistent status bar, role-based views **(v1.9.8)**  
 ✅ **AI/ML Integration**: Signal classification, explainable AI, online learning  
 ✅ **O-RAN Support**: Near-RT RIC, E2 interface, xApp deployment  
 ✅ **Enterprise Features**: Multi-tenancy, RBAC, blockchain audit trail  
@@ -132,22 +136,20 @@ python main.py
 
 The main dashboard provides a real-time overview of system status:
 
-**Widgets:**
-- **Active Targets**: Number of currently tracked targets
-- **Running Scans**: Active scanning operations
-- **Recent Alerts**: Latest security alerts and anomalies
-- **Network Health**: Signal quality metrics (RSSI, RSRP, RSRQ)
-- **System Status**: CPU, memory, disk usage
+**Top Header:**
+- **Page Title**: Current active tab name
+- **Role Selector**: Switch between Operator/Analyst/Admin views
+- **Connection Status**: Real-time server connection indicator
+- **Device Count**: Number of connected SDR devices
+- **Alert Count**: Active alerts requiring attention
 
-**Navigation Menu:**
-- 🎯 **Targets**: Manage tracked devices
-- 📡 **Scanning**: Start/monitor scans
-- 🔍 **Monitoring**: Real-time network monitoring
-- 💥 **Exploits**: Execute security tests
-- 🤖 **AI/ML**: Machine learning features
-- 📊 **Reports**: Generate and export reports
-- 👥 **Users**: User management (admin only)
-- ⚙️ **Settings**: System configuration
+**Persistent Status Bar** (always visible):
+- **Throughput**: Data rate with sparkline trend chart
+- **Latency**: System response time with trend indicator
+- **Success Rate**: Operation success percentage
+- **Captures**: Active capture count
+- **Alerts**: Active alert count
+- **CPU/Memory**: System resource usage
 
 ### User Roles
 
@@ -163,11 +165,69 @@ The main dashboard provides a real-time overview of system status:
 - Exploit execution
 - Report generation
 
-**Viewer** (Read-Only):
-- View targets and scans
-- View monitoring data
-- View reports
-- No execution permissions
+**Analyst** (Data Analysis):
+- View analytics dashboards
+- AI classification results
+- Data validation tools
+- Report generation
+
+---
+
+## Navigation Architecture (v1.9.8)
+
+The sidebar navigation is organized into **5 collapsible categories**:
+
+### 📊 MONITORING (Cyan)
+| Tab | Description |
+|-----|-------------|
+| **Dashboard** | Real-time KPIs, geolocation map, anomaly alerts |
+| **System Health** | CPU, memory, disk usage, process monitoring |
+| **Carbon Emissions** | Sustainability metrics, energy tracking, green score |
+| **SDR Devices** | Connected devices, driver installation, device testing |
+| **SDR Failover** | Device pool management, failover events, health monitoring |
+
+### 🎯 OPERATIONS (Green)
+| Tab | Description |
+|-----|-------------|
+| **Captures & IMSI** | IMSI/TMSI captures, filtering, export |
+| **Cellular Monitor** | Multi-band monitoring (GSM/LTE/5G) |
+| **Voice / VoNR** | Opus decoding, speaker diarization, call analysis |
+| **Target Management** | Target CRUD, monitoring, warrant management |
+| **Terminal** | Embedded command interface |
+
+### ⚡ EXPLOITATION (Orange)
+| Tab | Description |
+|-----|-------------|
+| **Exploit Engine** | 96 CVE payloads, exploit chains, operation history |
+| **Post-Quantum Crypto** | OQS status, hybrid KEM/signatures, quantum simulation |
+| **6G NTN Satellite** | LEO/MEO/GEO monitoring, Doppler compensation |
+| **ISAC / V2X / Semantic** | Integrated sensing, V2X attacks, semantic 6G |
+
+### 🤖 ANALYTICS (Purple)
+| Tab | Description |
+|-----|-------------|
+| **AI Classification** | Signal classification, anomaly detection, SHAP explanations |
+| **Data Validator** | Input validation, data cleaning, statistics |
+
+### ⚙️ ADMINISTRATION (Gray)
+| Tab | Description |
+|-----|-------------|
+| **Setup Wizard** | SDR driver installation, system configuration |
+| **Vulnerability Audit** | CVE database, security scanning, SBOM generation |
+| **Documentation** | Built-in documentation browser |
+
+### Collapsible Navigation
+
+- **Click category header** to expand/collapse
+- **Chevron indicator** shows current state (▼ expanded, ▶ collapsed)
+- **State persisted** to localStorage (survives page refresh)
+- **Category colors** provide visual grouping
+
+### Theme Toggle
+
+Located in sidebar footer:
+- Click toggle to switch between **Dark Mode** 🌙 and **Light Mode** ☀️
+- Preference saved automatically
 
 ---
 

@@ -1,7 +1,69 @@
 # FalconOne Dashboard Management Guide
 
+**Version:** 1.9.8  
+**Last Updated:** January 4, 2026
+
 ## Overview
-The FalconOne Dashboard is now a **complete operational control center** that allows researchers to manage all aspects of the SIGINT platform from a web interface, eliminating the need for CLI usage in most scenarios.
+The FalconOne Dashboard is a **complete operational control center** that allows researchers to manage all aspects of the SIGINT platform from a web interface, eliminating the need for CLI usage in most scenarios.
+
+---
+
+## 🆕 v1.9.8 UI/UX Redesign
+
+### Navigation Architecture
+
+The sidebar navigation has been reorganized into **5 collapsible categories** based on UX research principles:
+
+| Category | Color | Tabs |
+|----------|-------|------|
+| **📊 MONITORING** | Cyan | Dashboard, System Health, Carbon Emissions, SDR Devices, SDR Failover |
+| **🎯 OPERATIONS** | Green | Captures & IMSI, Cellular Monitor, Voice/VoNR, Target Management, Terminal |
+| **⚡ EXPLOITATION** | Orange | Exploit Engine, Post-Quantum Crypto, 6G NTN Satellite, ISAC/V2X/Semantic |
+| **🤖 ANALYTICS** | Purple | AI Classification, Data Validator |
+| **⚙️ ADMINISTRATION** | Gray | Setup Wizard, Vulnerability Audit, Documentation |
+
+#### Collapsible Sections
+- Click category headers to expand/collapse
+- State persisted to localStorage (survives page refresh)
+- Chevron indicators show expand/collapse state
+
+### Persistent Status Bar
+
+The **Persistent Status Bar** sits below the top header and displays real-time KPIs:
+
+| KPI | Icon | Description |
+|-----|------|-------------|
+| **Throughput** | 📶 | Data throughput with sparkline trend |
+| **Latency** | ⏱️ | System latency with trend indicator |
+| **Success Rate** | ✅ | Operation success percentage |
+| **Captures** | 🎯 | Active capture count |
+| **Alerts** | ⚠️ | Active alert count |
+| **CPU** | 🖥️ | CPU usage percentage |
+| **Memory** | 💾 | Memory usage percentage |
+
+**Color-Coded States:**
+- 🟢 **Success** (green): Healthy/normal
+- 🟡 **Warning** (orange): Attention needed
+- 🔴 **Critical** (red with pulse): Immediate action required
+
+### Role-Based Views
+
+Select your role in the top header to customize the interface:
+
+| Role | Focus | Default Expanded Categories |
+|------|-------|---------------------------|
+| **👤 Operator** | Field operations | MONITORING, OPERATIONS, EXPLOITATION |
+| **📊 Analyst** | Data analysis | MONITORING, ANALYTICS |
+| **⚙️ Admin** | Full access | All categories |
+
+### Theme Toggle
+
+Located in the sidebar footer:
+- 🌙 **Dark Mode** (default): Low-light optimized
+- ☀️ **Light Mode**: High-visibility theme
+- Preference saved to localStorage
+
+---
 
 ## What's New: Complete Dashboard Manageability
 

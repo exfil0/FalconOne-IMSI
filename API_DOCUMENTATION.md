@@ -1,10 +1,17 @@
 # FalconOne API Documentation
 
-**Version:** 3.4.0  
-**Last Updated:** January 3, 2026  
+**Version:** 3.5.0  
+**Last Updated:** January 4, 2026  
 **Base URL:** `http://localhost:5000/api` (Development) | `https://api.falconone.example.com` (Production)  
 **Authentication:** JWT Bearer Token  
 **Content-Type:** `application/json`
+
+**Changelog v3.5.0:**
+- Added Post-Quantum Cryptography endpoints (PQC status, KEM test, signature test, quantum simulation)
+- Added Voice Processing endpoints (status, calls, diarization, VAD settings)
+- Added Vulnerability Audit endpoints (CVE database, security scanners, SBOM)
+- Added SDR Failover endpoints (device pool, health monitoring, failover events)
+- Updated to match v1.9.8 UI redesign
 
 **Changelog v3.4.0:**
 - Added 6G NTN API endpoints (5 new endpoints for satellite monitoring and exploitation)

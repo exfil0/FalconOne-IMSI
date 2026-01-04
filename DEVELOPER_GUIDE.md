@@ -1,6 +1,6 @@
 # FalconOne Developer Guide
 
-**Version:** 3.6.0  
+**Version:** 1.9.8  
 **Last Updated:** January 4, 2026  
 **Audience:** Software Developers, Contributors
 
@@ -12,12 +12,14 @@
 3. [Codebase Structure](#codebase-structure)
 4. [Core Components](#core-components)
 5. [Testing](#testing)
-6. [RANSacked Integration Testing](#ransacked-integration-testing) **(NEW v1.8.0)**
-7. [Contributing](#contributing)
-8. [Code Standards](#code-standards)
-9. [API Development](#api-development)
-10. [Database Schema](#database-schema)
-11. [Deployment](#deployment)
+6. [RANSacked Integration Testing](#ransacked-integration-testing) **(v1.8.0)**
+7. [Post-Quantum Crypto Testing](#post-quantum-crypto-testing) **(v1.9.5)**
+8. [Voice Processing Testing](#voice-processing-testing) **(v1.9.5)**
+9. [Contributing](#contributing)
+10. [Code Standards](#code-standards)
+11. [API Development](#api-development)
+12. [Database Schema](#database-schema)
+13. [Deployment](#deployment)
 
 ---
 

@@ -1,8 +1,18 @@
 # FalconOne Documentation Index
 
-**Version:** 1.9.3  
+**Version:** 1.9.8  
 **Last Updated:** January 4, 2026  
 **Status:** Production Ready ✅
+
+---
+
+## 🆕 What's New in v1.9.8
+
+- **UI/UX Redesign**: 5 collapsible navigation categories (MONITORING, OPERATIONS, EXPLOITATION, ANALYTICS, ADMINISTRATION)
+- **Persistent Status Bar**: Real-time KPIs always visible (throughput, latency, success rate, alerts)
+- **Role-Based Views**: Operator / Analyst / Admin role selector
+- **Theme Toggle**: Dark / Light mode with persistence
+- **Sparkline Charts**: Trend visualization in status bar
 
 ---
 
@@ -26,7 +36,7 @@
 ### New Users
 1. **[QUICKSTART.md](QUICKSTART.md)** - Get running in 5 minutes
 2. **[USER_MANUAL.md](USER_MANUAL.md)** - Learn all features
-3. **[DASHBOARD_MANAGEMENT_GUIDE.md](DASHBOARD_MANAGEMENT_GUIDE.md)** - Master the UI
+3. **[DASHBOARD_MANAGEMENT_GUIDE.md](DASHBOARD_MANAGEMENT_GUIDE.md)** - Master the new UI (v1.9.8)
 
 ### Operators & Researchers  
 1. **[EXPLOIT_QUICK_REFERENCE.md](EXPLOIT_QUICK_REFERENCE.md)** - Exploit operations cheat sheet
@@ -36,7 +46,8 @@
 ### Developers
 1. **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Architecture and APIs
 2. **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - REST endpoint reference
-3. **[PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md)** - Performance tuning
+3. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+4. **[USAGE.md](USAGE.md)** - Python API examples
 
 ### System Administrators
 1. **[INSTALLATION.md](INSTALLATION.md)** - Full installation guide
@@ -51,17 +62,20 @@
 ```
 FalconOne/
 ├── README.md                      # Main project overview
-├── QUICKSTART.md                  # Quick setup guide
+├── QUICKSTART.md                  # Quick setup guide (v1.9.8)
 ├── INSTALLATION.md                # Detailed installation
-├── USER_MANUAL.md                 # User guide
+├── INSTALL.md                     # Quick install reference
+├── USAGE.md                       # Python API examples (v1.9.8)
+├── USER_MANUAL.md                 # User guide (v1.9.8)
+├── CONTRIBUTING.md                # Contribution guidelines
 ├── DEVELOPER_GUIDE.md             # Developer reference
 ├── API_DOCUMENTATION.md           # REST API docs
 ├── PRODUCTION_DEPLOYMENT.md       # Production setup
 ├── CLOUD_DEPLOYMENT.md            # Docker/K8s deployment
-├── CHANGELOG.md                   # Version history
+├── CHANGELOG.md                   # Version history (v1.9.8)
 │
 ├── Operational Guides/
-│   ├── DASHBOARD_MANAGEMENT_GUIDE.md   # Dashboard UI guide
+│   ├── DASHBOARD_MANAGEMENT_GUIDE.md   # Dashboard UI guide (v1.9.8)
 │   ├── EXPLOIT_QUICK_REFERENCE.md      # Exploit cheat sheet
 │   ├── LE_MODE_QUICKSTART.md           # LE mode guide
 │   ├── PERFORMANCE_OPTIMIZATION.md     # Performance tuning
@@ -77,6 +91,20 @@ FalconOne/
 │
 └── archive/deprecated_docs/            # Archived documentation
 ```
+
+---
+
+## 🖥️ Dashboard Navigation (v1.9.8)
+
+The dashboard features 5 collapsible navigation categories:
+
+| Category | Color | Tabs |
+|----------|-------|------|
+| **📊 MONITORING** | Cyan | Dashboard, System Health, Carbon Emissions, SDR Devices, SDR Failover |
+| **🎯 OPERATIONS** | Green | Captures & IMSI, Cellular Monitor, Voice/VoNR, Target Management, Terminal |
+| **⚡ EXPLOITATION** | Orange | Exploit Engine, Post-Quantum Crypto, 6G NTN Satellite, ISAC/V2X/Semantic |
+| **🤖 ANALYTICS** | Purple | AI Classification, Data Validator |
+| **⚙️ ADMINISTRATION** | Gray | Setup Wizard, Vulnerability Audit, Documentation |
 
 ---
 

@@ -1,6 +1,6 @@
 # FalconOne Quick Start Guide
 
-**Version:** 1.9.3 | **Updated:** January 4, 2026
+**Version:** 1.9.8 | **Updated:** January 4, 2026
 
 ## 🚀 Getting Started (5 Minutes)
 
@@ -50,19 +50,44 @@ python start_dashboard.py
 # Access at: http://127.0.0.1:5000
 ```
 
-## 📋 Dashboard Features
+## 📋 Dashboard Features (v1.9.8 UI Redesign)
 
-Once running, access these tabs:
-1. **Overview** - System status and KPIs
-2. **Devices** - SDR hardware management
-3. **Terminal** - Embedded command interface
-4. **Cellular** - Multi-generation monitoring
-5. **Captures** - IMSI/SUCI/voice captures
-6. **Exploits** - Attack operations
-7. **Analytics** - AI/ML insights
-8. **Setup** - SDR installation wizard
-9. **System Tools** - External dependency management (NEW)
-10. **System** - Health and performance metrics
+Once running, explore the **5 navigation categories**:
+
+### 📊 MONITORING
+- **Dashboard** - System KPIs and geolocation map
+- **System Health** - CPU, memory, performance metrics
+- **Carbon Emissions** - Sustainability tracking
+- **SDR Devices** - Hardware management
+- **SDR Failover** - Device pool and failover events
+
+### 🎯 OPERATIONS
+- **Captures & IMSI** - IMSI/TMSI capture and export
+- **Cellular Monitor** - Multi-generation signal monitoring
+- **Voice / VoNR** - Voice interception and analysis
+- **Target Management** - Target tracking (LE Mode)
+- **Terminal** - Embedded command interface
+
+### ⚡ EXPLOITATION
+- **Exploit Engine** - 96+ CVE payloads
+- **Post-Quantum Crypto** - Hybrid KEM/signatures
+- **6G NTN Satellite** - Satellite exploitation
+- **ISAC / V2X / Semantic** - Advanced 6G attacks
+
+### 🤖 ANALYTICS
+- **AI Classification** - Signal classification with SHAP
+- **Data Validator** - Input validation tools
+
+### ⚙️ ADMINISTRATION
+- **Setup Wizard** - SDR driver installation
+- **Vulnerability Audit** - Security scanning
+- **Documentation** - Built-in docs
+
+### UI Features
+- **Persistent Status Bar** - Real-time KPIs always visible
+- **Role Selector** - Operator / Analyst / Admin views
+- **Theme Toggle** - Dark / Light mode
+- **Collapsible Navigation** - Click to expand/collapse categories
 py main.py
 
 # Linux/macOS

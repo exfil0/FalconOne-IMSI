@@ -1,6 +1,6 @@
 # Usage Guide
 
-Common workflows and examples for FalconOne v1.9.6.
+Common workflows and examples for FalconOne v1.9.8.
 
 ## Quick Start
 
@@ -14,7 +14,33 @@ python main.py
 
 # Start with custom config
 python main.py --config config/custom.yaml
+
+# Start dashboard only
+python start_dashboard.py
+# Access at: http://127.0.0.1:5000
 ```
+
+---
+
+## Dashboard Navigation (v1.9.8)
+
+The dashboard UI features a reorganized navigation structure:
+
+### 5 Collapsible Categories
+
+| Category | Tabs |
+|----------|------|
+| **📊 MONITORING** | Dashboard, System Health, Carbon Emissions, SDR Devices, SDR Failover |
+| **🎯 OPERATIONS** | Captures & IMSI, Cellular Monitor, Voice/VoNR, Target Management, Terminal |
+| **⚡ EXPLOITATION** | Exploit Engine, Post-Quantum Crypto, 6G NTN Satellite, ISAC/V2X/Semantic |
+| **🤖 ANALYTICS** | AI Classification, Data Validator |
+| **⚙️ ADMINISTRATION** | Setup Wizard, Vulnerability Audit, Documentation |
+
+### UI Features
+- **Persistent Status Bar**: Real-time KPIs always visible (throughput, latency, success rate)
+- **Role Selector**: Switch between Operator/Analyst/Admin views
+- **Theme Toggle**: Dark/Light mode in sidebar footer
+- **Collapsible Navigation**: Click category headers to expand/collapse
 
 ---
 

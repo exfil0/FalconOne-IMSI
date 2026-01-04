@@ -1,21 +1,27 @@
 # FalconOne Installation Guide
 
-**Version:** 1.9.3  
+**Version:** 1.9.8  
 **Last Updated:** January 4, 2026  
 **Status:** Production Ready (All Features Validated ✅)
 
 ---
 
-## What's New in v1.9.3
+## What's New in v1.9.8
 
-- ✅ **Circuit Breaker Pattern**: Resilient failure handling with exponential backoff and adaptive thresholds
-- ✅ **Online AI Adaptation**: Concept drift detection, experience replay, EWC for catastrophic forgetting prevention
-- ✅ **WCAG 2.1 AA Accessibility**: Full accessibility compliance with high contrast, reduced motion support
-- ✅ **Chaos Engineering Tests**: Network partition, resource exhaustion, SDR failure simulation
-- ✅ **Hardware-in-Loop Tests**: Mock SDR interfaces for 6 device types with timing validation
-- ✅ **Extended Fuzzing**: 87%+ coverage target with Hypothesis property-based testing
+- ✅ **UI/UX Redesign**: 5 collapsible navigation categories (MONITORING, OPERATIONS, EXPLOITATION, ANALYTICS, ADMINISTRATION)
+- ✅ **Persistent Status Bar**: Real-time KPIs always visible (throughput, latency, success rate, alerts)
+- ✅ **Role-Based Views**: Operator / Analyst / Admin role selector with view customization
+- ✅ **Theme Toggle**: Dark / Light mode with localStorage persistence
+- ✅ **Sparkline Charts**: SVG trend visualization in status bar
 
-## What's New in v1.9.0-1.9.2
+## What's New in v1.9.5-1.9.7
+
+- ✅ **Post-Quantum Crypto**: Hybrid KEM/signatures, quantum attack simulation
+- ✅ **Voice Processing**: Opus codec, speaker diarization, VoNR interception
+- ✅ **Comprehensive Tests**: 100+ new tests for PQC, voice, MARL modules
+- ✅ **Documentation Guides**: INSTALL.md, USAGE.md, CONTRIBUTING.md
+
+## What's New in v1.9.0-1.9.4
 
 - ✅ **6G NTN Integration**: LEO/MEO/GEO/HAPS/UAV satellite support with sub-THz monitoring
 - ✅ **ISAC Framework**: Integrated Sensing & Communications with 8 exploitation CVEs

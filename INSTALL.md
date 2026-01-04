@@ -1,6 +1,6 @@
 # Installation Guide
 
-Quick setup guide for FalconOne Intelligence Platform v1.9.6.
+Quick setup guide for FalconOne Intelligence Platform v1.9.8.
 
 ## Prerequisites
 

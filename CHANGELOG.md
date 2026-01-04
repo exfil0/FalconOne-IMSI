@@ -5,6 +5,55 @@ All notable changes to the FalconOne Intelligence Platform will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.8] - 2026-01-04
+
+### Added - Comprehensive Dashboard UI/UX Redesign
+
+#### Navigation Architecture Overhaul
+- **5 Collapsible Categories** with persistent state (localStorage)
+  - **MONITORING**: Dashboard, System Health, Carbon Emissions, SDR Devices, SDR Failover
+  - **OPERATIONS**: Captures & IMSI, Cellular Monitor, Voice/VoNR, Target Management, Terminal
+  - **EXPLOITATION**: Exploit Engine, Post-Quantum Crypto, 6G NTN Satellite, ISAC/V2X/Semantic
+  - **ANALYTICS**: AI Classification, Data Validator
+  - **ADMINISTRATION**: Setup Wizard, Vulnerability Audit, Documentation
+- Category-specific color accents (cyan, green, orange, purple, gray)
+- Chevron indicators with smooth expand/collapse animations
+- Accessibility improvements with ARIA labels and keyboard navigation
+
+#### Persistent Status Bar (Inverted Pyramid)
+- **Real-time KPI Monitoring** always visible at top:
+  - Throughput with sparkline SVG visualization
+  - Latency monitoring with trend indicators (▲/▼)
+  - Success rate tracking
+  - Captures count, Alerts count
+  - CPU and Memory usage
+- **Color-coded status states**:
+  - Critical (red with pulse animation)
+  - Warning (orange)
+  - Success (green)
+- Sparkline mini-charts for trend visualization
+
+#### Role-Based Views
+- **Operator View**: Field operations focus (captures, monitoring, exploits)
+- **Analyst View**: Data analysis focus (analytics, classification, validation)
+- **Admin View**: Full system access (all categories expanded)
+- Instant role switching with visual indicator
+
+#### Theme System
+- **Dark/Light Mode Toggle** in sidebar footer
+- Theme preferences persisted to localStorage
+- Smooth CSS variable transitions
+- High contrast mode support for accessibility
+
+#### CSS Design System Enhancements
+- 300+ new CSS rules for collapsible navigation
+- Sparkline SVG styling with gradients
+- Role selector component styling
+- Persistent status bar responsive design
+- Critical/Warning/Success state indicators
+
+---
+
 ## [1.9.7] - 2026-01-05
 
 ### Added - Comprehensive Test Suites & Documentation Reorganization
