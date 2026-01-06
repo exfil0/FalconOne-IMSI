@@ -1244,4 +1244,4 @@ See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for contribution guidelines.
 
 ## Security
 
-For security issues, see [RANSACKED_SECURITY_REVIEW.md](RANSACKED_SECURITY_REVIEW.md) for the security audit or contact security@falconone.io.
+For security issues, see [RANSACKED_SECURITY_REVIEW.md](RANSACKED_SECURITY_REVIEW.md) for the security audit or contact [security@falconone.io](mailto:security@falconone.io).

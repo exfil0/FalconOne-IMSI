@@ -84,6 +84,15 @@ try:
 except ImportError:
     EmissionsTracker = None  # Optional dependency
 
+# Vulnerability database for CVE endpoints (v1.9.8 production fix)
+try:
+    from ..exploit.vulnerability_db import get_vulnerability_database, VulnerabilityDatabase
+    VULN_DB_AVAILABLE = True
+except ImportError:
+    VULN_DB_AVAILABLE = False
+    get_vulnerability_database = None
+    VulnerabilityDatabase = None
+
 
 # Flask app initialization with security
 app = Flask(__name__, 
@@ -1045,25 +1054,77 @@ class DashboardServer:
         
         @app.route('/api/vulnerability/cves')
         def get_cve_database():
-            """Get CVE database entries"""
+            """Get CVE database entries from unified vulnerability database"""
             if self.auth_enabled and 'username' not in session:
                 return jsonify({'error': 'Unauthorized'}), 401
             
-            # Sample CVE database - in production this would query the exploit engine
-            cves = [
-                {'id': 'CVE-2024-22245', 'category': 'RANSacked', 'severity': 'critical', 'target': 'RAN'},
-                {'id': 'CVE-2024-22249', 'category': 'RANSacked', 'severity': 'critical', 'target': 'Core'},
-                {'id': 'CVE-2026-NTN-001', 'category': '6G NTN', 'severity': 'high', 'target': 'Satellite'},
-                {'id': 'CVE-2026-NTN-002', 'category': '6G NTN', 'severity': 'high', 'target': 'Beam'},
-                {'id': 'CVE-2026-ISAC-001', 'category': 'ISAC', 'severity': 'high', 'target': 'Sensing'},
-                {'id': 'CVE-2024-20017', 'category': 'MediaTek', 'severity': 'critical', 'target': 'Baseband'},
-            ]
-            
-            search = request.args.get('search', '').lower()
-            if search:
-                cves = [c for c in cves if search in c['id'].lower() or search in c['category'].lower()]
-            
-            return jsonify(cves)
+            try:
+                # Get real CVE data from vulnerability database (v1.9.8 production fix)
+                if VULN_DB_AVAILABLE and get_vulnerability_database:
+                    vuln_db = get_vulnerability_database()
+                    # Use find_exploits() which returns all exploits when no filters provided
+                    all_exploits = vuln_db.find_exploits()
+                    
+                    # Convert to API format
+                    cves = []
+                    for exploit in all_exploits:
+                        cve_entry = {
+                            'id': exploit.exploit_id,
+                            'name': exploit.name,
+                            'category': exploit.category.value if hasattr(exploit.category, 'value') else str(exploit.category),
+                            'severity': exploit.severity.lower(),
+                            'target': exploit.component,
+                            'implementation': exploit.implementation,
+                            'cvss_score': exploit.cvss_score,
+                            'description': exploit.description,
+                            'exploitable': exploit.exploitable,
+                            'success_rate': exploit.success_rate
+                        }
+                        cves.append(cve_entry)
+                    
+                    # Apply search filter
+                    search = request.args.get('search', '').lower()
+                    if search:
+                        cves = [c for c in cves if (
+                            search in c['id'].lower() or 
+                            search in c['category'].lower() or
+                            search in c.get('name', '').lower() or
+                            search in c.get('target', '').lower()
+                        )]
+                    
+                    # Apply category filter
+                    category = request.args.get('category', '').lower()
+                    if category:
+                        cves = [c for c in cves if category in c['category'].lower()]
+                    
+                    # Apply severity filter
+                    severity = request.args.get('severity', '').lower()
+                    if severity:
+                        cves = [c for c in cves if c['severity'] == severity]
+                    
+                    # Pagination
+                    limit = request.args.get('limit', default=100, type=int)
+                    offset = request.args.get('offset', default=0, type=int)
+                    
+                    total = len(cves)
+                    cves = cves[offset:offset + limit]
+                    
+                    return jsonify({
+                        'cves': cves,
+                        'total': total,
+                        'limit': limit,
+                        'offset': offset
+                    })
+                else:
+                    return jsonify({
+                        'error': 'Vulnerability database not available',
+                        'cves': [],
+                        'total': 0
+                    }), 503
+                    
+            except Exception as e:
+                self.logger.error(f"CVE database query failed: {e}")
+                return jsonify({'error': str(e)}), 500
         
         # ==================== v1.9.4+ SDR FAILOVER API ====================
         
@@ -1952,8 +2013,13 @@ class DashboardServer:
                     'max_targets': 10
                 }
                 
+                # Initialize monitor with real SDR manager if available (v1.9.8 production fix)
+                sdr_mgr = None
+                if hasattr(self, 'orchestrator') and self.orchestrator:
+                    sdr_mgr = getattr(self.orchestrator, 'sdr_manager', None)
+                
                 monitor = ISACMonitor(
-                    sdr_manager=None,  # Mock for API
+                    sdr_manager=sdr_mgr,
                     config=config,
                     signal_bus=SignalBus() if hasattr(self, 'signal_bus') else None,
                     evidence_manager=EvidenceManager() if le_mode else None
@@ -2083,9 +2149,13 @@ class DashboardServer:
                     if not is_valid:
                         return jsonify({'error': 'Invalid or expired warrant'}), 403
                 
-                # Initialize exploiter
+                # Initialize exploiter with real SDR manager if available (v1.9.8 production fix)
+                sdr_mgr = None
+                if hasattr(self, 'orchestrator') and self.orchestrator:
+                    sdr_mgr = getattr(self.orchestrator, 'sdr_manager', None)
+                
                 exploiter = ISACExploiter(
-                    sdr_manager=None,  # Mock for API
+                    sdr_manager=sdr_mgr,
                     payload_gen=PayloadGenerator(),
                     signal_bus=SignalBus() if hasattr(self, 'signal_bus') else None,
                     evidence_manager=EvidenceManager() if le_mode else None
@@ -2103,8 +2173,20 @@ class DashboardServer:
                     )
                 
                 elif exploit_type == 'ai_poisoning':
-                    # Generate mock training data
-                    training_data = np.random.randn(1000, 64)
+                    # Get training data from request parameters (v1.9.8 production fix)
+                    # User must provide training data or specify target system's data source
+                    training_data_input = parameters.get('training_data')
+                    if training_data_input is not None:
+                        # Convert from list to numpy array
+                        training_data = np.array(training_data_input)
+                    else:
+                        # Request requires training data specification for production use
+                        return jsonify({
+                            'error': 'AI poisoning attack requires training_data parameter',
+                            'message': 'Provide training data array or specify data_source to fetch from target system',
+                            'required_shape': '(n_samples, n_features)'
+                        }), 400
+                    
                     result = exploiter.ai_poison(
                         training_data=training_data,
                         target_system=parameters.get('target_system', 'oran_rapp'),
@@ -2194,19 +2276,35 @@ class DashboardServer:
                 if mode_filter and mode_filter not in ['monostatic', 'bistatic', 'cooperative']:
                     return jsonify({'error': 'Invalid mode filter'}), 400
                 
-                # In production, fetch from database
-                # For now, return mock data
-                data = []
-                for i in range(limit):
-                    entry = {
-                        'mode': mode_filter or 'monostatic',
-                        'range_m': np.random.uniform(50, 1000),
-                        'velocity_mps': np.random.uniform(0, 50),
-                        'angle_deg': np.random.uniform(-90, 90),
-                        'snr_db': np.random.uniform(10, 25),
-                        'timestamp': time.time() - i * 60
-                    }
-                    data.append(entry)
+                # Fetch real ISAC sensing data from database (v1.9.8 production fix)
+                try:
+                    if hasattr(self, 'database') and self.database:
+                        # Query ISAC sensing data from database
+                        data = self.database.get_isac_sensing_data(
+                            limit=limit,
+                            mode=mode_filter
+                        ) if hasattr(self.database, 'get_isac_sensing_data') else []
+                        
+                        if not data:
+                            # No data available - return empty with status
+                            return jsonify({
+                                'data': [],
+                                'count': 0,
+                                'message': 'No ISAC sensing data available. Start ISAC monitoring to collect data.'
+                            })
+                    else:
+                        return jsonify({
+                            'data': [],
+                            'count': 0,
+                            'error': 'Database not initialized'
+                        }), 503
+                except Exception as db_error:
+                    self.logger.warning(f"ISAC database query failed: {db_error}")
+                    return jsonify({
+                        'data': [],
+                        'count': 0,
+                        'error': f'Database query failed: {str(db_error)}'
+                    }), 503
                 
                 return jsonify({
                     'data': data,
@@ -2283,7 +2381,7 @@ class DashboardServer:
         
         def _validate_warrant_for_isac(self, warrant_id: str) -> bool:
             """
-            Validate LE warrant for ISAC operations
+            Validate LE warrant for ISAC operations using warrant database.
             
             Args:
                 warrant_id: Warrant identifier
@@ -2294,36 +2392,81 @@ class DashboardServer:
             if not warrant_id:
                 return False
             
-            # In production: Check warrant database, expiration, scope
-            # For now: Basic validation
-            if not warrant_id.startswith('WARRANT-'):
+            # Query warrant database for validation
+            try:
+                if hasattr(self, 'database') and self.database:
+                    validation = self.database.validate_warrant(warrant_id, scope='isac')
+                    if validation['valid']:
+                        self.logger.info(f"Warrant {warrant_id} validated for ISAC operations")
+                        return True
+                    else:
+                        self.logger.warning(f"Warrant validation failed: {validation['error']}")
+                        return False
+                
+                # Fallback to EvidenceManager if available
+                if hasattr(self, 'orchestrator') and self.orchestrator:
+                    evidence_mgr = getattr(self.orchestrator, 'evidence_manager', None)
+                    if evidence_mgr and evidence_mgr.current_warrant:
+                        if evidence_mgr.current_warrant.get('warrant_id') == warrant_id:
+                            return True
+                
                 return False
-            
-            # Simulate warrant expiration check
-            if warrant_id in getattr(self, 'expired_warrants', []):
+                
+            except Exception as e:
+                self.logger.error(f"Warrant validation error: {e}")
                 return False
-            
-            return True
         
         def _validate_warrant_for_ntn(self, warrant_id: str) -> bool:
-            """Validate warrant for NTN operations (helper method)"""
-            # In production, this would:
-            # 1. Query warrant database
-            # 2. Check expiration date
-            # 3. Verify jurisdiction covers NTN/satellite intercepts
-            # 4. Verify target_identifiers include satellite IDs
+            """
+            Validate warrant for NTN/satellite operations using warrant database.
             
-            # Simplified validation for now
-            if not warrant_id or len(warrant_id) < 10:
+            Args:
+                warrant_id: Warrant identifier
+                
+            Returns:
+                True if warrant is valid and covers NTN/satellite scope
+            """
+            if not warrant_id or len(warrant_id) < 5:
                 return False
             
             # Check if orchestrator has LE mode enabled
             if hasattr(self, 'orchestrator') and self.orchestrator:
                 le_config = getattr(self.orchestrator.config, 'law_enforcement', {})
                 if not le_config.get('enabled', False):
+                    self.logger.warning("LE mode not enabled - warrant validation denied")
                     return False
             
-            return True  # Placeholder - implement full validation in production
+            # Query warrant database for validation with satellite scope
+            try:
+                if hasattr(self, 'database') and self.database:
+                    validation = self.database.validate_warrant(warrant_id, scope='satellite')
+                    if validation['valid']:
+                        warrant = validation['warrant']
+                        self.logger.info(f"Warrant {warrant_id} validated for NTN operations")
+                        return True
+                    else:
+                        # Check if scope includes 'ntn' as alternative
+                        validation_ntn = self.database.validate_warrant(warrant_id, scope='ntn')
+                        if validation_ntn['valid']:
+                            return True
+                        self.logger.warning(f"NTN warrant validation failed: {validation['error']}")
+                        return False
+                
+                # Fallback to EvidenceManager if available
+                if hasattr(self, 'orchestrator') and self.orchestrator:
+                    evidence_mgr = getattr(self.orchestrator, 'evidence_manager', None)
+                    if evidence_mgr and evidence_mgr.current_warrant:
+                        if evidence_mgr.current_warrant.get('warrant_id') == warrant_id:
+                            # Check if current warrant covers satellite/NTN
+                            scope = evidence_mgr.current_warrant.get('scope', '').lower()
+                            if 'satellite' in scope or 'ntn' in scope or scope == 'full':
+                                return True
+                
+                return False
+                
+            except Exception as e:
+                self.logger.error(f"NTN warrant validation error: {e}")
+                return False
         
         # ==================== v1.8.0 UNIFIED EXPLOIT API ====================
         # These endpoints integrate RANSacked CVEs with native FalconOne exploits
@@ -4154,6 +4297,23 @@ class DashboardServer:
     def _collect_kpis(self) -> Dict[str, Any]:
         """Collect current KPIs from system"""
         try:
+            # Calculate real success rate from database exploit operations
+            success_rate = 0.0
+            if hasattr(self, 'database') and self.database:
+                try:
+                    db_stats = self.database.get_statistics()
+                    total_exploits = db_stats.get('total_exploits', 0)
+                    if total_exploits > 0:
+                        # Get successful exploits count
+                        conn = self.database._get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT COUNT(*) FROM exploit_operations WHERE success = 1")
+                        successful = cursor.fetchone()[0]
+                        self.database._close_connection(conn)
+                        success_rate = successful / total_exploits if total_exploits > 0 else 0.0
+                except Exception as e:
+                    self.logger.debug(f"Could not calculate success rate from DB: {e}")
+            
             if self.kpi_monitor and len(self.kpi_monitor.kpi_history) > 0:
                 # Get latest KPI values from history
                 latest = self.kpi_monitor.kpi_history[-1]
@@ -4162,7 +4322,7 @@ class DashboardServer:
                 kpis = {
                     'throughput_mbps': float(latest.get('throughput_mbps', 0)),
                     'latency_ms': float(latest.get('latency_ms', 0)),
-                    'success_rate': float(0.95),  # Default placeholder
+                    'success_rate': float(success_rate),
                     'active_connections': int(len(self.kpi_monitor.kpi_history)),
                     'cpu_usage': float(stats.get('rsrp', {}).get('mean', 0)) if stats else 0.0,
                     'memory_usage': float(stats.get('rsrq', {}).get('mean', 0)) if stats else 0.0,
@@ -4173,7 +4333,7 @@ class DashboardServer:
                 kpis = {
                     'throughput_mbps': 0.0,
                     'latency_ms': 0.0,
-                    'success_rate': 0.0,
+                    'success_rate': float(success_rate),
                     'active_connections': 0,
                     'cpu_usage': 0.0,
                     'memory_usage': 0.0,
@@ -4205,19 +4365,28 @@ class DashboardServer:
                 return {
                     'co2_kg': emissions.get('total_co2_kg', 0),
                     'power_kwh': emissions.get('power_watts', 0) / 1000,
-                    'pue': emissions.get('pue', 1.0)
+                    'pue': emissions.get('pue', 1.0),
+                    'status': 'active'
                 }
             else:
-                # Fallback: Generate sample emissions data
+                # No emissions tracker - return unavailable status (v1.9.8 production fix)
                 return {
-                    'co2_kg': float(np.random.uniform(5, 15)),
-                    'power_kwh': float(np.random.uniform(0.1, 0.3)),
-                    'pue': float(np.random.uniform(1.2, 1.5))
+                    'co2_kg': None,
+                    'power_kwh': None,
+                    'pue': None,
+                    'status': 'unavailable',
+                    'message': 'Emissions tracker not initialized. Install codecarbon for sustainability monitoring.'
                 }
             
         except Exception as e:
             self.logger.error(f"Emissions collection failed: {e}")
-            return {'co2_kg': 0, 'power_kwh': 0, 'pue': 1.0}
+            return {
+                'co2_kg': None, 
+                'power_kwh': None, 
+                'pue': None,
+                'status': 'error',
+                'error': str(e)
+            }
     
     def _collect_exploit_status(self) -> Dict[str, Any]:
         """Collect exploit status for all attack types from real engines"""
@@ -4243,8 +4412,22 @@ class DashboardServer:
         else:
             status['ntn'] = {'exploits': 0, 'coverage_attacks': 0, 'handover_attacks': 0}
         
-        # V2X (placeholder)
-        status['v2x'] = {'targets': 0, 'spoofing_active': False, 'safety_attacks': 0}
+        # V2X - Query V2X engine if available
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            v2x_engine = getattr(self.orchestrator, 'v2x_engine', None)
+            if v2x_engine:
+                tracked = v2x_engine.get_tracked_vehicles() if hasattr(v2x_engine, 'get_tracked_vehicles') else {}
+                active = v2x_engine.get_active_attacks() if hasattr(v2x_engine, 'get_active_attacks') else []
+                spoofing_count = sum(1 for a in active if 'spoof' in a.get('attack_type', '').lower())
+                status['v2x'] = {
+                    'targets': len(tracked),
+                    'spoofing_active': spoofing_count > 0,
+                    'safety_attacks': len(active)
+                }
+            else:
+                status['v2x'] = {'targets': 0, 'spoofing_active': False, 'safety_attacks': 0}
+        else:
+            status['v2x'] = {'targets': 0, 'spoofing_active': False, 'safety_attacks': 0}
         
         # Exploit Engine
         if self.exploit_engine:
@@ -4257,12 +4440,76 @@ class DashboardServer:
         else:
             status['injection'] = {'sms_sent': 0, 'success_rate': 0, 'last_injection': 'N/A'}
         
-        # Other exploit types (placeholders)
-        status['silent_sms'] = {'targets': 0, 'monitored': 0, 'detection_rate': 0}
-        status['downgrade'] = {'attempts': 0, 'fiveg_to_lte': 0, 'lte_to_umts': 0, 'success_rate': 0}
-        status['paging'] = {'spoofs': 0, 'targets_tracked': 0, 'accuracy': 0}
-        status['aiot'] = {'devices': 0, 'sensors': 0, 'exploits': 0}
-        status['semantic'] = {'attacks': 0, 'poisoning': 0, 'context_attacks': 0}
+        # Query database for exploit operation statistics by type
+        exploit_stats_by_type = {'silent_sms': 0, 'downgrade': 0, 'paging': 0, 'aiot': 0, 'semantic': 0}
+        if hasattr(self, 'database') and self.database:
+            try:
+                conn = self.database._get_connection()
+                cursor = conn.cursor()
+                # Get exploit counts by type
+                cursor.execute("""
+                    SELECT exploit_type, COUNT(*), SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END)
+                    FROM exploit_operations 
+                    WHERE exploit_type IN ('silent_sms', 'downgrade', 'paging', 'aiot', 'semantic')
+                    GROUP BY exploit_type
+                """)
+                for row in cursor.fetchall():
+                    exploit_type = row[0]
+                    total = row[1]
+                    successful = row[2]
+                    exploit_stats_by_type[exploit_type] = {
+                        'total': total,
+                        'successful': successful,
+                        'success_rate': successful / total if total > 0 else 0
+                    }
+                self.database._close_connection(conn)
+            except Exception as e:
+                self.logger.debug(f"Could not query exploit stats by type: {e}")
+        
+        # Populate exploit type stats from database or defaults
+        silent_stats = exploit_stats_by_type.get('silent_sms', {})
+        status['silent_sms'] = {
+            'targets': silent_stats.get('total', 0) if isinstance(silent_stats, dict) else 0,
+            'monitored': 0,
+            'detection_rate': silent_stats.get('success_rate', 0) if isinstance(silent_stats, dict) else 0
+        }
+        
+        downgrade_stats = exploit_stats_by_type.get('downgrade', {})
+        status['downgrade'] = {
+            'attempts': downgrade_stats.get('total', 0) if isinstance(downgrade_stats, dict) else 0,
+            'fiveg_to_lte': 0,
+            'lte_to_umts': 0,
+            'success_rate': downgrade_stats.get('success_rate', 0) if isinstance(downgrade_stats, dict) else 0
+        }
+        
+        paging_stats = exploit_stats_by_type.get('paging', {})
+        status['paging'] = {
+            'spoofs': paging_stats.get('total', 0) if isinstance(paging_stats, dict) else 0,
+            'targets_tracked': 0,
+            'accuracy': paging_stats.get('success_rate', 0) if isinstance(paging_stats, dict) else 0
+        }
+        
+        aiot_stats = exploit_stats_by_type.get('aiot', {})
+        # Check AIoT monitor if available
+        aiot_devices = 0
+        aiot_sensors = 0
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            aiot_monitor = getattr(self.orchestrator, 'aiot_monitor', None)
+            if aiot_monitor:
+                aiot_devices = len(getattr(aiot_monitor, 'devices', []))
+                aiot_sensors = len(getattr(aiot_monitor, 'sensors', []))
+        status['aiot'] = {
+            'devices': aiot_devices,
+            'sensors': aiot_sensors,
+            'exploits': aiot_stats.get('total', 0) if isinstance(aiot_stats, dict) else 0
+        }
+        
+        semantic_stats = exploit_stats_by_type.get('semantic', {})
+        status['semantic'] = {
+            'attacks': semantic_stats.get('total', 0) if isinstance(semantic_stats, dict) else 0,
+            'poisoning': 0,
+            'context_attacks': 0
+        }
         
         return status
     
@@ -4290,22 +4537,82 @@ class DashboardServer:
         else:
             status['ric'] = {'xapps': 0, 'optimization': 0, 'qos_gain': 0}
         
-        # Placeholders for other analytics
-        status['fusion'] = {'score': 0, 'rf_anomalies': 0, 'cyber_threats': 0}
-        status['geolocation'] = {'precision': 0, 'targets': 0, 'method': 'N/A'}
-        status['validator'] = {'quality': 0, 'avg_snr': 0, 'invalid': 0}
+        # Placeholders for other analytics - query real modules when available
+        # Fusion Engine
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            fusion_engine = getattr(self.orchestrator, 'fusion_engine', None)
+            if fusion_engine:
+                status['fusion'] = {
+                    'score': getattr(fusion_engine, 'fusion_score', 0),
+                    'rf_anomalies': len(getattr(fusion_engine, 'rf_anomalies', [])),
+                    'cyber_threats': len(getattr(fusion_engine, 'cyber_threats', []))
+                }
+            else:
+                status['fusion'] = {'score': 0, 'rf_anomalies': 0, 'cyber_threats': 0}
+        else:
+            status['fusion'] = {'score': 0, 'rf_anomalies': 0, 'cyber_threats': 0}
+        
+        # Geolocation Engine
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            geo_engine = getattr(self.orchestrator, 'geolocation_engine', None)
+            if geo_engine:
+                tracked = getattr(geo_engine, 'tracked_targets', {})
+                precision = getattr(geo_engine, 'precision_m', 0)
+                method = getattr(geo_engine, 'active_method', 'N/A')
+                status['geolocation'] = {
+                    'precision': precision,
+                    'targets': len(tracked),
+                    'method': method
+                }
+            else:
+                status['geolocation'] = {'precision': 0, 'targets': 0, 'method': 'N/A'}
+        else:
+            status['geolocation'] = {'precision': 0, 'targets': 0, 'method': 'N/A'}
+        
+        # Signal Validator
+        if hasattr(self, 'signal_validator') and self.signal_validator:
+            status['validator'] = {
+                'quality': getattr(self.signal_validator, 'signal_quality', 0),
+                'avg_snr': getattr(self.signal_validator, 'avg_snr_db', 0),
+                'invalid': getattr(self.signal_validator, 'invalid_count', 0)
+            }
+        else:
+            status['validator'] = {'quality': 0, 'avg_snr': 0, 'invalid': 0}
         
         return status
     
     def _collect_ntn_status(self) -> Dict[str, Any]:
-        """Collect NTN satellite status"""
-        return {
-            'satellites': [
-                {'name': 'LEO-SAT-01', 'type': 'LEO', 'altitude': 550, 'coverage': 'EU', 'active': True},
-                {'name': 'GEO-SAT-02', 'type': 'GEO', 'altitude': 35786, 'coverage': 'Global', 'active': True},
-                {'name': 'MEO-SAT-03', 'type': 'MEO', 'altitude': 20200, 'coverage': 'NA', 'active': False}
-            ]
-        }
+        """Collect NTN satellite status from real NTN exploiter module"""
+        satellites = []
+        
+        # Query NTN attack engine for registered satellites
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            ntn_engine = getattr(self.orchestrator, 'ntn_exploiter', None)
+            if ntn_engine and hasattr(ntn_engine, 'satellite_db'):
+                for sat_id, ephemeris in ntn_engine.satellite_db.items():
+                    satellites.append({
+                        'name': sat_id,
+                        'type': getattr(ephemeris, 'orbit_type', 'LEO'),
+                        'altitude': getattr(ephemeris, 'altitude_km', 0),
+                        'coverage': 'Global' if getattr(ephemeris, 'orbit_type', '') == 'GEO' else 'Regional',
+                        'active': True
+                    })
+            
+            # Also check NTN 6G exploiter
+            ntn_6g = getattr(self.orchestrator, 'ntn_6g_exploiter', None)
+            if ntn_6g and hasattr(ntn_6g, 'active_satellites'):
+                for sat in ntn_6g.active_satellites:
+                    if isinstance(sat, dict):
+                        satellites.append({
+                            'name': sat.get('id', 'Unknown'),
+                            'type': sat.get('type', 'LEO'),
+                            'altitude': sat.get('altitude_km', 0),
+                            'coverage': sat.get('coverage', 'Unknown'),
+                            'active': sat.get('active', True)
+                        })
+        
+        # Return collected satellites or empty list if no NTN data available
+        return {'satellites': satellites}
     
     def _collect_agent_status(self) -> list:
         """Collect federated agent status from coordinator"""
@@ -4722,32 +5029,35 @@ class DashboardServer:
             return health
             
         except ImportError:
-            # psutil not installed - return basic mock data
+            # psutil not installed - return error status (v1.9.8 production fix)
             return {
-                'cpu': {'usage_percent': float(np.random.uniform(30, 70)), 'cores_logical': 8, 'history': []},
-                'memory': {'percent': float(np.random.uniform(40, 80)), 'total_mb': 16384.0, 'history': []},
-                'disk': {'percent': float(np.random.uniform(50, 70)), 'total_gb': 500.0},
-                'network': {'upload_mbps': 0.0, 'download_mbps': 0.0, 'history': []},
-                'temperature': {},
-                'process': {'cpu_percent': 0.0, 'memory_mb': 0.0, 'python_count': 0},
-                'alerts': [],
-                'error_recovery': [],
-                'uptime_seconds': time.time() - getattr(self, '_start_time', time.time()),
-                'timestamp': time.time()
-            }
-        except Exception as e:
-            # Other errors - return basic data
-            return {
-                'cpu': {'usage_percent': 0.0, 'cores_logical': 0, 'history': []},
-                'memory': {'percent': 0.0, 'total_mb': 0.0, 'history': []},
-                'disk': {'percent': 0.0, 'total_gb': 0.0},
-                'network': {'upload_mbps': 0.0, 'download_mbps': 0.0, 'history': []},
-                'temperature': {},
-                'process': {'cpu_percent': 0.0, 'memory_mb': 0.0, 'python_count': 0},
-                'alerts': [],
+                'cpu': {'usage_percent': None, 'cores_logical': None, 'history': [], 'error': 'psutil not installed'},
+                'memory': {'percent': None, 'total_mb': None, 'history': [], 'error': 'psutil not installed'},
+                'disk': {'percent': None, 'total_gb': None, 'error': 'psutil not installed'},
+                'network': {'upload_mbps': None, 'download_mbps': None, 'history': [], 'error': 'psutil not installed'},
+                'temperature': {'error': 'psutil not installed'},
+                'process': {'cpu_percent': None, 'memory_mb': None, 'python_count': None, 'error': 'psutil not installed'},
+                'alerts': [{'level': 'warning', 'message': 'Install psutil for system health monitoring: pip install psutil'}],
                 'error_recovery': [],
                 'uptime_seconds': time.time() - getattr(self, '_start_time', time.time()),
                 'timestamp': time.time(),
+                'status': 'degraded',
+                'error': 'psutil package not installed - system metrics unavailable'
+            }
+        except Exception as e:
+            # Other errors - return error status with actual error (v1.9.8 production fix)
+            return {
+                'cpu': {'usage_percent': None, 'cores_logical': None, 'history': []},
+                'memory': {'percent': None, 'total_mb': None, 'history': []},
+                'disk': {'percent': None, 'total_gb': None},
+                'network': {'upload_mbps': None, 'download_mbps': None, 'history': []},
+                'temperature': {},
+                'process': {'cpu_percent': None, 'memory_mb': None, 'python_count': None},
+                'alerts': [{'level': 'error', 'message': f'System health check failed: {str(e)}'}],
+                'error_recovery': [],
+                'uptime_seconds': time.time() - getattr(self, '_start_time', time.time()),
+                'timestamp': time.time(),
+                'status': 'error',
                 'error': str(e)
             }
     
@@ -4986,60 +5296,72 @@ class DashboardServer:
         """Collect environmental adaptation status and metrics"""
         try:
             if self.environmental_adapter:
+                # Get real metrics from environmental adapter (v1.9.8 production fix)
+                accuracy_data = getattr(self.environmental_adapter, 'accuracy_metrics', None)
+                conditions = getattr(self.environmental_adapter, 'current_conditions', {})
+                
                 return {
                     'enabled': True,
                     'multipath_compensation': getattr(self.environmental_adapter, 'multipath_compensation_enabled', True),
                     'kalman_filter_active': getattr(self.environmental_adapter, 'kalman_filter_enabled', True),
                     'ntn_doppler_correction': getattr(self.environmental_adapter, 'ntn_doppler_enabled', True),
-                    'accuracy_improvement_percent': float(np.random.uniform(20, 30)),  # Target: +20-30%
-                    'current_conditions': {
-                        'urban': True,
-                        'weather': 'clear',
-                        'satellite_visibility': 12
+                    'accuracy_improvement_percent': accuracy_data.get('improvement_percent') if accuracy_data else None,
+                    'current_conditions': conditions if conditions else {
+                        'urban': None,
+                        'weather': 'unknown',
+                        'satellite_visibility': None
                     },
-                    'last_update': time.time()
+                    'last_update': getattr(self.environmental_adapter, 'last_update', time.time()),
+                    'status': 'active'
                 }
             else:
                 return {
                     'enabled': False,
+                    'status': 'unavailable',
                     'message': 'Environmental adapter not initialized'
                 }
         except Exception as e:
             self.logger.error(f"Environmental data collection failed: {e}")
-            return {'enabled': False, 'error': str(e)}
+            return {'enabled': False, 'status': 'error', 'error': str(e)}
     
     def _collect_profiling_metrics(self) -> Dict[str, Any]:
         """Collect profiling dashboard metrics"""
         try:
             if self.profiler:
-                # Get metrics from profiler
+                # Get real metrics from profiler (v1.9.8 production fix)
                 metrics = getattr(self.profiler, 'metrics', {})
+                latency_data = getattr(self.profiler, 'latency_percentiles', None)
+                accuracy_data = getattr(self.profiler, 'accuracy_metrics', None)
                 
                 return {
                     'enabled': True,
                     'prometheus_endpoint': 'http://localhost:9090/metrics',
                     'grafana_dashboard': 'http://localhost:3000/d/falconone',
-                    'latency_metrics': {
-                        'p50_ms': float(np.random.uniform(5, 15)),
-                        'p95_ms': float(np.random.uniform(20, 40)),
-                        'p99_ms': float(np.random.uniform(50, 80))
+                    'latency_metrics': latency_data if latency_data else {
+                        'p50_ms': None,
+                        'p95_ms': None,
+                        'p99_ms': None,
+                        'status': 'no_data'
                     },
-                    'accuracy_metrics': {
-                        'signal_classification': 0.94,
-                        'geolocation': 0.88,
-                        'exploit_success': 0.75
+                    'accuracy_metrics': accuracy_data if accuracy_data else {
+                        'signal_classification': None,
+                        'geolocation': None,
+                        'exploit_success': None,
+                        'status': 'no_data'
                     },
                     'operations_tracked': len(metrics) if metrics else 0,
-                    'last_update': time.time()
+                    'last_update': getattr(self.profiler, 'last_update', time.time()),
+                    'status': 'active'
                 }
             else:
                 return {
                     'enabled': False,
+                    'status': 'unavailable',
                     'message': 'Profiler not initialized'
                 }
         except Exception as e:
             self.logger.error(f"Profiling metrics collection failed: {e}")
-            return {'enabled': False, 'error': str(e)}
+            return {'enabled': False, 'status': 'error', 'error': str(e)}
     
     def _collect_e2e_status(self) -> Dict[str, Any]:
         """Collect E2E validation test results"""
@@ -5113,19 +5435,24 @@ class DashboardServer:
         """Collect error recovery framework status"""
         try:
             if self.error_recoverer:
-                # Get recovery statistics
+                # Get real recovery statistics (v1.9.8 production fix)
                 stats = getattr(self.error_recoverer, 'recovery_stats', {})
                 recent_events = getattr(self.error_recoverer, 'recovery_history', [])[-20:]
+                circuit_breakers = getattr(self.error_recoverer, 'circuit_breakers', {})
+                
+                # Calculate real uptime and recovery metrics
+                uptime_data = stats.get('uptime', {})
+                recovery_times = [e.get('recovery_time', 0) for e in recent_events if e.get('success')]
                 
                 return {
                     'enabled': True,
-                    'circuit_breakers': {
-                        'sdr_reconnect': {'status': 'closed', 'failures': 0},
-                        'gpu_fallback': {'status': 'closed', 'failures': 0},
-                        'network_retry': {'status': 'closed', 'failures': 0}
+                    'circuit_breakers': circuit_breakers if circuit_breakers else {
+                        'sdr_reconnect': {'status': 'unknown', 'failures': None},
+                        'gpu_fallback': {'status': 'unknown', 'failures': None},
+                        'network_retry': {'status': 'unknown', 'failures': None}
                     },
-                    'uptime_percent': float(np.random.uniform(99.0, 99.9)),  # Target: >99%
-                    'avg_recovery_time_sec': float(np.random.uniform(3, 10)),  # Target: <10s
+                    'uptime_percent': uptime_data.get('percent') if uptime_data else None,
+                    'avg_recovery_time_sec': sum(recovery_times) / len(recovery_times) if recovery_times else None,
                     'total_recoveries': len(recent_events),
                     'recent_events': [
                         {
@@ -5136,17 +5463,19 @@ class DashboardServer:
                         }
                         for event in recent_events
                     ],
-                    'checkpoint_enabled': True,
-                    'last_update': time.time()
+                    'checkpoint_enabled': getattr(self.error_recoverer, 'checkpoint_enabled', False),
+                    'last_update': stats.get('last_update', time.time()),
+                    'status': 'active'
                 }
             else:
                 return {
                     'enabled': False,
+                    'status': 'unavailable',
                     'message': 'Error recoverer not initialized'
                 }
         except Exception as e:
             self.logger.error(f"Error recovery status collection failed: {e}")
-            return {'enabled': False, 'error': str(e)}
+            return {'enabled': False, 'status': 'error', 'error': str(e)}
     
     def _collect_validation_stats(self) -> Dict[str, Any]:
         """Collect data validation middleware statistics"""
@@ -5159,30 +5488,28 @@ class DashboardServer:
                     'enabled': True,
                     'validation_level': getattr(self.data_validator, 'validation_level', 'STANDARD'),
                     'snr_threshold_db': getattr(self.data_validator, 'snr_threshold', 5.0),
-                    'dc_offset_removal': True,
-                    'clipping_detection': True,
-                    'false_positive_reduction_percent': float(np.random.uniform(10, 15)),  # Target: 10-15%
+                    'dc_offset_removal': getattr(self.data_validator, 'dc_offset_removal', True),
+                    'clipping_detection': getattr(self.data_validator, 'clipping_detection', True),
+                    'false_positive_reduction_percent': stats.get('false_positive_reduction') if stats else None,
                     'statistics': {
                         'samples_validated': stats.get('total_samples', 0),
                         'samples_passed': stats.get('passed_samples', 0),
                         'samples_rejected': stats.get('rejected_samples', 0),
-                        'avg_snr_db': float(np.random.uniform(15, 25))
+                        'avg_snr_db': stats.get('avg_snr_db') if stats else None
                     },
-                    'recent_rejections': [
-                        {'reason': 'low_snr', 'count': 5},
-                        {'reason': 'dc_offset', 'count': 2},
-                        {'reason': 'clipping', 'count': 1}
-                    ],
-                    'last_update': time.time()
+                    'recent_rejections': stats.get('recent_rejections', []) if stats else [],
+                    'last_update': stats.get('last_update', time.time()) if stats else time.time(),
+                    'status': 'active'
                 }
             else:
                 return {
                     'enabled': False,
+                    'status': 'unavailable',
                     'message': 'Data validator not initialized'
                 }
         except Exception as e:
             self.logger.error(f"Validation stats collection failed: {e}")
-            return {'enabled': False, 'error': str(e)}
+            return {'enabled': False, 'status': 'error', 'error': str(e)}
     
     def _collect_performance_stats(self) -> Dict[str, Any]:
         """Collect performance optimization statistics"""
@@ -5209,28 +5536,30 @@ class DashboardServer:
                     },
                     'pooling': {
                         'enabled': True,
-                        'thread_workers': 4,
-                        'process_workers': 2,
-                        'active_tasks': 0  # Would need tracking
+                        'thread_workers': pool.thread_workers if hasattr(pool, 'thread_workers') else 4,
+                        'process_workers': pool.process_workers if hasattr(pool, 'process_workers') else 2,
+                        'active_tasks': pool.active_count if hasattr(pool, 'active_count') else 0
                     },
                     'fft': {
                         'optimized': True,
                         'real_fft_enabled': True,
                         'cached_windows': True,
-                        'avg_time_ms': float(np.random.uniform(0.5, 2.0))
+                        'avg_time_ms': monitor_stats.get('fft_avg_time_ms') if monitor_stats else None
                     },
-                    'cpu_reduction_percent': float(np.random.uniform(20, 40)),  # Target: 20-40%
-                    'operations_monitored': len(monitor_stats),
-                    'last_update': time.time()
+                    'cpu_reduction_percent': monitor_stats.get('cpu_reduction') if monitor_stats else None,
+                    'operations_monitored': len(monitor_stats) if monitor_stats else 0,
+                    'last_update': time.time(),
+                    'status': 'active'
                 }
             except ImportError:
                 return {
                     'enabled': False,
+                    'status': 'unavailable',
                     'message': 'Performance utilities not available'
                 }
         except Exception as e:
             self.logger.error(f"Performance stats collection failed: {e}")
-            return {'enabled': False, 'error': str(e)}
+            return {'enabled': False, 'status': 'error', 'error': str(e)}
     
     def add_anomaly_alert(self, anomaly_type: str, severity: str, 
                          description: str, metadata: Dict[str, Any]):
@@ -12599,6 +12928,17 @@ Ready>
         
         // ==================== INITIALIZATION v1.9.8 ====================
         
+        // Store latest KPI data from WebSocket for status bar
+        let latestKpiData = {
+            throughput: 0,
+            latency: 0,
+            success_rate: 0,
+            captures_count: 0,
+            alerts_count: 0,
+            cpu: 0,
+            memory: 0
+        };
+        
         // Initialize new features on DOM ready
         document.addEventListener('DOMContentLoaded', function() {
             // Restore UI preferences
@@ -12606,29 +12946,21 @@ Ready>
             restoreTheme();
             restoreRole();
             
-            // Set up periodic KPI updates
+            // Set up periodic KPI updates from stored WebSocket data (not random)
             setInterval(() => {
-                // Fetch and update KPIs (simulated for now, integrate with real data)
-                updateStatusBarKPIs({
-                    throughput: (Math.random() * 100).toFixed(1),
-                    latency: Math.floor(20 + Math.random() * 80),
-                    success_rate: (95 + Math.random() * 5).toFixed(1),
-                    captures_count: Math.floor(Math.random() * 50),
-                    alerts_count: Math.floor(Math.random() * 5),
-                    cpu: (30 + Math.random() * 40).toFixed(0),
-                    memory: (40 + Math.random() * 30).toFixed(0)
-                });
+                // Update status bar with latest KPI data from WebSocket
+                updateStatusBarKPIs(latestKpiData);
             }, 3000);
             
-            // Initial KPI update
+            // Initial KPI update with zeros until WebSocket provides data
             updateStatusBarKPIs({
-                throughput: 45.2,
-                latency: 35,
-                success_rate: 98.5,
-                captures_count: 12,
-                alerts_count: 1,
-                cpu: 42,
-                memory: 58
+                throughput: 0,
+                latency: 0,
+                success_rate: 0,
+                captures_count: 0,
+                alerts_count: 0,
+                cpu: 0,
+                memory: 0
             });
         });
         
@@ -13588,6 +13920,17 @@ Ready>
         
         // Real-time data updates
         socket.on('kpis_update', function(data) {
+            // Store latest KPI data for status bar updates
+            latestKpiData = {
+                throughput: data.throughput_mbps || 0,
+                latency: data.latency_ms || 0,
+                success_rate: (data.success_rate * 100) || 0,
+                captures_count: data.active_connections || 0,
+                alerts_count: 0,
+                cpu: data.cpu_usage || 0,
+                memory: data.memory_usage || 0
+            };
+            
             document.getElementById('kpis').innerHTML = `
                 <div class="kpi">
                     <div class="kpi-label">Throughput</div>
@@ -15209,21 +15552,25 @@ Ready>
                     if (data.success !== false) {
                         updateSustainabilityDisplay(data);
                         showToast('success', 'Updated', 'Sustainability data refreshed');
+                    } else {
+                        // Show unavailable state when data is not available
+                        updateSustainabilityDisplay(getUnavailableSustainabilityData());
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching sustainability data:', error);
-                    // Use mock data for demonstration
-                    updateSustainabilityDisplay(generateMockSustainabilityData());
+                    // Show unavailable state instead of mock data
+                    updateSustainabilityDisplay(getUnavailableSustainabilityData());
                 });
         }
         
-        function generateMockSustainabilityData() {
+        function getUnavailableSustainabilityData() {
+            // Return zeros instead of random mock data for production
             return {
-                emissions_kg: (Math.random() * 0.5).toFixed(3),
-                power_kwh: (Math.random() * 2).toFixed(2),
-                cpu_percent: Math.floor(Math.random() * 40 + 20),
-                gpu_percent: Math.floor(Math.random() * 60 + 10),
+                emissions_kg: 0,
+                power_kwh: 0,
+                cpu_percent: 0,
+                gpu_percent: 0,
                 session_hours: ((Date.now() - sustainabilityData.sessionStart) / 3600000).toFixed(2)
             };
         }
@@ -15526,9 +15873,15 @@ Ready>
                 <small style="color: var(--text-secondary);">This may take a few moments</small>
             </div>`;
             
-            // Simulate scan (in production this would call actual scanner)
-            setTimeout(() => {
-                const findings = Math.floor(Math.random() * 5);
+            // Call real security scan API
+            fetch('/api/security/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scan_type: scanType })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const findings = data.findings_count || 0;
                 resultsContainer.innerHTML = `<div style="padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px;">
                     <strong style="color: var(--accent-cyan);">${scanType.toUpperCase()} Scan Complete</strong><br>
                     <span style="color: var(--text-secondary);">Completed at ${new Date().toLocaleTimeString()}</span><br><br>
@@ -15539,7 +15892,15 @@ Ready>
                 
                 // Update counts
                 document.getElementById('vuln-last-scan').textContent = new Date().toLocaleTimeString();
-            }, 2000);
+            })
+            .catch(error => {
+                console.error('Security scan error:', error);
+                resultsContainer.innerHTML = `<div style="padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; color: var(--danger);">
+                    <strong>Scan Failed</strong><br>
+                    <span>${error.message || 'Unable to complete security scan'}</span>
+                </div>`;
+                showToast('error', 'Scan Failed', 'Unable to complete security scan');
+            });
         }
         
         function generateSBOM(format) {

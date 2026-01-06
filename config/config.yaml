@@ -288,8 +288,8 @@ exploitation:
 
 # Legal & Compliance
 compliance:
-  # Faraday cage disabled for development/testing - ENABLE IN PRODUCTION
-  faraday_cage: false
+  # Faraday cage enabled for legal compliance
+  faraday_cage: true
   cvd_enabled: true
   rica_compliance: true
   icasa_license: false
@@ -297,9 +297,8 @@ compliance:
 
 # Safety Configuration  
 safety:
-  # CRITICAL: Set require_faraday_cage to true for real RF operations
-  # Currently disabled for development/testing - ENABLE IN PRODUCTION
-  require_faraday_cage: false
+  # Faraday cage required for legal RF operations
+  require_faraday_cage: true
   audit_logging: true
   max_power_dbm: 20
   ethical_mode: true

@@ -254,6 +254,43 @@ class FalconOneDatabase:
             )
         ''')
         
+        # ISAC Sensing Data Table (v1.9.8 production addition)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS isac_sensing_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                mode TEXT NOT NULL,
+                range_m REAL,
+                velocity_mps REAL,
+                angle_deg REAL,
+                snr_db REAL,
+                timestamp REAL NOT NULL,
+                session_id TEXT,
+                target_id INTEGER,
+                metadata TEXT,
+                FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE SET NULL
+            )
+        ''')
+        
+        # LE Mode Warrants Table (v1.9.8 production addition)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS le_warrants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                warrant_id TEXT UNIQUE NOT NULL,
+                authority TEXT NOT NULL,
+                jurisdiction TEXT,
+                target_identifiers TEXT,
+                scope TEXT,
+                valid_from REAL NOT NULL,
+                valid_until REAL NOT NULL,
+                is_active BOOLEAN DEFAULT 1,
+                is_expired BOOLEAN DEFAULT 0,
+                created_at REAL NOT NULL,
+                revoked_at REAL,
+                revoked_by TEXT,
+                metadata TEXT
+            )
+        ''')
+        
         # Create indexes for better query performance
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
@@ -270,6 +307,11 @@ class FalconOneDatabase:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_exploits_timestamp ON exploit_operations(timestamp DESC)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_exploits_target ON exploit_operations(target_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_timestamp ON system_events(timestamp DESC)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_isac_timestamp ON isac_sensing_data(timestamp DESC)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_isac_mode ON isac_sensing_data(mode)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_warrants_warrant_id ON le_warrants(warrant_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_warrants_valid_until ON le_warrants(valid_until DESC)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_warrants_active ON le_warrants(is_active)')
         
         conn.commit()
         # Don't close persistent in-memory connections
@@ -641,6 +683,361 @@ class FalconOneDatabase:
         count = cursor.fetchone()[0]
         self._close_connection(conn)
         return count
+    
+    # ==================== ISAC SENSING DATA (v1.9.8) ====================
+    
+    def add_isac_sensing_data(self, mode: str, range_m: float, velocity_mps: float,
+                              angle_deg: float = None, snr_db: float = None,
+                              session_id: str = None, target_id: int = None,
+                              metadata: Dict = None) -> int:
+        """Add ISAC sensing data entry"""
+        with self.lock:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO isac_sensing_data (mode, range_m, velocity_mps, angle_deg, snr_db, 
+                                               timestamp, session_id, target_id, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (mode, range_m, velocity_mps, angle_deg, snr_db, time.time(),
+                  session_id, target_id, json.dumps(metadata or {})))
+            
+            entry_id = cursor.lastrowid
+            conn.commit()
+            self._close_connection(conn)
+            
+            return entry_id
+    
+    def get_isac_sensing_data(self, limit: int = 100, mode: str = None,
+                              session_id: str = None) -> List[Dict]:
+        """Get ISAC sensing data entries"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        query = '''
+            SELECT id, mode, range_m, velocity_mps, angle_deg, snr_db, timestamp, 
+                   session_id, target_id, metadata
+            FROM isac_sensing_data 
+        '''
+        params = []
+        
+        conditions = []
+        if mode:
+            conditions.append('mode = ?')
+            params.append(mode)
+        if session_id:
+            conditions.append('session_id = ?')
+            params.append(session_id)
+        
+        if conditions:
+            query += ' WHERE ' + ' AND '.join(conditions)
+        
+        query += ' ORDER BY timestamp DESC LIMIT ?'
+        params.append(limit)
+        
+        cursor.execute(query, params)
+        
+        data = []
+        for row in cursor.fetchall():
+            data.append({
+                'id': row[0],
+                'mode': row[1],
+                'range_m': row[2],
+                'velocity_mps': row[3],
+                'angle_deg': row[4],
+                'snr_db': row[5],
+                'timestamp': row[6],
+                'timestamp_human': datetime.fromtimestamp(row[6]).strftime('%Y-%m-%d %H:%M:%S'),
+                'session_id': row[7],
+                'target_id': row[8],
+                'metadata': json.loads(row[9]) if row[9] else {}
+            })
+        
+        self._close_connection(conn)
+        return data
+    
+    def count_isac_sensing_data(self, mode: str = None) -> int:
+        """Count ISAC sensing data entries"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        if mode:
+            cursor.execute('SELECT COUNT(*) FROM isac_sensing_data WHERE mode = ?', (mode,))
+        else:
+            cursor.execute('SELECT COUNT(*) FROM isac_sensing_data')
+        
+        count = cursor.fetchone()[0]
+        self._close_connection(conn)
+        return count
+    
+    # ==================== LE MODE WARRANTS ====================
+    
+    def add_warrant(self, warrant_id: str, authority: str, jurisdiction: str = None,
+                    target_identifiers: List[str] = None, scope: str = None,
+                    valid_from: float = None, valid_until: float = None,
+                    metadata: Dict = None) -> int:
+        """
+        Add a new LE warrant to the database.
+        
+        Args:
+            warrant_id: Unique warrant identifier
+            authority: Issuing authority
+            jurisdiction: Geographic/legal jurisdiction
+            target_identifiers: List of target IDs covered by warrant
+            scope: Scope of warrant (e.g., 'satellite', 'isac', 'full')
+            valid_from: Warrant validity start timestamp
+            valid_until: Warrant validity end timestamp
+            metadata: Additional warrant metadata
+            
+        Returns:
+            Warrant database ID
+        """
+        with self.lock:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            now = time.time()
+            valid_from = valid_from or now
+            
+            cursor.execute('''
+                INSERT INTO le_warrants (warrant_id, authority, jurisdiction, target_identifiers,
+                    scope, valid_from, valid_until, is_active, is_expired, created_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)
+            ''', (
+                warrant_id, authority, jurisdiction,
+                json.dumps(target_identifiers or []),
+                scope, valid_from, valid_until, now,
+                json.dumps(metadata or {})
+            ))
+            
+            db_id = cursor.lastrowid
+            conn.commit()
+            self._close_connection(conn)
+            
+            self.logger.info(f"Warrant added: {warrant_id} (ID: {db_id})")
+            return db_id
+    
+    def validate_warrant(self, warrant_id: str, scope: str = None) -> Dict:
+        """
+        Validate a warrant by ID and optionally check scope.
+        
+        Args:
+            warrant_id: Warrant ID to validate
+            scope: Required scope (e.g., 'satellite', 'isac')
+            
+        Returns:
+            Dict with validation result and warrant data
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, warrant_id, authority, jurisdiction, target_identifiers,
+                   scope, valid_from, valid_until, is_active, is_expired, created_at, metadata
+            FROM le_warrants
+            WHERE warrant_id = ?
+        ''', (warrant_id,))
+        
+        row = cursor.fetchone()
+        self._close_connection(conn)
+        
+        if not row:
+            return {
+                'valid': False,
+                'error': 'Warrant not found',
+                'warrant': None
+            }
+        
+        warrant = {
+            'id': row[0],
+            'warrant_id': row[1],
+            'authority': row[2],
+            'jurisdiction': row[3],
+            'target_identifiers': json.loads(row[4]) if row[4] else [],
+            'scope': row[5],
+            'valid_from': row[6],
+            'valid_until': row[7],
+            'is_active': bool(row[8]),
+            'is_expired': bool(row[9]),
+            'created_at': row[10],
+            'metadata': json.loads(row[11]) if row[11] else {}
+        }
+        
+        now = time.time()
+        
+        # Check if warrant is active
+        if not warrant['is_active']:
+            return {
+                'valid': False,
+                'error': 'Warrant has been revoked',
+                'warrant': warrant
+            }
+        
+        # Check expiration
+        if warrant['valid_until'] and now > warrant['valid_until']:
+            # Mark as expired in database
+            self._mark_warrant_expired(warrant_id)
+            return {
+                'valid': False,
+                'error': 'Warrant has expired',
+                'warrant': warrant
+            }
+        
+        # Check if warrant has started
+        if warrant['valid_from'] and now < warrant['valid_from']:
+            return {
+                'valid': False,
+                'error': 'Warrant not yet valid',
+                'warrant': warrant
+            }
+        
+        # Check scope if specified
+        if scope and warrant['scope']:
+            if scope.lower() not in warrant['scope'].lower() and warrant['scope'].lower() != 'full':
+                return {
+                    'valid': False,
+                    'error': f'Warrant scope does not cover {scope} operations',
+                    'warrant': warrant
+                }
+        
+        return {
+            'valid': True,
+            'error': None,
+            'warrant': warrant
+        }
+    
+    def _mark_warrant_expired(self, warrant_id: str):
+        """Mark a warrant as expired"""
+        with self.lock:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE le_warrants SET is_expired = 1 WHERE warrant_id = ?
+            ''', (warrant_id,))
+            
+            conn.commit()
+            self._close_connection(conn)
+    
+    def revoke_warrant(self, warrant_id: str, revoked_by: str = None) -> bool:
+        """
+        Revoke an active warrant.
+        
+        Args:
+            warrant_id: Warrant ID to revoke
+            revoked_by: User/authority revoking the warrant
+            
+        Returns:
+            True if revoked, False if not found
+        """
+        with self.lock:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE le_warrants 
+                SET is_active = 0, revoked_at = ?, revoked_by = ?
+                WHERE warrant_id = ? AND is_active = 1
+            ''', (time.time(), revoked_by, warrant_id))
+            
+            affected = cursor.rowcount
+            conn.commit()
+            self._close_connection(conn)
+            
+            if affected > 0:
+                self.logger.info(f"Warrant revoked: {warrant_id} by {revoked_by}")
+                return True
+            return False
+    
+    def get_active_warrants(self, scope: str = None) -> List[Dict]:
+        """
+        Get all active (non-expired, non-revoked) warrants.
+        
+        Args:
+            scope: Filter by scope (optional)
+            
+        Returns:
+            List of active warrant records
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        now = time.time()
+        query = '''
+            SELECT id, warrant_id, authority, jurisdiction, target_identifiers,
+                   scope, valid_from, valid_until, is_active, is_expired, created_at, metadata
+            FROM le_warrants
+            WHERE is_active = 1 AND is_expired = 0 AND valid_until > ?
+        '''
+        params = [now]
+        
+        if scope:
+            query += ' AND (scope LIKE ? OR scope = ?)'
+            params.extend([f'%{scope}%', 'full'])
+        
+        query += ' ORDER BY valid_until DESC'
+        
+        cursor.execute(query, params)
+        
+        warrants = []
+        for row in cursor.fetchall():
+            warrants.append({
+                'id': row[0],
+                'warrant_id': row[1],
+                'authority': row[2],
+                'jurisdiction': row[3],
+                'target_identifiers': json.loads(row[4]) if row[4] else [],
+                'scope': row[5],
+                'valid_from': row[6],
+                'valid_from_human': datetime.fromtimestamp(row[6]).strftime('%Y-%m-%d %H:%M:%S') if row[6] else None,
+                'valid_until': row[7],
+                'valid_until_human': datetime.fromtimestamp(row[7]).strftime('%Y-%m-%d %H:%M:%S') if row[7] else None,
+                'is_active': bool(row[8]),
+                'is_expired': bool(row[9]),
+                'created_at': row[10],
+                'metadata': json.loads(row[11]) if row[11] else {}
+            })
+        
+        self._close_connection(conn)
+        return warrants
+    
+    def get_warrant_by_id(self, warrant_id: str) -> Optional[Dict]:
+        """Get warrant details by ID"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, warrant_id, authority, jurisdiction, target_identifiers,
+                   scope, valid_from, valid_until, is_active, is_expired, created_at,
+                   revoked_at, revoked_by, metadata
+            FROM le_warrants
+            WHERE warrant_id = ?
+        ''', (warrant_id,))
+        
+        row = cursor.fetchone()
+        self._close_connection(conn)
+        
+        if not row:
+            return None
+        
+        return {
+            'id': row[0],
+            'warrant_id': row[1],
+            'authority': row[2],
+            'jurisdiction': row[3],
+            'target_identifiers': json.loads(row[4]) if row[4] else [],
+            'scope': row[5],
+            'valid_from': row[6],
+            'valid_from_human': datetime.fromtimestamp(row[6]).strftime('%Y-%m-%d %H:%M:%S') if row[6] else None,
+            'valid_until': row[7],
+            'valid_until_human': datetime.fromtimestamp(row[7]).strftime('%Y-%m-%d %H:%M:%S') if row[7] else None,
+            'is_active': bool(row[8]),
+            'is_expired': bool(row[9]),
+            'created_at': row[10],
+            'revoked_at': row[11],
+            'revoked_by': row[12],
+            'metadata': json.loads(row[13]) if row[13] else {}
+        }
     
     # ==================== EXPLOIT OPERATIONS ====================
     

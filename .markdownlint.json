@@ -1,0 +1,22 @@
+{
+  "MD013": false,
+  "MD022": false,
+  "MD024": false,
+  "MD029": false,
+  "MD031": false,
+  "MD032": false,
+  "MD036": false,
+  "MD050": false,
+  "MD056": false,
+  "MD060": false,
+  "line-length": false,
+  "blanks-around-headings": false,
+  "no-duplicate-heading": false,
+  "ol-prefix": false,
+  "blanks-around-fences": false,
+  "blanks-around-lists": false,
+  "no-emphasis-as-heading": false,
+  "strong-style": false,
+  "table-column-count": false,
+  "table-column-style": false
+}
